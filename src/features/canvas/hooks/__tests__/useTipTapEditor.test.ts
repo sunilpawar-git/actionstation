@@ -132,21 +132,39 @@ describe('useTipTapEditor', () => {
         });
     });
 
-    describe('editable sync (removed)', () => {
-        it('does not use useEffect to sync editable — caller controls directly', () => {
-            // Render with editable=false, then editable=true should be controlled
-            // by the caller (useNodeInput) calling editor.setEditable() directly
+    describe('editable prop sync via useEffect', () => {
+        it('initialises as non-editable when editable=false', () => {
+            const { result } = renderHook(() =>
+                useTipTapEditor({ initialContent: 'text', placeholder: '', editable: false })
+            );
+            expect(result.current.editor!.isEditable).toBe(false);
+        });
+
+        it('becomes editable when prop changes false→true (critical: heading editor regression guard)', async () => {
             const { result, rerender } = renderHook(
                 ({ editable }) => useTipTapEditor({ initialContent: 'text', placeholder: '', editable }),
                 { initialProps: { editable: false } }
             );
             expect(result.current.editor!.isEditable).toBe(false);
-            // Re-render alone should NOT change editable (no useEffect sync)
+            // Simulates user clicking a node to enter edit mode
+            rerender({ editable: true });
+            await act(async () => { });
+            expect(result.current.editor!.isEditable).toBe(true);
+        });
+
+        it('becomes non-editable when prop changes true→false', async () => {
+            const { result, rerender } = renderHook(
+                ({ editable }) => useTipTapEditor({ initialContent: 'text', placeholder: '', editable }),
+                { initialProps: { editable: true } }
+            );
+            expect(result.current.editor!.isEditable).toBe(true);
             rerender({ editable: false });
+            await act(async () => { });
             expect(result.current.editor!.isEditable).toBe(false);
         });
     });
 });
+
 
 describe('useTipTapEditor — table content', () => {
     const TABLE_MD = '| Name | Age |\n|---|---|\n| Alice | 30 |';
