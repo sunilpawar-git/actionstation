@@ -85,7 +85,7 @@ export function useTipTapEditor(options: UseTipTapEditorOptions): UseTipTapEdito
         if (isEditorReady(e) && e.isEditable !== editable) {
             e.setEditable(editable);
         }
-    }, [editable]); // eslint-disable-line react-hooks/exhaustive-deps — editorRef is always current
+    }, [editable]);
 
     const getMarkdown = useCallback((): string => {
         return isEditorReady(editor) ? htmlToMarkdown(editor.getHTML()) : '';
