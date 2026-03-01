@@ -16,7 +16,9 @@ export function WorkspaceControls() {
     const handleAddNode = useAddNode();
     const canvasFreeFlow = useSettingsStore((s) => s.canvasFreeFlow);
     const nodeCount = useCanvasStore((s) => s.nodes.length);
-    const pinnedCount = useCanvasStore((s) => s.nodes.filter(isNodePinned).length);
+    const pinnedCount = useCanvasStore(
+        (s) => s.nodes.reduce((n, node) => n + (isNodePinned(node) ? 1 : 0), 0),
+    );
 
     const arrangeNodes = useCallback(() => { useCanvasStore.getState().arrangeNodes(); }, []);
     const { animatedArrange } = useArrangeAnimation(null, arrangeNodes);

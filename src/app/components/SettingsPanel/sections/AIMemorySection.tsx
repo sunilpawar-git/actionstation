@@ -13,7 +13,7 @@ import styles from '../SettingsPanel.module.css';
 export const AIMemorySection = React.memo(function AIMemorySection() {
     const nodeCount = useCanvasStore((s) => s.nodes.length);
     const individualPoolCount = useCanvasStore(
-        (s) => s.nodes.filter((n) => n.data.includeInAIPool).length,
+        (s) => s.nodes.reduce((n, node) => n + (node.data.includeInAIPool ? 1 : 0), 0),
     );
     const workspaces = useWorkspaceStore((s) => s.workspaces);
     const currentWorkspaceId = useWorkspaceStore((s) => s.currentWorkspaceId);
