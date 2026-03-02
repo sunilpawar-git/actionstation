@@ -42,13 +42,19 @@ export function rehypeWrapListItems() {
                 }
             }
 
-            const pNode: Element = {
-                type: 'element',
-                tagName: 'p',
-                properties: {},
-                children: inlineChildren,
-            };
-            node.children = [pNode, ...remaining];
+            // Only wrap inline content in <p> when there's actual content to wrap.
+            // An all-block <li> (e.g. <li><ul>...</ul></li>) must not get a spurious <p/>.
+            if (inlineChildren.length > 0) {
+                const pNode: Element = {
+                    type: 'element',
+                    tagName: 'p',
+                    properties: {},
+                    children: inlineChildren,
+                };
+                node.children = [pNode, ...remaining];
+            } else {
+                node.children = remaining;
+            }
         });
     };
 }

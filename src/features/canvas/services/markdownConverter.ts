@@ -59,7 +59,7 @@ function nodeToMarkdown(node: Node, depth = 0): string {
 
     // Container elements (div, body) join block children with newlines
     if (tag === 'div' || tag === 'body') {
-        return joinBlockChildren(el);
+        return joinBlockChildren(el, depth);
     }
 
     const childMd = Array.from(el.childNodes).map(n => nodeToMarkdown(n, depth)).join('');
@@ -67,10 +67,10 @@ function nodeToMarkdown(node: Node, depth = 0): string {
 }
 
 /** Join block-level children with blank-line separators for unambiguous markdown */
-function joinBlockChildren(el: Element): string {
+function joinBlockChildren(el: Element, depth = 0): string {
     const parts: string[] = [];
     for (const child of Array.from(el.childNodes)) {
-        const md = nodeToMarkdown(child);
+        const md = nodeToMarkdown(child, depth);
         if (!md && child.nodeType !== Node.ELEMENT_NODE) continue;
         if (child.nodeType !== Node.ELEMENT_NODE) { parts.push(md); continue; }
         const tag = (child as Element).tagName.toLowerCase();
@@ -96,11 +96,14 @@ function elementToMarkdown(el: Element, tag: string, childMd: string, depth = 0)
     if (tag === 'code') return codeToMarkdown(el, childMd);
     if (tag === 'img') return imageToMarkdown(el);
     if (tag in HEADING_PREFIXES) return `${HEADING_PREFIXES[tag]}${childMd}`;
-    if (tag === 'blockquote') return `> ${childMd.replace(/\n/g, '')}`;
+    // Prefix each line with '> ' so multi-line blockquote content (e.g. <br>-separated)
+    // is correctly serialized rather than having all newlines stripped.
+    if (tag === 'blockquote') return childMd.split('\n').map(l => `> ${l}`).join('\n');
     if (tag === 'pre') return `\`\`\`\n${childMd}\`\`\``;
     if (tag === 'ul') return convertList(el, false, depth);
     if (tag === 'ol') return convertList(el, true, depth);
-    if (tag === 'li') return childMd.replace(/^\n+|\n+$/g, '');
+    // Note: 'li' is intentionally absent — convertList builds <li> content
+    // directly via its liParts loop and never dispatches through elementToMarkdown.
     if (tag === 'br') return '\n';
     if (tag === 'hr') return '---';
     return childMd;
@@ -186,6 +189,8 @@ function convertList(el: Element, ordered: boolean, depth = 0): string {
     const safeStart = Number.isNaN(parsed) ? 1 : parsed;
     const start = ordered ? safeStart : 0;
     const indent = '  '.repeat(depth);
+    // Use .children (element nodes only) — per HTML spec, only <li> elements are
+    // valid direct children of <ul>/<ol>; text nodes between items are ignorable.
     const items = Array.from(el.children);
     return items
         .map((li, idx) => {
@@ -216,4 +221,3 @@ function convertList(el: Element, ordered: boolean, depth = 0): string {
         })
         .join('\n');
 }
-

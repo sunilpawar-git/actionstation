@@ -304,7 +304,7 @@ describe('htmlToMarkdown nested lists — indentation', () => {
         expect(md).toContain('  - Deny an adversary access to the target.');
         // Critically: sub-bullet must NOT be appended to the parent text on the same line
         expect(md).not.toMatch(/Detect an attack,[^\n]*- Delay/);
-        expect(md).not.toMatch(/Detect an attack,  /); // no direct space-runon into indent
+        expect(md).not.toMatch(/Detect an attack, {2}/); // no direct space-runon into indent
     });
 
     it('parent <p> text and nested <ol> are separated by newline', () => {
