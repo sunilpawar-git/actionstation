@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useCanvasStore, getNodeMap } from '../stores/canvasStore';
+import { useCanvasStore } from '../stores/canvasStore';
+import { useNodeData } from './useNodeData';
 import { useLinkPreviewFetch } from './useLinkPreviewFetch';
 import { extractUrls } from './nodeInputUtils';
 import { getViewModeKeyAction, applyViewModeKeyAction } from './nodeInputKeyHandler';
@@ -17,14 +18,10 @@ export function useNodeInput(options: UseNodeInputOptions): UseNodeInputReturn {
         isGenerating, isNewEmptyNode, focusHeading, shortcuts,
     } = options;
 
-    // Stable selectors - derive values outside to avoid closure anti-pattern during drag
     const draftContentStore = useCanvasStore((s) => s.draftContent);
-    const nodes = useCanvasStore((s) => s.nodes);
     const draftContent = isEditing ? draftContentStore : null;
-    const nodeOutput = useMemo(
-        () => getNodeMap(nodes).get(nodeId)?.data.output,
-        [nodes, nodeId],
-    );
+    const nodeData = useNodeData(nodeId);
+    const nodeOutput = nodeData?.output;
     const detectedUrls = useMemo(
         () => extractUrls(isEditing ? draftContent : (nodeOutput ?? null)),
         [isEditing, draftContent, nodeOutput],

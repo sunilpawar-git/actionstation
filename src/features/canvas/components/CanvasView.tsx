@@ -2,7 +2,7 @@
  * Canvas View - ReactFlow wrapper component
  * Store is the single source of truth, ReactFlow syncs to it
  */
-import { useMemo, useRef, memo, useEffect, useCallback } from 'react';
+import { useMemo, useRef, useReducer, memo, useEffect, useCallback } from 'react';
 import { ReactFlow, Background, BackgroundVariant, ConnectionLineType, SelectionMode, PanOnScrollMode, type Node, type Viewport } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -15,13 +15,29 @@ import { ZoomControls } from './ZoomControls';
 import { FocusOverlay } from './FocusOverlay';
 import { ViewportSync } from './ViewportSync';
 import { buildRfNodes, cleanupDataShells, type PrevRfNodes } from './buildRfNodes';
-import { mapCanvasEdgesToRfEdges } from './canvasChangeHelpers';
+import { mapCanvasEdgesToRfEdges, applyPositionAndRemoveChanges } from './canvasChangeHelpers';
 import { nodeTypes, edgeTypes, DEFAULT_EDGE_OPTIONS, SNAP_GRID } from './canvasViewConstants';
 import { useCanvasHandlers } from '../hooks/useCanvasHandlers';
+import { dragPositionReducer, INITIAL_DRAG_STATE } from '../hooks/dragPositionReducer';
 import styles from './CanvasView.module.css';
 
 function getContainerClassName(isSwitching: boolean): string {
     return isSwitching ? `${styles.canvasContainer ?? ''} ${styles.switching ?? ''}` : (styles.canvasContainer ?? '');
+}
+
+function commitOverridesToStore(
+    overrides: ReadonlyMap<string, { x: number; y: number }>,
+    dispatch: React.Dispatch<{ type: 'RESET' }>,
+): void {
+    if (overrides.size === 0) return;
+    useCanvasStore.setState((state) => {
+        const changes = Array.from(overrides, ([id, position]) => ({
+            type: 'position' as const, id, position,
+        }));
+        const result = applyPositionAndRemoveChanges(state.nodes, changes);
+        return result !== state.nodes ? { nodes: result } : {};
+    });
+    dispatch({ type: 'RESET' });
 }
 
 function CanvasViewInner() {
@@ -38,7 +54,13 @@ function CanvasViewInner() {
     const isNavigateMode = canvasScrollMode === 'navigate';
 
     const prevRfNodesRef = useRef<PrevRfNodes>({ arr: [], map: new Map() });
-    const handlers = useCanvasHandlers(currentWorkspaceId, isCanvasLocked);
+    const [dragState, dragDispatch] = useReducer(dragPositionReducer, INITIAL_DRAG_STATE);
+    const handlers = useCanvasHandlers(currentWorkspaceId, isCanvasLocked, dragDispatch);
+
+    const commitDragOverrides = useCallback(
+        () => commitOverridesToStore(dragState.overrides, dragDispatch),
+        [dragState],
+    );
 
     const handleMoveEnd = useCallback((_event: unknown, newViewport: Viewport) => {
         useCanvasStore.getState().setViewport(newViewport);
@@ -50,8 +72,8 @@ function CanvasViewInner() {
     }, [currentWorkspaceId]);
 
     const rfNodes: Node[] = useMemo(
-        () => buildRfNodes(nodes, selectedNodeIds, prevRfNodesRef),
-        [nodes, selectedNodeIds],
+        () => buildRfNodes(nodes, selectedNodeIds, prevRfNodesRef, dragState.overrides),
+        [nodes, selectedNodeIds, dragState.overrides],
     );
 
     const rfEdges = useMemo(() => mapCanvasEdgesToRfEdges(edges), [edges]);
@@ -69,6 +91,8 @@ function CanvasViewInner() {
                 onEdgesChange={handlers.onEdgesChange}
                 onConnect={handlers.onConnect}
                 onSelectionChange={handlers.onSelectionChange}
+                onNodeDragStop={commitDragOverrides}
+                onSelectionDragStop={commitDragOverrides}
                 onMoveEnd={handleMoveEnd}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}

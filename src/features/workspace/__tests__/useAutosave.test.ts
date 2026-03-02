@@ -240,6 +240,21 @@ describe('useAutosave', () => {
         vi.useRealTimers();
     });
 
+    describe('position-excluded fingerprinting', () => {
+        it('nodesJson fingerprint excludes position but includes data (structural)', () => {
+            const src = readFileSync(
+                resolve(__dirname, '../hooks/useAutosave.ts'), 'utf-8'
+            );
+            const nodesJsonBlock = src.slice(
+                src.indexOf('const nodesJson'),
+                src.indexOf(');', src.indexOf('const nodesJson')) + 2,
+            );
+            expect(nodesJsonBlock).not.toContain('position');
+            expect(nodesJsonBlock).toContain('data');
+            expect(nodesJsonBlock).toContain('id');
+        });
+    });
+
     describe('selector isolation (prevents full-tree rerenders)', () => {
         it('uses targeted selectors instead of bare useCanvasStore()', () => {
             const src = readFileSync(

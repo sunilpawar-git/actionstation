@@ -2,9 +2,10 @@
  * useNodeResize Hook - ViewModel for node resize arrow buttons
  * Provides expand actions and canExpand flags for width/height
  */
-import { useCallback, useMemo } from 'react';
-import { useCanvasStore, getNodeMap } from '../stores/canvasStore';
+import { useCallback } from 'react';
+import { useCanvasStore } from '../stores/canvasStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
+import { useNodeDimensions } from './useNodeDimensions';
 import {
     RESIZE_INCREMENT_PX,
     MAX_NODE_WIDTH,
@@ -30,13 +31,8 @@ export interface UseNodeResizeResult {
  * @returns Expand actions and canExpand boolean flags
  */
 export function useNodeResize(nodeId: string): UseNodeResizeResult {
-    // Stable selector - avoids closure variable causing re-subscriptions during drag
-    const nodes = useCanvasStore((s) => s.nodes);
-    const node = useMemo(() => getNodeMap(nodes).get(nodeId), [nodes, nodeId]);
+    const { width: currentWidth, height: currentHeight } = useNodeDimensions(nodeId);
     const canvasFreeFlow = useSettingsStore((s) => s.canvasFreeFlow);
-
-    const currentWidth = node?.width ?? DEFAULT_NODE_WIDTH;
-    const currentHeight = node?.height ?? DEFAULT_NODE_HEIGHT;
 
     const canExpandWidth = currentWidth < MAX_NODE_WIDTH;
     const canExpandHeight = currentHeight < MAX_NODE_HEIGHT;

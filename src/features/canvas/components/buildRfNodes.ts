@@ -19,7 +19,7 @@
  */
 import type { Node } from '@xyflow/react';
 import type { MutableRefObject } from 'react';
-import type { CanvasNode } from '../types/node';
+import type { CanvasNode, NodePosition } from '../types/node';
 
 export interface PrevRfNodes { arr: Node[]; map: Map<string, Node> }
 
@@ -45,16 +45,18 @@ export function buildRfNodes(
     nodes: CanvasNode[],
     selectedNodeIds: Set<string>,
     ref: MutableRefObject<PrevRfNodes>,
+    positionOverrides?: ReadonlyMap<string, NodePosition>,
 ): Node[] {
     const { arr: prevArr, map: prevMap } = ref.current;
     let allReused = nodes.length === prevArr.length;
 
     const result = nodes.map((node, index) => {
         const selected = selectedNodeIds.has(node.id);
+        const position = positionOverrides?.get(node.id) ?? node.position;
         const prev = prevMap.get(node.id);
 
         if (prev
-            && prev.position === node.position
+            && prev.position === position
             && prev.selected === selected
             && prev.width === node.width
             && prev.height === node.height) {
@@ -66,7 +68,7 @@ export function buildRfNodes(
         return {
             id: node.id,
             type: node.type,
-            position: node.position,
+            position,
             data: getDataShell(node.id),
             selected,
             ...(node.width != null && { width: node.width }),

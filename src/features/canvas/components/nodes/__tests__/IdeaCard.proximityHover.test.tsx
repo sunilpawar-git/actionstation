@@ -18,17 +18,26 @@ vi.mock('@xyflow/react', async () => {
     };
 });
 
+const mockCanvasState = {
+    nodes: [],
+    editingNodeId: null,
+    setInputMode: vi.fn(),
+    stopEditing: vi.fn(),
+    toggleNodePinned: vi.fn(),
+    toggleNodeCollapsed: vi.fn(),
+};
+const subscribers = new Set<() => void>();
 vi.mock('../../../stores/canvasStore', () => ({
-    useCanvasStore: vi.fn((selector) => {
-        const state = {
-            editingNodeId: null,
-            setInputMode: vi.fn(),
-            stopEditing: vi.fn(),
-            toggleNodePinned: vi.fn(),
-            toggleNodeCollapsed: vi.fn(),
-        };
-        return selector ? selector(state) : state;
-    }),
+    useCanvasStore: Object.assign(
+        vi.fn((selector?: (s: typeof mockCanvasState) => unknown) =>
+            selector ? selector(mockCanvasState) : mockCanvasState),
+        {
+            getState: () => mockCanvasState,
+            subscribe: (cb: () => void) => { subscribers.add(cb); return () => subscribers.delete(cb); },
+            setState: () => { /* no-op for test */ },
+        },
+    ),
+    getNodeMap: () => new Map(),
 }));
 
 vi.mock('../../../hooks/useIdeaCardEditor', () => ({

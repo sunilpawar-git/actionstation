@@ -82,10 +82,9 @@ export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = f
         const nodesJson = JSON.stringify(
             nodes.map((n) => ({
                 id: n.id,
-                workspaceId: n.workspaceId,
-                type: n.type,
-                position: n.position,
                 data: n.data,
+                width: n.width,
+                height: n.height,
             }))
         );
         const edgesJson = JSON.stringify(edges);

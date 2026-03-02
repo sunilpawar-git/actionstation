@@ -1,7 +1,7 @@
-import { useCallback, useState, useRef, useMemo } from 'react';
-// useShallow removed - using stable selectors + useMemo instead
-import { useCanvasStore, getNodeMap } from '../stores/canvasStore';
+import { useCallback, useState, useRef } from 'react';
+import { useCanvasStore } from '../stores/canvasStore';
 import { useFocusStore } from '../stores/focusStore';
+import { useNodeData } from './useNodeData';
 import { useIdeaCardEditor } from './useIdeaCardEditor';
 import { useIdeaCardState } from './useIdeaCardState';
 import { useIdeaCardHandlers } from './useIdeaCardHandlers';
@@ -21,13 +21,7 @@ interface UseIdeaCardParams {
 }
 
 export function useIdeaCard({ id, rfData, selected }: UseIdeaCardParams) {
-    // Stable selector - avoids closure variable causing re-subscriptions during drag
-    const nodes = useCanvasStore((s) => s.nodes);
-    const storeData = useMemo(
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/strict-boolean-expressions -- nodes may be absent in test mocks
-        () => (nodes ? getNodeMap(nodes).get(id)?.data : undefined),
-        [nodes, id],
-    );
+    const storeData = useNodeData(id);
     const resolvedData: IdeaNodeData = storeData ?? rfData;
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- legacy field, heading is SSOT
     const { heading, prompt = '', output, isGenerating, isPinned, isCollapsed, tags: tagIds = [], linkPreviews, calendarEvent } = resolvedData;

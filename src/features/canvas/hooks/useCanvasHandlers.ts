@@ -1,10 +1,15 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, type Dispatch } from 'react';
 import type { NodeChange, OnNodesChange } from '@xyflow/react';
 import { useCanvasStore } from '../stores/canvasStore';
 import { applyPositionAndRemoveChanges } from '../components/canvasChangeHelpers';
 import { useCanvasEdgeHandlers } from './useCanvasEdgeHandlers';
+import type { DragAction } from './dragPositionReducer';
 
-export function useCanvasHandlers(currentWorkspaceId: string | null, isCanvasLocked: boolean) {
+export function useCanvasHandlers(
+    currentWorkspaceId: string | null,
+    isCanvasLocked: boolean,
+    dragDispatch: Dispatch<DragAction>,
+) {
     const pendingResize = useRef<{ id: string; width: number; height: number } | null>(null);
     const pendingChanges = useRef<NodeChange[]>([]);
     const rafId = useRef<number | null>(null);
@@ -19,20 +24,22 @@ export function useCanvasHandlers(currentWorkspaceId: string | null, isCanvasLoc
         (changes: NodeChange[]) => {
             if (isCanvasLocked) return;
 
-            // Separate remove changes (must be processed immediately) from position/dimension changes
             const removeChanges: NodeChange[] = [];
             for (const change of changes) {
                 if (change.type === 'remove') {
                     removeChanges.push(change);
                 } else if (change.type === 'position' && change.position) {
-                    // Batch position changes - coalesce by node ID
-                    const existing = pendingChanges.current.findIndex(
-                        (c) => c.type === 'position' && c.id === change.id
-                    );
-                    if (existing !== -1) {
-                        pendingChanges.current[existing] = change;
+                    if (change.dragging) {
+                        dragDispatch({ type: 'DRAG_MOVE', id: change.id, position: change.position });
                     } else {
-                        pendingChanges.current.push(change);
+                        const existing = pendingChanges.current.findIndex(
+                            (c) => c.type === 'position' && c.id === change.id
+                        );
+                        if (existing !== -1) {
+                            pendingChanges.current[existing] = change;
+                        } else {
+                            pendingChanges.current.push(change);
+                        }
                     }
                 } else if (change.type === 'dimensions' && change.dimensions && change.resizing) {
                     pendingResize.current = {
@@ -43,7 +50,6 @@ export function useCanvasHandlers(currentWorkspaceId: string | null, isCanvasLoc
                 }
             }
 
-            // Process removes immediately (not batchable)
             if (removeChanges.length > 0) {
                 useCanvasStore.setState((state) => {
                     const result = applyPositionAndRemoveChanges(state.nodes, removeChanges);
@@ -51,9 +57,7 @@ export function useCanvasHandlers(currentWorkspaceId: string | null, isCanvasLoc
                 });
             }
 
-            // Schedule batched position/dimension updates via requestAnimationFrame
             rafId.current ??= requestAnimationFrame(() => {
-                // Apply batched position changes
                 if (pendingChanges.current.length > 0) {
                     const changesToApply = pendingChanges.current;
                     pendingChanges.current = [];
@@ -63,7 +67,6 @@ export function useCanvasHandlers(currentWorkspaceId: string | null, isCanvasLoc
                     });
                 }
 
-                // Apply batched dimension changes
                 if (pendingResize.current) {
                     useCanvasStore.getState().updateNodeDimensions(
                         pendingResize.current.id,
@@ -76,7 +79,7 @@ export function useCanvasHandlers(currentWorkspaceId: string | null, isCanvasLoc
                 rafId.current = null;
             });
         },
-        [isCanvasLocked]
+        [isCanvasLocked, dragDispatch]
     );
 
     const edgeHandlers = useCanvasEdgeHandlers(currentWorkspaceId, isCanvasLocked);
