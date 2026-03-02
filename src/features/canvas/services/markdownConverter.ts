@@ -190,14 +190,25 @@ function convertList(el: Element, ordered: boolean, depth = 0): string {
     return items
         .map((li, idx) => {
             const prefix = ordered ? `${start + idx}. ` : '- ';
-            // Render the <li> children with depth+1 so any nested <ul>/<ol> inside
-            // this item gets the next level of indentation.
-            const liMd = Array.from(li.childNodes)
-                .map(n => nodeToMarkdown(n, depth + 1))
-                .join('')
-                .replace(/^\n+|\n+$/g, '');
-            // Each line of the item (including wrapped nested-list lines) gets the
-            // current-depth indent prepended.
+            // Build the <li> content by iterating child nodes and inserting a newline
+            // before each block-level element that follows prior content.
+            // This ensures <p>text</p><ul>...</ul> becomes "text\n  - child"
+            // rather than "text  - child" (which corrupts round-trip parsing).
+            const liParts: string[] = [];
+            for (const child of Array.from(li.childNodes)) {
+                const childMd = nodeToMarkdown(child, depth + 1);
+                if (!childMd) continue;
+                const tag = child.nodeType === Node.ELEMENT_NODE
+                    ? (child as Element).tagName.toLowerCase() : '';
+                // Insert newline separator before a block element when content already exists
+                if (BLOCK_TAGS.has(tag) && liParts.length > 0) {
+                    liParts.push('\n');
+                }
+                liParts.push(childMd);
+            }
+            const liMd = liParts.join('').replace(/^\n+|\n+$/g, '');
+            // Prepend the current-depth indent+prefix to the first line only;
+            // subsequent lines (nested list items) already carry their own indent.
             return liMd
                 .split('\n')
                 .map((line, i) => (i === 0 ? `${indent}${prefix}${line}` : line))
@@ -205,3 +216,4 @@ function convertList(el: Element, ordered: boolean, depth = 0): string {
         })
         .join('\n');
 }
+

@@ -285,4 +285,37 @@ describe('htmlToMarkdown nested lists — indentation', () => {
         expect(md).toContain('  - L2');
         expect(md).toContain('    - L3');
     });
+
+    it('separates parent <p> text from nested <ul> with a newline — no run-on', () => {
+        // The Chapter 2 "Four Ds" case: user edited so only 2 of 4 items remain nested.
+        // The bug: without a \n between <p> and <ul>, the sub-list prefix runs onto
+        // the parent text line, causing the round-trip to produce wrong structure.
+        const html =
+            '<ul><li><p>The Four Ds: Deter an adversary, Detect an attack,</p>' +
+            '<ul>' +
+            '<li><p>Delay an attack, and</p></li>' +
+            '<li><p>Deny an adversary access to the target.</p></li>' +
+            '</ul></li></ul>';
+        const md = htmlToMarkdown(html);
+        // Parent text line must be its own line ending with the comma
+        expect(md).toContain('- The Four Ds: Deter an adversary, Detect an attack,');
+        // Sub-bullets must be on their own indented lines
+        expect(md).toContain('  - Delay an attack, and');
+        expect(md).toContain('  - Deny an adversary access to the target.');
+        // Critically: sub-bullet must NOT be appended to the parent text on the same line
+        expect(md).not.toMatch(/Detect an attack,[^\n]*- Delay/);
+        expect(md).not.toMatch(/Detect an attack,  /); // no direct space-runon into indent
+    });
+
+    it('parent <p> text and nested <ol> are separated by newline', () => {
+        const html =
+            '<ul><li><p>Parent with sub-steps:</p>' +
+            '<ol><li><p>Step one</p></li><li><p>Step two</p></li></ol>' +
+            '</li></ul>';
+        const md = htmlToMarkdown(html);
+        expect(md).toContain('- Parent with sub-steps:');
+        expect(md).toContain('  1. Step one');
+        expect(md).toContain('  2. Step two');
+        expect(md).not.toMatch(/sub-steps:[^\n]*1\./);
+    });
 });

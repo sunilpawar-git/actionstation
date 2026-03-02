@@ -123,3 +123,29 @@ describe('round-trip nested lists — indentation (regression)', () => {
     });
 });
 
+describe("round-trip nested lists — block separator (regression)", () => {
+    it("preserves parent-bullet text with partial sub-bullets — Chapter 2 Four Ds case", () => {
+        const md = [
+            "- The Four Ds must: Deter an adversary, Detect an attack,",
+            "  - Delay an attack, and",
+            "  - Deny an adversary access to the target.",
+            "- These four principles should be the basis for all physical security projects.",
+        ].join("\n");
+        const result = htmlToMarkdown(markdownToHtml(md));
+        expect(result).toContain("- The Four Ds must: Deter an adversary, Detect an attack,");
+        expect(result).toContain("  - Delay an attack, and");
+        expect(result).toContain("  - Deny an adversary access to the target.");
+        expect(result).not.toMatch(/^- Delay/m);
+        expect(result).not.toMatch(/^- Deny/m);
+        expect(result).not.toMatch(/Detect an attack,[^\n]*-/);
+    });
+
+    it("preserves parent-bullet with nested ordered sub-steps through round-trip", () => {
+        const md = "- Parent with sub-steps:\n  1. Step one\n  2. Step two";
+        const result = htmlToMarkdown(markdownToHtml(md));
+        expect(result).toContain("- Parent with sub-steps:");
+        expect(result).toContain("  1. Step one");
+        expect(result).toContain("  2. Step two");
+        expect(result).not.toMatch(/sub-steps:[^\n]*1\./);
+    });
+});
