@@ -50,7 +50,7 @@ const BLOCK_TAGS = new Set([
 const TABLE_SUB_TAGS = new Set(['thead', 'tbody', 'tr', 'td', 'th']);
 
 /** Recursively convert DOM node tree to markdown */
-function nodeToMarkdown(node: Node): string {
+function nodeToMarkdown(node: Node, depth = 0): string {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
     if (node.nodeType !== Node.ELEMENT_NODE) return '';
 
@@ -62,8 +62,8 @@ function nodeToMarkdown(node: Node): string {
         return joinBlockChildren(el);
     }
 
-    const childMd = Array.from(el.childNodes).map(nodeToMarkdown).join('');
-    return elementToMarkdown(el, tag, childMd);
+    const childMd = Array.from(el.childNodes).map(n => nodeToMarkdown(n, depth)).join('');
+    return elementToMarkdown(el, tag, childMd, depth);
 }
 
 /** Join block-level children with blank-line separators for unambiguous markdown */
@@ -87,7 +87,7 @@ function joinBlockChildren(el: Element): string {
 }
 
 /** Convert a single element to markdown based on its tag */
-function elementToMarkdown(el: Element, tag: string, childMd: string): string {
+function elementToMarkdown(el: Element, tag: string, childMd: string, depth = 0): string {
     if (tag === 'table') return tableToMarkdown(el);
     // Sub-tags are owned by tableToMarkdown; returning '' prevents double-rendering
     if (TABLE_SUB_TAGS.has(tag)) return '';
@@ -98,8 +98,8 @@ function elementToMarkdown(el: Element, tag: string, childMd: string): string {
     if (tag in HEADING_PREFIXES) return `${HEADING_PREFIXES[tag]}${childMd}`;
     if (tag === 'blockquote') return `> ${childMd.replace(/\n/g, '')}`;
     if (tag === 'pre') return `\`\`\`\n${childMd}\`\`\``;
-    if (tag === 'ul') return convertList(el, false);
-    if (tag === 'ol') return convertList(el, true);
+    if (tag === 'ul') return convertList(el, false, depth);
+    if (tag === 'ol') return convertList(el, true, depth);
     if (tag === 'li') return childMd.replace(/^\n+|\n+$/g, '');
     if (tag === 'br') return '\n';
     if (tag === 'hr') return '---';
@@ -180,16 +180,28 @@ function imageToMarkdown(el: Element): string {
     return `![${safeAlt}](${src})`;
 }
 
-/** Convert list element to markdown */
-function convertList(el: Element, ordered: boolean): string {
+/** Convert list element to markdown, indenting by 2 spaces per nesting depth */
+function convertList(el: Element, ordered: boolean, depth = 0): string {
     const parsed = parseInt(el.getAttribute('start') ?? '1', 10);
     const safeStart = Number.isNaN(parsed) ? 1 : parsed;
     const start = ordered ? safeStart : 0;
+    const indent = '  '.repeat(depth);
     const items = Array.from(el.children);
     return items
         .map((li, idx) => {
             const prefix = ordered ? `${start + idx}. ` : '- ';
-            return `${prefix}${nodeToMarkdown(li)}`;
+            // Render the <li> children with depth+1 so any nested <ul>/<ol> inside
+            // this item gets the next level of indentation.
+            const liMd = Array.from(li.childNodes)
+                .map(n => nodeToMarkdown(n, depth + 1))
+                .join('')
+                .replace(/^\n+|\n+$/g, '');
+            // Each line of the item (including wrapped nested-list lines) gets the
+            // current-depth indent prepended.
+            return liMd
+                .split('\n')
+                .map((line, i) => (i === 0 ? `${indent}${prefix}${line}` : line))
+                .join('\n');
         })
         .join('\n');
 }
