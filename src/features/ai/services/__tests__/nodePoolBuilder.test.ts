@@ -84,7 +84,7 @@ describe('nodeToPoolEntry', () => {
         expect(entry).toEqual({
             id: 'n1',
             title: 'My Idea',
-            content: 'Some text\n\nMy Idea',
+            content: 'My Idea\n\nSome text',
             tags: ['t1'],
         });
     });

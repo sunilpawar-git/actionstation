@@ -43,7 +43,7 @@ export function nodeToPoolEntry(node: CanvasNode): NodePoolEntry {
 
     let content: string;
     if (output && heading) {
-        content = `${output}\n\n${heading}`;
+        content = `${heading}\n\n${output}`;
     } else {
         content = output.length > 0 ? output : heading;
     }

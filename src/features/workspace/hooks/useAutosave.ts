@@ -18,16 +18,15 @@ const AUTOSAVE_DELAY_MS = 2000;
 const POSITION_SAVE_DELAY_MS = 5000;
 
 /** Serializes workspace-level fields that should trigger auto-save */
-function serializeWorkspacePoolFields(workspaces: Workspace[], workspaceId: string): string {
-    const ws = workspaces.find((w) => w.id === workspaceId);
-    if (!ws) return '';
-    return JSON.stringify({ includeAllNodesInPool: ws.includeAllNodesInPool ?? false });
+function serializeWorkspacePoolFields(workspace: Workspace | null): string {
+    if (!workspace) return '';
+    return JSON.stringify({ includeAllNodesInPool: workspace.includeAllNodesInPool ?? false });
 }
 
 export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = false) {
     const nodes = useCanvasStore((s) => s.nodes);
     const edges = useCanvasStore((s) => s.edges);
-    const workspaces = useWorkspaceStore((s) => s.workspaces);
+    const currentWorkspace = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId)) ?? null;
     const user = useAuthStore((s) => s.user);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastSavedRef = useRef({ nodes: '', edges: '', workspace: '', positions: '' });
@@ -54,8 +53,6 @@ export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = f
         setSaving();
 
         try {
-            const currentWorkspace = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId);
-
             await Promise.all([
                 saveNodes(user.id, workspaceId, nodes),
                 saveEdges(user.id, workspaceId, edges),
@@ -64,7 +61,7 @@ export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = f
 
             const newNodeCount = nodes.length;
             const nodeCountChanged = currentWorkspace && currentWorkspace.nodeCount !== newNodeCount;
-            const currentWorkspaceJson = serializeWorkspacePoolFields(useWorkspaceStore.getState().workspaces, workspaceId);
+            const currentWorkspaceJson = serializeWorkspacePoolFields(currentWorkspace);
             const workspaceFieldsChanged = lastPersistedWorkspaceRef.current !== currentWorkspaceJson;
 
             if (currentWorkspace && (nodeCountChanged || workspaceFieldsChanged)) {
@@ -81,7 +78,7 @@ export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = f
             setError(message);
             toast.error(strings.offline.saveFailed);
         }
-    }, [user, workspaceId, nodes, edges]);
+    }, [user, workspaceId, nodes, edges, currentWorkspace]);
 
     useEffect(() => {
         const contentJson = JSON.stringify(
@@ -96,7 +93,7 @@ export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = f
             nodes.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y }))
         );
         const edgesJson = JSON.stringify(edges);
-        const workspaceJson = serializeWorkspacePoolFields(workspaces, workspaceId);
+        const workspaceJson = serializeWorkspacePoolFields(currentWorkspace);
 
         const contentChanged = contentJson !== lastSavedRef.current.nodes ||
             edgesJson !== lastSavedRef.current.edges ||
@@ -124,7 +121,7 @@ export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = f
         }, delay);
 
         return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
-    }, [nodes, edges, workspaces, save, isWorkspaceLoading, workspaceId]);
+    }, [nodes, edges, currentWorkspace, save, isWorkspaceLoading, workspaceId]);
 
     // Flush pending save when tab becomes hidden (prevents data loss on close)
     useEffect(() => {

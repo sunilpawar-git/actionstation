@@ -6,6 +6,7 @@
  */
 import { buildCorpusIDF, tfidfScore } from '@/features/knowledgeBank/services/tfidfScorer';
 import { tokenize, tokenizeRaw, scoreEntry } from '@/features/knowledgeBank/services/relevanceScorer';
+import { entryToText } from '@/shared/utils/textBuilders';
 import type { NodePoolEntry } from '../types/nodePool';
 
 interface CachedCorpus {
@@ -25,12 +26,6 @@ function fnv1a(str: string): number {
 
 function buildCacheKey(entries: readonly NodePoolEntry[]): string {
     return entries.map((e) => `${e.id}:${fnv1a(e.content)}`).join('|');
-}
-
-function entryToText(entry: NodePoolEntry): string {
-    const parts = [entry.title, entry.content];
-    if (entry.tags.length > 0) parts.push(entry.tags.join(' '));
-    return parts.join(' ');
 }
 
 /**

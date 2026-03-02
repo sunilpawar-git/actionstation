@@ -5,6 +5,7 @@
  * Pure functions, no side effects, no API calls.
  */
 import { buildCorpusIDF, tfidfScore } from './tfidfScorer';
+import { entryToText as sharedEntryToText } from '@/shared/utils/textBuilders';
 
 /** Common English stop words excluded from scoring */
 const STOP_WORDS = new Set([
@@ -91,16 +92,6 @@ export function scoreEntry(
     return score;
 }
 
-/**
- * Build a combined text representation of an entry for TF-IDF tokenization.
- * Concatenates title, content, summary, and tags into a single tokenizable string.
- */
-function entryToText(entry: ScoredEntryInput): string {
-    const parts = [entry.title, entry.content];
-    if (entry.summary) parts.push(entry.summary);
-    if (entry.tags?.length) parts.push(entry.tags.join(' '));
-    return parts.join(' ');
-}
 
 /**
  * Rank entries by relevance to a prompt string.
@@ -117,7 +108,7 @@ export function rankEntries<T extends ScoredEntryInput>(
     if (keywords.length === 0) return [...entries];
 
     // Build TF-IDF corpus preserving duplicates (term frequency matters)
-    const corpus = entries.map((e) => tokenizeRaw(entryToText(e)));
+    const corpus = entries.map((e) => tokenizeRaw(sharedEntryToText(e)));
     const idfMap = buildCorpusIDF(corpus);
 
     const scored = entries.map((entry, index) => {
