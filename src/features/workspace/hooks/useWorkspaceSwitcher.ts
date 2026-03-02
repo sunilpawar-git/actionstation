@@ -9,6 +9,7 @@ import { loadNodes, loadEdges } from '../services/workspaceService';
 import { workspaceCache } from '../services/workspaceCache';
 import { useOfflineQueueStore } from '../stores/offlineQueueStore';
 import { loadWorkspaceKB } from '../services/workspaceSwitchHelpers';
+import { persistLastWorkspaceId } from '../services/lastWorkspaceService';
 import { strings } from '@/shared/localization/strings';
 
 interface UseWorkspaceSwitcherResult {
@@ -41,7 +42,6 @@ export function useWorkspaceSwitcher(): UseWorkspaceSwitcherResult {
         switchingRef.current = true;
         useWorkspaceStore.getState().setSwitching(true);
         setError(null);
-        const startTime = performance.now();
 
         try {
             // 1. Fire-and-forget save (non-blocking, parallel with load)
@@ -57,24 +57,17 @@ export function useWorkspaceSwitcher(): UseWorkspaceSwitcherResult {
             const cached = workspaceCache.get(workspaceId);
             let newNodes;
             let newEdges;
-            let cacheHit = false;
 
             if (cached) {
-                // Cache hit - instant!
-                cacheHit = true;
                 newNodes = cached.nodes;
                 newEdges = cached.edges;
             } else {
-                // Cache miss - load from Firestore
                 [newNodes, newEdges] = await Promise.all([
                     loadNodes(user.id, workspaceId),
                     loadEdges(user.id, workspaceId),
                 ]);
-                // Populate cache for next time (writes through to IDB)
                 workspaceCache.set(workspaceId, { nodes: newNodes, edges: newEdges, loadedAt: Date.now() });
             }
-            const loadTime = performance.now() - startTime;
-            console.info(`[WorkspaceSwitcher] Switch completed in ${loadTime.toFixed(2)}ms (cache ${cacheHit ? 'HIT' : 'MISS'})`);
 
             // 3. Atomic swap: single setState to prevent cascading re-renders
             useCanvasStore.setState({
@@ -86,8 +79,9 @@ export function useWorkspaceSwitcher(): UseWorkspaceSwitcherResult {
             // Phase R3: Sync node count explicitly to UI store
             useWorkspaceStore.getState().setNodeCount(workspaceId, newNodes.length);
 
-            // 4. Update workspace ID last
+            // 4. Update workspace ID last and persist for session restore
             useWorkspaceStore.getState().setCurrentWorkspaceId(workspaceId);
+            persistLastWorkspaceId(workspaceId);
 
             void loadWorkspaceKB(user.id, workspaceId);
         } catch (err) {

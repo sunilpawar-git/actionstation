@@ -8,19 +8,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { waitFor } from '@testing-library/react';
 import { useAuthStore } from '@/features/auth/stores/authStore';
-import { loadUserWorkspaces, saveNodes, saveEdges } from '@/features/workspace/services/workspaceService';
-import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
+import { loadUserWorkspaces } from '@/features/workspace/services/workspaceService';
 import { useWorkspaceStore } from '@/features/workspace/stores/workspaceStore';
-import { useSidebarWorkspaces } from '@/app/hooks/useSidebarWorkspaces';
+import { LAST_WORKSPACE_KEY } from '@/features/workspace/services/lastWorkspaceService';
 
 // Mock stores and services
 vi.mock('@/features/auth/stores/authStore', () => ({
     useAuthStore: vi.fn(),
-}));
-
-const mockGetState = vi.fn();
-vi.mock('@/features/canvas/stores/canvasStore', () => ({
-    useCanvasStore: Object.assign(vi.fn(), { getState: () => mockGetState() }),
 }));
 
 const mockWorkspaceGetState = vi.fn();
@@ -36,17 +30,10 @@ vi.mock('@/features/auth/services/authService', () => ({
     signOut: vi.fn(),
 }));
 
-// Mock the useSidebarWorkspaces hook completely since the logic moved there
-vi.mock('@/app/hooks/useSidebarWorkspaces', () => ({
-    useSidebarWorkspaces: vi.fn(),
-}));
-
 vi.mock('@/features/workspace/services/workspaceService', () => ({
     createNewWorkspace: vi.fn(),
     loadUserWorkspaces: vi.fn(),
     saveWorkspace: vi.fn(),
-    saveNodes: vi.fn(),
-    saveEdges: vi.fn(),
 }));
 
 // Mock workspace switcher hook
@@ -80,7 +67,6 @@ vi.mock('@/shared/services/indexedDbService', () => ({
 }));
 
 describe('Workspace Auto-Selection (Regression)', () => {
-    const mockClearCanvas = vi.fn();
     const mockSetCurrentWorkspaceId = vi.fn();
     const mockSetWorkspaces = vi.fn();
 
@@ -99,6 +85,7 @@ describe('Workspace Auto-Selection (Regression)', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        localStorage.clear();
 
         // Set up the mock state BEFORE any hook calls
         const defaultState = createMockState();
@@ -119,31 +106,13 @@ describe('Workspace Auto-Selection (Regression)', () => {
             return typeof selector === 'function' ? selector(state as any) : state;
         });
 
-        vi.mocked(useCanvasStore).mockReturnValue(mockClearCanvas);
-        mockGetState.mockReturnValue({ nodes: [], edges: [] });
-
         vi.mocked(useWorkspaceStore).mockImplementation((selector) => {
             const state = mockWorkspaceGetState();
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return typeof selector === 'function' ? selector(state as any) : state;
         });
 
-        vi.mocked(useSidebarWorkspaces).mockReturnValue({
-            workspaces: [],
-            currentWorkspaceId: 'default-workspace',
-            isCreating: false,
-            isCreatingDivider: false,
-            handleNewWorkspace: vi.fn(),
-            handleNewDivider: vi.fn(),
-            handleDeleteDivider: vi.fn(),
-            handleSelectWorkspace: vi.fn(),
-            handleRenameWorkspace: vi.fn(),
-            handleReorderWorkspace: vi.fn(),
-        } as unknown as ReturnType<typeof useSidebarWorkspaces>);
-
         vi.mocked(loadUserWorkspaces).mockResolvedValue([]);
-        vi.mocked(saveNodes).mockResolvedValue(undefined);
-        vi.mocked(saveEdges).mockResolvedValue(undefined);
     });
 
     it('should auto-select first workspace when currentWorkspaceId does not exist', async () => {
@@ -165,8 +134,6 @@ describe('Workspace Auto-Selection (Regression)', () => {
 
         const { renderHook } = await import('@testing-library/react');
         const { useWorkspaceLoading } = await import('@/app/hooks/useWorkspaceLoading');
-
-        vi.unmock('@/app/hooks/useWorkspaceLoading');
 
         renderHook(() => useWorkspaceLoading());
 
@@ -202,6 +169,67 @@ describe('Workspace Auto-Selection (Regression)', () => {
         });
 
         expect(mockSetCurrentWorkspaceId).not.toHaveBeenCalled();
+    });
+
+    it('should restore last-used workspace from localStorage instead of first workspace', async () => {
+        // Simulate: user was last on ws-real-2 (second in list)
+        localStorage.setItem(LAST_WORKSPACE_KEY, 'ws-real-2');
+
+        const mockWorkspaces = [
+            { id: 'ws-real-1', name: 'First', userId: 'user-1', canvasSettings: { backgroundColor: 'grid' as const }, createdAt: new Date(), updatedAt: new Date() },
+            { id: 'ws-real-2', name: 'Second', userId: 'user-1', canvasSettings: { backgroundColor: 'grid' as const }, createdAt: new Date(), updatedAt: new Date() },
+        ];
+
+        vi.mocked(loadUserWorkspaces).mockResolvedValue(mockWorkspaces);
+
+        const state = createMockState({ currentWorkspaceId: 'default-workspace', workspaces: [] });
+        mockWorkspaceGetState.mockReturnValue(state);
+
+        vi.mocked(useWorkspaceStore).mockImplementation((selector) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return typeof selector === 'function' ? selector(state as any) : state;
+        });
+
+        const { renderHook } = await import('@testing-library/react');
+        const { useWorkspaceLoading } = await import('@/app/hooks/useWorkspaceLoading');
+
+        renderHook(() => useWorkspaceLoading());
+
+        await waitFor(() => {
+            // Must restore ws-real-2, NOT fall back to ws-real-1
+            expect(mockSetCurrentWorkspaceId).toHaveBeenCalledWith('ws-real-2');
+        });
+        expect(mockSetCurrentWorkspaceId).not.toHaveBeenCalledWith('ws-real-1');
+    });
+
+    it('should fall back to first workspace when stored ID no longer exists', async () => {
+        // Simulate: last workspace was deleted
+        localStorage.setItem(LAST_WORKSPACE_KEY, 'ws-deleted');
+
+        const mockWorkspaces = [
+            { id: 'ws-real-1', name: 'First', userId: 'user-1', canvasSettings: { backgroundColor: 'grid' as const }, createdAt: new Date(), updatedAt: new Date() },
+            { id: 'ws-real-2', name: 'Second', userId: 'user-1', canvasSettings: { backgroundColor: 'grid' as const }, createdAt: new Date(), updatedAt: new Date() },
+        ];
+
+        vi.mocked(loadUserWorkspaces).mockResolvedValue(mockWorkspaces);
+
+        const state = createMockState({ currentWorkspaceId: 'default-workspace', workspaces: [] });
+        mockWorkspaceGetState.mockReturnValue(state);
+
+        vi.mocked(useWorkspaceStore).mockImplementation((selector) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return typeof selector === 'function' ? selector(state as any) : state;
+        });
+
+        const { renderHook } = await import('@testing-library/react');
+        const { useWorkspaceLoading } = await import('@/app/hooks/useWorkspaceLoading');
+
+        renderHook(() => useWorkspaceLoading());
+
+        await waitFor(() => {
+            // Falls back to first real workspace, not the deleted one
+            expect(mockSetCurrentWorkspaceId).toHaveBeenCalledWith('ws-real-1');
+        });
     });
 
     it('should handle empty workspace list gracefully', async () => {

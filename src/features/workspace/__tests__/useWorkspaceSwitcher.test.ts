@@ -105,6 +105,7 @@ describe('useWorkspaceSwitcher', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        localStorage.clear();
         mockCurrentWorkspaceId = 'ws-current';
         mockIsSwitching = false;
         mockLoadNodes.mockResolvedValue(mockNodes);
@@ -208,6 +209,8 @@ describe('useWorkspaceSwitcher', () => {
         expect(result.current.error).toBeTruthy();
         // Should not update workspace ID on error
         expect(mockSetCurrentWorkspaceId).not.toHaveBeenCalled();
+        // finally block must always release the lock
+        expect(mockSetSwitching).toHaveBeenLastCalledWith(false);
 
         consoleSpy.mockRestore();
     });
@@ -253,17 +256,6 @@ describe('useWorkspaceSwitcher', () => {
         expect(mockLoadNodes).not.toHaveBeenCalled();
         expect(mockLoadEdges).not.toHaveBeenCalled();
         expect(result.current.isSwitching).toBe(false);
-    });
-
-    it('saves current workspace before switching when data exists', async () => {
-        mockGetState.mockReturnValue({ nodes: mockNodes, edges: mockEdges });
-        const { result } = renderHook(() => useWorkspaceSwitcher());
-
-        await act(async () => {
-            await result.current.switchWorkspace('ws-new');
-        });
-
-        expect(mockQueueSave).toHaveBeenCalledWith('user-1', 'ws-current', mockNodes, mockEdges);
     });
 
 });

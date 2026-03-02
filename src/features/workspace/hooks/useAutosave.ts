@@ -31,6 +31,10 @@ export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = f
     const user = useAuthStore((s) => s.user);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastSavedRef = useRef({ nodes: '', edges: '', workspace: '', positions: '' });
+    // Tracks the last workspace state successfully persisted to Firestore.
+    // Separate from lastSavedRef.current.workspace (updated pre-save for change detection)
+    // so save() correctly detects pool-toggle changes even after the debounce ref is updated.
+    const lastPersistedWorkspaceRef = useRef('');
 
     const save = useCallback(async () => {
         if (!user || !workspaceId) return;
@@ -60,14 +64,15 @@ export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = f
 
             const newNodeCount = nodes.length;
             const nodeCountChanged = currentWorkspace && currentWorkspace.nodeCount !== newNodeCount;
-            const workspaceFieldsChanged = lastSavedRef.current.workspace !==
-                serializeWorkspacePoolFields(useWorkspaceStore.getState().workspaces, workspaceId);
+            const currentWorkspaceJson = serializeWorkspacePoolFields(useWorkspaceStore.getState().workspaces, workspaceId);
+            const workspaceFieldsChanged = lastPersistedWorkspaceRef.current !== currentWorkspaceJson;
 
             if (currentWorkspace && (nodeCountChanged || workspaceFieldsChanged)) {
                 await saveWorkspace(user.id, { ...currentWorkspace, nodeCount: newNodeCount });
                 if (nodeCountChanged) {
                     useWorkspaceStore.getState().setNodeCount(workspaceId, newNodeCount);
                 }
+                lastPersistedWorkspaceRef.current = currentWorkspaceJson;
             }
 
             setSaved();
@@ -104,6 +109,7 @@ export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = f
             lastSavedRef.current = {
                 nodes: contentJson, edges: edgesJson, workspace: workspaceJson, positions: positionJson,
             };
+            lastPersistedWorkspaceRef.current = workspaceJson;
             return;
         }
 
