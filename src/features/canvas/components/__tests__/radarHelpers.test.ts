@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { computeBoundingBox, normalizePositions } from '../radarHelpers';
+import {
+    computeBoundingBox,
+    createRadarTransform,
+    normalizePositions,
+    mapViewportToRadar,
+} from '../radarHelpers';
 import type { NodePosition } from '../../types/node';
 
 describe('computeBoundingBox', () => {
@@ -36,26 +41,53 @@ describe('computeBoundingBox', () => {
     });
 });
 
+describe('createRadarTransform', () => {
+    const SIZE = 32;
+
+    it('returns null for zero-area bounding box', () => {
+        const bbox = { minX: 5, minY: 5, maxX: 5, maxY: 5 };
+        expect(createRadarTransform(bbox, SIZE)).toBeNull();
+    });
+
+    it('returns a transform with correct scale for a square bbox', () => {
+        const bbox = { minX: 0, minY: 0, maxX: 100, maxY: 100 };
+        const t = createRadarTransform(bbox, SIZE)!;
+        expect(t).not.toBeNull();
+        // usable = 32 - 2 * (32 * 0.15) = 32 - 9.6 = 22.4
+        // scale = 22.4 / 100 = 0.224
+        expect(t.scale).toBeCloseTo(0.224, 3);
+        expect(t.minX).toBe(0);
+        expect(t.minY).toBe(0);
+    });
+
+    it('returns centred offsets for a wide bbox', () => {
+        const bbox = { minX: 0, minY: 0, maxX: 200, maxY: 100 };
+        const t = createRadarTransform(bbox, SIZE)!;
+        // scale = 22.4 / 200 = 0.112
+        expect(t.scale).toBeCloseTo(0.112, 3);
+        // scaledH = 100 * 0.112 = 11.2 → offsetY centres it
+        expect(t.offsetY).toBeGreaterThan(t.offsetX);
+    });
+});
+
 describe('normalizePositions', () => {
     const SIZE = 32;
 
-    it('centers a single node', () => {
+    it('centers a single node (null transform)', () => {
         const positions: NodePosition[] = [{ x: 500, y: 500 }];
-        const bbox = computeBoundingBox(positions)!;
-        const dots = normalizePositions(positions, bbox, SIZE);
+        const dots = normalizePositions(positions, null, SIZE);
 
         expect(dots).toHaveLength(1);
         expect(dots[0]!.x).toBe(SIZE / 2);
         expect(dots[0]!.y).toBe(SIZE / 2);
     });
 
-    it('centers all nodes when stacked at same position', () => {
+    it('centers all nodes when stacked (null transform)', () => {
         const positions: NodePosition[] = [
             { x: 100, y: 200 },
             { x: 100, y: 200 },
         ];
-        const bbox = computeBoundingBox(positions)!;
-        const dots = normalizePositions(positions, bbox, SIZE);
+        const dots = normalizePositions(positions, null, SIZE);
 
         expect(dots).toHaveLength(2);
         dots.forEach((dot) => {
@@ -64,18 +96,17 @@ describe('normalizePositions', () => {
         });
     });
 
-    it('maps two nodes along horizontal axis', () => {
+    it('maps two nodes along horizontal axis with transform', () => {
         const positions: NodePosition[] = [
             { x: 0, y: 0 },
             { x: 100, y: 0 },
         ];
         const bbox = computeBoundingBox(positions)!;
-        const dots = normalizePositions(positions, bbox, SIZE);
+        const transform = createRadarTransform(bbox, SIZE);
+        const dots = normalizePositions(positions, transform, SIZE);
 
         expect(dots).toHaveLength(2);
-        // First dot should be at left padding, second at right padding
         expect(dots[0]!.x).toBeLessThan(dots[1]!.x);
-        // Both should be vertically centered
         expect(dots[0]!.y).toBe(dots[1]!.y);
     });
 
@@ -86,7 +117,8 @@ describe('normalizePositions', () => {
             { x: 0, y: 0 },
         ];
         const bbox = computeBoundingBox(positions)!;
-        const dots = normalizePositions(positions, bbox, SIZE);
+        const transform = createRadarTransform(bbox, SIZE);
+        const dots = normalizePositions(positions, transform, SIZE);
 
         dots.forEach((dot) => {
             expect(dot.x).toBeGreaterThanOrEqual(0);
@@ -97,19 +129,70 @@ describe('normalizePositions', () => {
     });
 
     it('preserves aspect ratio for non-square bounding box', () => {
-        // Wide bounding box (200 x 100)
         const positions: NodePosition[] = [
             { x: 0, y: 0 },
             { x: 200, y: 100 },
         ];
         const bbox = computeBoundingBox(positions)!;
-        const dots = normalizePositions(positions, bbox, SIZE);
+        const transform = createRadarTransform(bbox, SIZE);
+        const dots = normalizePositions(positions, transform, SIZE);
 
-        // Horizontal span should be larger than vertical span
         const dx = Math.abs(dots[1]!.x - dots[0]!.x);
         const dy = Math.abs(dots[1]!.y - dots[0]!.y);
         expect(dx).toBeGreaterThan(dy);
-        // Aspect ratio preserved: dx/dy ≈ 200/100 = 2
         expect(dx / dy).toBeCloseTo(2, 1);
+    });
+});
+
+describe('mapViewportToRadar', () => {
+    const SIZE = 32;
+
+    // Helper: create a standard transform for a 1000x1000 canvas
+    function makeTransform() {
+        const bbox = { minX: 0, minY: 0, maxX: 1000, maxY: 1000 };
+        return createRadarTransform(bbox, SIZE)!;
+    }
+
+    it('maps a centred viewport correctly', () => {
+        const t = makeTransform();
+        // Viewport at origin, zoom 1, container 500x500
+        const rect = mapViewportToRadar(0, 0, 1, 500, 500, t, SIZE);
+        expect(rect.x).toBeGreaterThanOrEqual(0);
+        expect(rect.y).toBeGreaterThanOrEqual(0);
+        expect(rect.w).toBeGreaterThan(0);
+        expect(rect.h).toBeGreaterThan(0);
+    });
+
+    it('increases rect size when zooming out', () => {
+        const t = makeTransform();
+        const zoomedIn = mapViewportToRadar(0, 0, 2, 800, 600, t, SIZE);
+        const zoomedOut = mapViewportToRadar(0, 0, 0.5, 800, 600, t, SIZE);
+        expect(zoomedOut.w).toBeGreaterThan(zoomedIn.w);
+        expect(zoomedOut.h).toBeGreaterThan(zoomedIn.h);
+    });
+
+    it('shifts rect when panning', () => {
+        const t = makeTransform();
+        const origin = mapViewportToRadar(0, 0, 1, 800, 600, t, SIZE);
+        // Pan right by 200px → world shifts left → rect x increases
+        const panned = mapViewportToRadar(-200, 0, 1, 800, 600, t, SIZE);
+        expect(panned.x).toBeGreaterThan(origin.x);
+    });
+
+    it('clamps rect to radar bounds', () => {
+        const t = makeTransform();
+        // Extreme pan and zoom out → rect should be clamped
+        const rect = mapViewportToRadar(-10000, -10000, 0.01, 2000, 2000, t, SIZE);
+        expect(rect.x).toBeGreaterThanOrEqual(0);
+        expect(rect.y).toBeGreaterThanOrEqual(0);
+        expect(rect.x + rect.w).toBeLessThanOrEqual(SIZE);
+        expect(rect.y + rect.h).toBeLessThanOrEqual(SIZE);
+    });
+
+    it('returns non-zero rect for typical viewport', () => {
+        const t = makeTransform();
+        const rect = mapViewportToRadar(-100, -50, 1, 1200, 900, t, SIZE);
+        expect(rect.w).toBeGreaterThan(0);
+        expect(rect.h).toBeGreaterThan(0);
     });
 });

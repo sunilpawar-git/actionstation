@@ -25,6 +25,8 @@ vi.mock('@xyflow/react', async (importOriginal) => {
             zoomOut: vi.fn(),
             fitView: vi.fn(),
         })),
+        useStore: (selector: (s: Record<string, unknown>) => unknown) =>
+            selector({ transform: [0, 0, 1], width: 800, height: 600 }),
     };
 });
 

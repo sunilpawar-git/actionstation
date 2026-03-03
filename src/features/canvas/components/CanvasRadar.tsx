@@ -6,7 +6,8 @@
 import { memo, useMemo, useCallback, useId } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '../stores/canvasStore';
-import { computeBoundingBox, normalizePositions } from './radarHelpers';
+import { computeBoundingBox, createRadarTransform, normalizePositions } from './radarHelpers';
+import { ViewportIndicator } from './ViewportIndicator';
 import { strings } from '@/shared/localization/strings';
 import styles from './CanvasRadar.module.css';
 
@@ -26,11 +27,12 @@ export const CanvasRadar = memo(function CanvasRadar() {
     const { fitView } = useReactFlow();
     const filterId = useId();
 
-    const dots = useMemo(() => {
+    const { transform, dots } = useMemo(() => {
         const positions = nodes.map((n) => n.position);
         const bbox = computeBoundingBox(positions);
-        if (!bbox) return [];
-        return normalizePositions(positions, bbox, RADAR_SIZE);
+        if (!bbox) return { transform: null, dots: [] };
+        const t = createRadarTransform(bbox, RADAR_SIZE);
+        return { transform: t, dots: normalizePositions(positions, t, RADAR_SIZE) };
     }, [nodes]);
 
     const handleClick = useCallback(() => {
@@ -73,6 +75,7 @@ export const CanvasRadar = memo(function CanvasRadar() {
                         filter={`url(#${filterId})`}
                     />
                 ))}
+                <ViewportIndicator transform={transform} radarSize={RADAR_SIZE} />
             </svg>
         </button>
     );

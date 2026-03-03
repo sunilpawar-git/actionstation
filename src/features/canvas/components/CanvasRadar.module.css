@@ -34,3 +34,10 @@
     fill: var(--color-error);
     opacity: 0.95;
 }
+
+.viewportRect {
+    fill: hsla(210, 60%, 60%, 0.12);
+    stroke: var(--color-primary);
+    stroke-width: 0.8;
+    pointer-events: none;
+}

@@ -45,7 +45,7 @@ export const ALLOWED_IMAGE_TYPES = [
 ] as const;
 
 /** Rate limit: max Gemini proxy requests per window per user */
-export const GEMINI_RATE_LIMIT = 30;
+export const GEMINI_RATE_LIMIT = 60;
 
 /** Maximum request body size for Gemini proxy (100 KB) */
 export const GEMINI_MAX_BODY_BYTES = 102_400;
