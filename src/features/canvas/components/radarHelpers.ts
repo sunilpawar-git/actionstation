@@ -141,11 +141,16 @@ export function mapViewportToRadar(
     const rawW = worldWidth * transform.scale;
     const rawH = worldHeight * transform.scale;
 
-    // Clamp to radar bounds [0, radarSize]
-    const x = Math.max(0, Math.min(rawX, radarSize));
-    const y = Math.max(0, Math.min(rawY, radarSize));
-    const w = Math.max(0, Math.min(rawW, radarSize - x));
-    const h = Math.max(0, Math.min(rawH, radarSize - y));
+    // Clamp to radar bounds [0, radarSize] using intersection math
+    const minX = Math.max(rawX, 0);
+    const maxX = Math.min(rawX + rawW, radarSize);
+    const minY = Math.max(rawY, 0);
+    const maxY = Math.min(rawY + rawH, radarSize);
+
+    const x = minX;
+    const y = minY;
+    const w = Math.max(0, maxX - minX);
+    const h = Math.max(0, maxY - minY);
 
     return { x, y, w, h };
 }

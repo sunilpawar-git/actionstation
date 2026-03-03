@@ -36,7 +36,8 @@
 }
 
 .viewportRect {
-    fill: hsla(210, 60%, 60%, 0.12);
+    fill: var(--color-primary);
+    fill-opacity: 0.12;
     stroke: var(--color-primary);
     stroke-width: 0.8;
     pointer-events: none;

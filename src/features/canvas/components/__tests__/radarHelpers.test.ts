@@ -179,14 +179,19 @@ describe('mapViewportToRadar', () => {
         expect(panned.x).toBeGreaterThan(origin.x);
     });
 
-    it('clamps rect to radar bounds', () => {
+    it('clamps rect to radar bounds using intersection logic', () => {
         const t = makeTransform();
-        // Extreme pan and zoom out → rect should be clamped
-        const rect = mapViewportToRadar(-10000, -10000, 0.01, 2000, 2000, t, SIZE);
+        // Extreme negative pan (world shifting right, rawX is deeply negative).
+        // A naive clamp of rawX to 0 would incorrectly shift the entire rect into view,
+        // but intersection logic correctly reduces the width or sets it to 0.
+        const rect = mapViewportToRadar(10000, 10000, 0.01, 2000, 2000, t, SIZE);
         expect(rect.x).toBeGreaterThanOrEqual(0);
         expect(rect.y).toBeGreaterThanOrEqual(0);
         expect(rect.x + rect.w).toBeLessThanOrEqual(SIZE);
         expect(rect.y + rect.h).toBeLessThanOrEqual(SIZE);
+        // Because we panned so far away, the rect should actually have zero intersection width/height
+        expect(rect.w).toBe(0);
+        expect(rect.h).toBe(0);
     });
 
     it('returns non-zero rect for typical viewport', () => {
