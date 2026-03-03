@@ -8,7 +8,6 @@ import { ReactFlowProvider } from '@xyflow/react';
 // Mock useReactFlow
 const mockZoomIn = vi.fn();
 const mockZoomOut = vi.fn();
-const mockFitView = vi.fn();
 
 vi.mock('@xyflow/react', async (importOriginal) => {
     const original = await importOriginal<typeof import('@xyflow/react')>();
@@ -17,7 +16,6 @@ vi.mock('@xyflow/react', async (importOriginal) => {
         useReactFlow: () => ({
             zoomIn: mockZoomIn,
             zoomOut: mockZoomOut,
-            fitView: mockFitView,
         }),
     };
 });
@@ -35,12 +33,11 @@ describe('ZoomControls', () => {
 
     const zc = strings.canvas.zoomControls;
 
-    it('should render all 4 buttons with localized labels', () => {
+    it('should render all 3 buttons with localized labels', () => {
         renderWithProvider(<ZoomControls />);
 
         expect(screen.getByLabelText(zc.zoomIn)).toBeInTheDocument();
         expect(screen.getByLabelText(zc.zoomOut)).toBeInTheDocument();
-        expect(screen.getByLabelText(zc.fitView)).toBeInTheDocument();
         expect(screen.getByLabelText(new RegExp(`${zc.lockCanvas}|${zc.unlockCanvas}`))).toBeInTheDocument();
     });
 
@@ -58,12 +55,7 @@ describe('ZoomControls', () => {
         expect(mockZoomOut).toHaveBeenCalledTimes(1);
     });
 
-    it('should call fitView when fit button is clicked', () => {
-        renderWithProvider(<ZoomControls />);
 
-        fireEvent.click(screen.getByLabelText(zc.fitView));
-        expect(mockFitView).toHaveBeenCalledTimes(1);
-    });
 
     it('should toggle lock state when lock button is clicked', () => {
         renderWithProvider(<ZoomControls />);

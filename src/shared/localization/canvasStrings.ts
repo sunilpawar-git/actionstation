@@ -14,7 +14,7 @@ export const canvasStrings = {
     zoomControls: {
         zoomIn: 'Zoom In',
         zoomOut: 'Zoom Out',
-        fitView: 'Fit View',
+
         lockCanvas: 'Lock Canvas',
         unlockCanvas: 'Unlock Canvas',
         radarLabel: 'Canvas radar — click to fit all nodes',

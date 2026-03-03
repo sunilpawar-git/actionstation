@@ -11,7 +11,7 @@ import styles from './ZoomControls.module.css';
  * and allow full TDD coverage.
  */
 export const ZoomControls = memo(function ZoomControls() {
-    const { zoomIn, zoomOut, fitView } = useReactFlow();
+    const { zoomIn, zoomOut } = useReactFlow();
     const isCanvasLocked = useSettingsStore((s) => s.isCanvasLocked);
 
     const handleToggleLock = useCallback(() => {
@@ -45,16 +45,7 @@ export const ZoomControls = memo(function ZoomControls() {
                     <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
             </button>
-            <button
-                className={styles.button}
-                onClick={() => fitView()}
-                aria-label={zc.fitView}
-                title={zc.fitView}
-            >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                </svg>
-            </button>
+
             <button
                 className={`${styles.button} ${isCanvasLocked ? styles.active : ''}`}
                 onClick={handleToggleLock}
