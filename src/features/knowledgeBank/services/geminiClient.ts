@@ -11,12 +11,12 @@ const DIRECT_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models
 
 /** Read Cloud Functions URL at call time (testable) */
 function getCloudFunctionsUrl(): string {
-    return ((import.meta.env.VITE_CLOUD_FUNCTIONS_URL as string | undefined) ?? '').trim();
+    return (import.meta.env.VITE_CLOUD_FUNCTIONS_URL ?? '').trim();
 }
 
 /** Read direct API key at call time (testable) */
 function getDirectApiKey(): string {
-    return (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ?? '';
+    return import.meta.env.VITE_GEMINI_API_KEY ?? '';
 }
 
 /** Check if the Cloud Function proxy is configured */
@@ -66,6 +66,11 @@ function serializeBody(body: GeminiRequestBody): string {
     return JSON.stringify({ ...rest, system_instruction: systemInstruction });
 }
 
+// ── Timeout ──────────────────────────────────────────────
+
+// Must exceed GEMINI_FETCH_TIMEOUT_MS (30s) in functions/src/utils/securityConstants.ts
+export const CLIENT_TIMEOUT_MS = 35_000;
+
 // ── Core Call ────────────────────────────────────────────
 
 /** HTTP status codes that indicate the proxy itself failed (not a Gemini content error) */
@@ -78,24 +83,28 @@ const PROXY_TRANSIENT_STATUSES = new Set([0, 401, 502, 503, 504]);
  * Never throws; returns { ok, status, data }.
  */
 export async function callGemini(body: GeminiRequestBody): Promise<GeminiCallResult> {
-    if (isProxyConfigured()) {
-        try {
-            const result = await callViaProxy(body);
-            if (!result.ok && PROXY_TRANSIENT_STATUSES.has(result.status) && getDirectApiKey()) {
-                return await callDirect(body);
+    try {
+        if (isProxyConfigured()) {
+            try {
+                const result = await callViaProxy(body);
+                if (!result.ok && PROXY_TRANSIENT_STATUSES.has(result.status) && getDirectApiKey()) {
+                    return await callDirect(body);
+                }
+                return result;
+            } catch {
+                if (getDirectApiKey()) {
+                    return await callDirect(body);
+                }
+                return { ok: false, status: 0, data: null };
             }
-            return result;
-        } catch {
-            if (getDirectApiKey()) {
-                return await callDirect(body);
-            }
-            return { ok: false, status: 0, data: null };
         }
+        if (getDirectApiKey()) {
+            return await callDirect(body);
+        }
+        return { ok: false, status: 0, data: null };
+    } catch {
+        return { ok: false, status: 0, data: null };
     }
-    if (getDirectApiKey()) {
-        return await callDirect(body);
-    }
-    return { ok: false, status: 0, data: null };
 }
 
 /** Call via Cloud Function proxy (production path) */
@@ -111,6 +120,7 @@ async function callViaProxy(body: GeminiRequestBody): Promise<GeminiCallResult> 
             'Authorization': `Bearer ${token}`,
         },
         body: serializeBody(body),
+        signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
     });
 
     const data = await response.json() as GeminiResponse;
@@ -124,6 +134,7 @@ async function callDirect(body: GeminiRequestBody): Promise<GeminiCallResult> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: serializeBody(body),
+        signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
     });
 
     const data = await response.json() as GeminiResponse;

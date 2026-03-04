@@ -11,8 +11,3 @@ export interface SearchResult {
     relevance: number;
 }
 
-export interface SearchState {
-    query: string;
-    results: SearchResult[];
-    isSearching: boolean;
-}

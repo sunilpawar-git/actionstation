@@ -3,4 +3,4 @@
  */
 export { SearchBar } from './components/SearchBar';
 export { useSearch } from './hooks/useSearch';
-export type { SearchResult, SearchState } from './types/search';
+export type { SearchResult } from './types/search';
