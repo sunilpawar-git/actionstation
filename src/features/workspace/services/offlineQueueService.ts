@@ -10,8 +10,9 @@ const MAX_QUEUE_SIZE = 50;
 
 interface OfflineQueueService {
     getQueue(): QueuedSaveOperation[];
-    enqueue(op: QueuedSaveOperation): void;
+    enqueue(op: QueuedSaveOperation): boolean;
     dequeue(operationId: string): void;
+    updateRetryCount(opId: string, retryCount: number): void;
     getOldestOperation(): QueuedSaveOperation | null;
     size(): number;
     clear(): void;
@@ -21,11 +22,11 @@ function getQueue(): QueuedSaveOperation[] {
     return getStorageJson<QueuedSaveOperation[]>(QUEUE_STORAGE_KEY, []);
 }
 
-function persistQueue(queue: QueuedSaveOperation[]): void {
-    setStorageJson(QUEUE_STORAGE_KEY, queue);
+function persistQueue(queue: QueuedSaveOperation[]): boolean {
+    return setStorageJson(QUEUE_STORAGE_KEY, queue);
 }
 
-function enqueue(op: QueuedSaveOperation): void {
+function enqueue(op: QueuedSaveOperation): boolean {
     let queue = getQueue();
 
     // Coalesce: replace existing operation for same workspace (latest state wins)
@@ -38,7 +39,7 @@ function enqueue(op: QueuedSaveOperation): void {
         queue = queue.slice(queue.length - MAX_QUEUE_SIZE);
     }
 
-    persistQueue(queue);
+    return persistQueue(queue);
 }
 
 function dequeue(operationId: string): void {
@@ -55,6 +56,15 @@ function getOldestOperation(): QueuedSaveOperation | null {
     );
 }
 
+function updateRetryCount(opId: string, retryCount: number): void {
+    const queue = getQueue();
+    const op = queue.find((o) => o.id === opId);
+    if (op) {
+        op.retryCount = retryCount;
+        persistQueue(queue);
+    }
+}
+
 function size(): number {
     return getQueue().length;
 }
@@ -67,6 +77,7 @@ export const offlineQueueService: OfflineQueueService = {
     getQueue,
     enqueue,
     dequeue,
+    updateRetryCount,
     getOldestOperation,
     size,
     clear,

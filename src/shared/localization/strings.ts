@@ -4,6 +4,7 @@ import { canvasStrings } from './canvasStrings';
 import { knowledgeBankStrings } from './knowledgeBankStrings';
 import { calendarStrings } from './calendarStrings';
 import { nodePoolStrings } from './nodePoolStrings';
+import { securityStrings } from './securityStrings';
 import { settingsStrings } from './settingsStrings';
 
 export const strings = {
@@ -275,6 +276,7 @@ export const strings = {
     knowledgeBank: knowledgeBankStrings,
     nodePool: nodePoolStrings,
     calendar: calendarStrings,
+    security: securityStrings,
 } as const;
 
 export type StringKeys = typeof strings;

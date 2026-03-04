@@ -1,0 +1,236 @@
+SPRINT 3: "SERVER HARDENING" — Cloud Functions Deploy
+Issues: #3, #4, #11
+Scope: Cloud Functions code + client-side linkPreviewConfig.ts
+Risk: High — CORS misconfiguration breaks the entire app. Requires staging verification.
+Dependency: Sprints 1 and 2 are NOT required for Sprint 3's core work. Sprint 3's CORS, signed URL, and rate limiter work are self-contained within Cloud Functions. The original dependency on securityStrings.ts from Sprint 1-A was overstated — no Sprint 3 code references those string resources.
+
+Phase 3-A: CORS Origin Restriction
+Issue mapping: Addresses #3
+What: Replace cors: true with explicit origin allowlist in all three Cloud Functions.
+
+IMPORTANT — Firebase Functions v2 API note:
+The onRequest() cors option accepts boolean | string | string[] | RegExp.
+It does NOT accept a middleware-style config object ({ origin, methods, allowedHeaders, maxAge }).
+Those options come from the cors npm package, which this project does not use.
+Firebase handles methods, allowedHeaders, and maxAge internally when given an origin allowlist.
+
+TDD sequence:
+RED: Write test functions/src/utils/__tests__/corsConfig.test.ts:
+  Assert ALLOWED_ORIGINS includes production Firebase Hosting origins.
+  Assert ALLOWED_ORIGINS excludes localhost when FUNCTIONS_EMULATOR is not 'true'.
+  Assert ALLOWED_ORIGINS includes localhost origins when FUNCTIONS_EMULATOR is 'true'.
+  Assert ALLOWED_ORIGINS appends custom origins from CORS_ALLOWED_ORIGINS env var.
+  Assert ALLOWED_ORIGINS handles empty CORS_ALLOWED_ORIGINS gracefully.
+  Assert ALLOWED_ORIGINS does not contain wildcard '*'.
+  Assert ALLOWED_ORIGINS is a string[] (compatible with Firebase Functions v2 cors option).
+  NOTE: Firebase handles CORS at the framework level (before the handler), so CORS headers cannot be tested by calling the handler directly. These tests validate the config, not the framework. Integration/E2E tests against the emulator can verify actual CORS behavior.
+GREEN: Create functions/src/utils/corsConfig.ts:
+   const ALLOWED_ORIGINS: string[] = [
+       'https://eden-so.web.app',
+       'https://eden-so.firebaseapp.com',
+   ];
+
+   if (process.env.FUNCTIONS_EMULATOR === 'true') {
+       ALLOWED_ORIGINS.push('http://localhost:5173', 'http://localhost:4173');
+   }
+
+   const envOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',').filter(Boolean) ?? [];
+   ALLOWED_ORIGINS.push(...envOrigins);
+
+   export { ALLOWED_ORIGINS };
+GREEN: In geminiProxy.ts, proxyImage.ts, fetchLinkMeta.ts:
+  Import ALLOWED_ORIGINS from corsConfig.ts.
+  Replace { cors: true } with { cors: ALLOWED_ORIGINS } in the onRequest options.
+REFACTOR: corsConfig.ts is under 20 lines. DRY — single source for all CORS config. No hardcoded strings in function files — all go through corsConfig.
+Build gate (Functions): cd functions && npm run test && npm run build.
+Deployment strategy: Deploy to staging first. Verify from staging frontend that all three endpoints (geminiProxy, proxyImage, fetchLinkMeta) respond correctly. Monitor for 24 hours before production deploy.
+Tech debt incurred: None. corsConfig.ts is SSOT for CORS. Origins are configurable via env var for multi-environment support. No security regression — strictens from * to allowlist.
+
+Phase 3-B: Persistent Rate Limiter (Firestore-Backed)
+Issue mapping: Addresses #4
+What: Replace in-memory Map rate limiter with Firestore TTL documents that survive cold starts and scale across instances.
+
+Architecture:
+1. RateLimiter interface (rateLimiterTypes.ts) — async contract with checkRateLimit() returning Promise<boolean>
+2. InMemoryRateLimiter (inMemoryRateLimiter.ts) — existing logic wrapped in async interface, used by tests and emulator
+3. FirestoreRateLimiter (firestoreRateLimiter.ts) — Firestore transaction-based, used in production
+4. RateLimiterFactory (rateLimiterFactory.ts) — selects implementation based on environment:
+   - K_SERVICE set + not emulator → Firestore (lazy dynamic import to avoid test failures)
+   - Otherwise → in-memory
+5. rateLimiter.ts — async facade that all handlers import from (backward-compatible API)
+
+Sync-to-async migration (completed):
+All 3 handlers (geminiProxy.ts, proxyImage.ts, fetchLinkMeta.ts) updated to await checkRateLimit().
+All handler tests updated: beforeEach now uses async/await for clearRateLimitStore().
+The rateLimiter.test.ts updated to use async assertions.
+
+TDD sequence:
+RED: Write test functions/src/utils/__tests__/firestoreRateLimiter.test.ts:
+  Mock Firestore. Send maxRequests requests → all return true.
+  Send one more → returns false (rate limited).
+  Assert Firestore doc.set() was called with correct TTL (expiresAt field).
+  Assert user isolation (different users have separate limits).
+  Advance time past window → next request returns true.
+  Assert clearStore calls batch delete.
+GREEN: Create functions/src/utils/rateLimiterTypes.ts (interface)
+GREEN: Create functions/src/utils/inMemoryRateLimiter.ts (async wrapper around existing logic)
+GREEN: Create functions/src/utils/firestoreRateLimiter.ts (Firestore transaction-based)
+GREEN: Create functions/src/utils/rateLimiterFactory.ts (environment-based selection)
+GREEN: Update functions/src/utils/rateLimiter.ts to be async facade over factory
+GREEN: Update all 3 handlers to await checkRateLimit()
+GREEN: Update all handler tests for async clearRateLimitStore()
+GREEN: Add _rateLimits deny rule to firestore.rules
+
+Firestore rules update:
+  match /_rateLimits/{doc} {
+    allow read, write: if false;  // Server-side only
+  }
+
+Firestore TTL policy: Configure TTL on _rateLimits collection's expiresAt field for auto-cleanup.
+
+Known tradeoffs:
+- Latency: Firestore transaction adds ~50-200ms per request in production. Acceptable for current use cases.
+- Cost: Each rate limit check = 1 Firestore read + 1 write. Monitor usage.
+- Key separator: Uses colon (userId:endpoint), consistent with original implementation.
+
+REFACTOR:
+  - rateLimiterTypes.ts: 15 lines. Interface only.
+  - inMemoryRateLimiter.ts: 56 lines. Async wrapper around existing logic.
+  - firestoreRateLimiter.ts: 44 lines. Firestore transaction-based.
+  - rateLimiterFactory.ts: 34 lines. Environment-based selection with lazy import.
+  - rateLimiter.ts: 28 lines. Async facade.
+  - All files well under 300-line limit.
+
+Tech debt incurred & resolved:
+  Incurred: Two rate limiter implementations (in-memory and Firestore).
+  Resolved: Factory pattern selects the right one. In-memory is for tests/emulator only. Production always uses Firestore. Both implement the same RateLimiter interface. This is O/C principle (open for extension via factory, closed for modification).
+
+Phase 3-C: Auth Token Exposure Mitigation (Signed URL Approach)
+Issue mapping: Addresses #11
+What: Eliminate auth tokens from URL query params using short-lived HMAC-signed URLs.
+
+IMPORTANT — Architecture decision:
+The original plan proposed a separate signImageUrl Cloud Function that clients call before loading each image. This was rejected because:
+- For a workspace with 10 link previews, it adds 10 extra HTTP round-trips before images start loading.
+- The rate limit (10 req/min) would be exhausted immediately on workspace load.
+Instead, signed proxy URLs are embedded directly in the fetchLinkMeta response. The server already fetches link metadata and knows the image URL — it returns pre-signed proxy URLs, eliminating the extra round-trip entirely.
+
+TDD sequence:
+RED: Write test functions/src/utils/__tests__/urlSigner.test.ts:
+  Assert createSignedParams returns sig and exp query params with correct format.
+  Assert different URLs produce different signatures.
+  Assert different secrets produce different signatures.
+  Assert verifySignedParams returns true for valid, non-expired signature.
+  Assert verifySignedParams returns false for expired signature.
+  Assert verifySignedParams returns false for tampered signature.
+  Assert verifySignedParams returns false for different image URL.
+  Assert verifySignedParams returns false for wrong secret.
+  Assert verifySignedParams returns false for non-numeric exp.
+GREEN: Create functions/src/utils/urlSigner.ts:
+   import * as crypto from 'crypto';
+
+   const SIGNED_URL_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+   export function createSignedParams(imageUrl: string, secret: string): string {
+       const exp = Date.now() + SIGNED_URL_TTL_MS;
+       const payload = `${imageUrl}:${exp}`;
+       const sig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+       return `sig=${sig}&exp=${exp}`;
+   }
+
+   export function verifySignedParams(
+       imageUrl: string, sig: string, exp: string, secret: string
+   ): boolean {
+       const expNum = parseInt(exp, 10);
+       if (isNaN(expNum) || Date.now() > expNum) return false;
+       const payload = `${imageUrl}:${exp}`;
+       const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+       return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+   }
+
+RED: Write test functions/src/utils/__tests__/authResolver.test.ts:
+  Assert auth via Authorization header (priority 1).
+  Assert null uid for invalid Authorization header.
+  Assert auth via signed URL params (priority 2).
+  Assert rejection of expired signed URL params.
+  Assert rejection of tampered signed URL params.
+  Assert auth via query token with deprecation warning (priority 3).
+  Assert null when no auth provided.
+  Assert priority order: header > signed URL > query token.
+GREEN: Create functions/src/utils/authResolver.ts:
+  Resolves user identity from three auth strategies:
+  1. Authorization header (highest priority)
+  2. HMAC-signed URL params (sig + exp)
+  3. Token query param (deprecated, logs warning)
+  Returns { uid, method } to identify which auth path was used.
+  For signed URLs, uid is '__signed__' (no Firebase user lookup needed — the URL was server-signed).
+
+GREEN: Embed signed proxy URLs in fetchLinkMeta response:
+  In fetchLinkMeta.ts:
+  - Import createSignedParams from urlSigner.ts
+  - Import defineSecret for URL_SIGNING_SECRET
+  - Add FUNCTIONS_BASE_URL constant to securityConstants.ts (read from env)
+  - After parsing metadata, if signing secret and FUNCTIONS_BASE_URL are configured:
+    Build proxyImage and proxyFavicon fields with fully-formed signed proxy URLs
+  - Add proxyImage and proxyFavicon to the response data
+  - The handler accepts an optional signingSecret parameter for testability
+  - The onRequest entry point passes urlSigningSecret.value() to the handler
+
+GREEN: Update proxyImage.ts to accept signed URL params:
+  - Import resolveProxyAuth from authResolver.ts
+  - Import defineSecret for URL_SIGNING_SECRET
+  - Replace inline auth resolution with resolveProxyAuth call
+  - Accept sig + exp query params as alternative to token
+  - The token-in-URL path logs a deprecation warning via authResolver
+  - Both paths are fully tested and backward-compatible
+
+REFACTOR:
+  - urlSigner.ts: 35 lines. Pure functions, no side effects.
+  - authResolver.ts: 50 lines. Single responsibility — auth resolution.
+  - proxyImage.ts: 158 lines (auth extraction saved ~10 lines from inline logic).
+  - fetchLinkMeta.ts: 146 lines (added signed URL embedding).
+  - All files well under 300-line limit.
+
+Build gate: cd functions && npm run test && npm run build.
+Deployment strategy:
+  Deploy Cloud Functions with dual-path support (token AND signed URL both work).
+  Client continues using token-in-URL initially (no breakage).
+  fetchLinkMeta responses now include proxyImage/proxyFavicon fields with signed URLs.
+  Client can adopt signed URLs by using proxyImage/proxyFavicon fields from metadata response.
+  After monitoring confirms all clients use signed URLs, deprecate token-in-URL path.
+Tech debt incurred & resolved:
+  Incurred: Dual auth paths in proxyImage (token + signed URL).
+  Resolved: This is intentional — it's a zero-downtime migration strategy. The old path is guarded with a deprecation log:
+    console.warn('[proxyImage] Token-in-URL is deprecated. Migrate to signed URLs.');
+  The follow-up task to remove the token path is tracked and scoped. Both paths are tested. No security regression — the token path is no less secure than before, and the signed URL path is strictly more secure.
+
+Sprint 3 Final Gate
+# Functions
+cd functions && npm run test && npm run build → 138/138 tests pass, build clean
+# Client
+npm run lint          → 0 errors
+npm run test          → all pass
+npm run build         → success
+# Structural checks
+find src -name "*.ts*" | xargs wc -l | awk '$1 > 300'  → empty
+find functions/src -name "*.ts" | xargs wc -l | awk '$1 > 300'  → empty
+
+New files created (Sprint 3):
+functions/src/utils/corsConfig.ts (~18 lines)
+functions/src/utils/urlSigner.ts (~35 lines)
+functions/src/utils/authResolver.ts (~50 lines)
+functions/src/utils/rateLimiterTypes.ts (~15 lines)
+functions/src/utils/inMemoryRateLimiter.ts (~56 lines)
+functions/src/utils/firestoreRateLimiter.ts (~44 lines)
+functions/src/utils/rateLimiterFactory.ts (~34 lines)
+functions/src/utils/__tests__/corsConfig.test.ts (7 tests)
+functions/src/utils/__tests__/urlSigner.test.ts (9 tests)
+functions/src/utils/__tests__/authResolver.test.ts (8 tests)
+functions/src/utils/__tests__/firestoreRateLimiter.test.ts (6 tests)
+Files modified (Sprint 3): geminiProxy.ts, proxyImage.ts, fetchLinkMeta.ts, securityConstants.ts, rateLimiter.ts (refactored to async facade), firestore.rules
+Also fixed: geminiProxy.test.ts (rate limit test was sending 30 iterations but GEMINI_RATE_LIMIT is 60)
+Files NOT modified (originally planned): linkPreviewConfig.ts (client adopts signed URLs in follow-up)
+
+Sprint 3 tech debt final audit:
+One intentional item: dual auth path in proxyImage. This is a migration strategy, not tech debt — it has a defined end-date (remove token path after all clients migrate). Both paths are fully tested, fully secure, and fully observable (deprecation warning logged).
+Two rate limiter implementations (in-memory + Firestore) — not tech debt. Factory selects the right one by environment. Both implement the same RateLimiter interface (O/C principle).

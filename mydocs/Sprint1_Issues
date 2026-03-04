@@ -1,0 +1,110 @@
+SPRINT 1: "SAFETY NET" — Zero-Risk Defensive Additions
+Issues: #2, #5, #8, #10, #13, #14, #15, #17
+Scope: Client-side only, no Cloud Functions changes
+Risk: Near zero — every change is additive, happy-path unchanged
+Phase 1-A: String Resources + Environment Validation
+What: Add missing string resources for new error messages we'll need across all Sprint 1 fixes, plus a production env-var validator that runs at app startup.
+TDD sequence:
+RED: Write test src/__tests__/envValidation.structural.test.ts — asserts that validateProductionEnv() returns errors when any of the 7 required vars (6 Firebase + Cloud Functions URL) are empty strings.
+RED: Write test asserting the new strings exist in strings.security.* and strings.errors.* namespaces.
+GREEN: Add string resources to src/shared/localization/securityStrings.ts:
+envMissing: (name: string) => \Required config ${name} is not set\``
+fetchTimeout: 'Request timed out. Please try again.'
+tokenInvalid: 'Invalid authentication token format.'
+storageQuotaExceeded: 'Local storage is full. Some changes may not be saved offline.'
+GREEN: Wire into strings.ts as security: securityStrings.
+GREEN: Create src/config/envValidation.ts:
+validateProductionEnv() checks all 7 required vars when VITE_APP_ENV !== 'development':
+  VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID,
+  VITE_FIREBASE_STORAGE_BUCKET, VITE_FIREBASE_MESSAGING_SENDER_ID, VITE_FIREBASE_APP_ID,
+  VITE_CLOUD_FUNCTIONS_URL.
+All 6 Firebase vars are required by src/config/firebase.ts — missing AUTH_DOMAIN breaks login, missing STORAGE_BUCKET breaks file uploads, missing APP_ID breaks analytics.
+Returns string[] of error messages (using string resources).
+Logs to console.error and calls captureError (Sentry) per missing var.
+GREEN: Call validateProductionEnv() in src/main.tsx after initSentry().
+GREEN: Update src/vite-env.d.ts — add missing env var declarations to ImportMetaEnv interface:
+  VITE_GEMINI_API_KEY, VITE_SENTRY_DSN, VITE_APP_ENV, VITE_POSTHOG_KEY, VITE_POSTHOG_HOST,
+  VITE_GOOGLE_CLIENT_ID, VITE_DEV_BYPASS_SUBSCRIPTION.
+Currently only 7 of 14 vars are declared — the rest are typed as `any`. This is a zero-risk, purely additive change (~7 lines).
+REFACTOR: Ensure envValidation.ts is under 50 lines, securityStrings.ts under 30 lines.
+Build gate: npm run lint && npm run test && npm run build — all pass.
+Tech debt incurred: None. New file envValidation.ts follows SRP (only validates env). New string file follows existing localization pattern. No hardcoded strings.
+Phase 1-B: Client Fetch Timeout for Gemini
+What: Add AbortSignal.timeout() to callViaProxy and callDirect in geminiClient.ts.
+TDD sequence:
+RED: Write test src/features/knowledgeBank/services/__tests__/geminiClient.timeout.test.ts:
+Mock fetch to never resolve.
+Assert callGemini(body) resolves within CLIENT_TIMEOUT_MS + buffer with { ok: false, status: 0, data: null }.
+Assert that AbortSignal is passed to fetch.
+GREEN: In geminiClient.ts:
+Add export const CLIENT_TIMEOUT_MS = 35_000; — 5s above the server-side GEMINI_FETCH_TIMEOUT_MS (30s) in functions/src/utils/securityConstants.ts. The Cloud Function execution limit is 60s (default, no explicit config), but its internal fetch to Gemini aborts at 30s, so the function will respond within ~30s + overhead. Add a comment: `// Must exceed GEMINI_FETCH_TIMEOUT_MS (30s) in functions/src/utils/securityConstants.ts`
+Add signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS) to both fetch() calls in callViaProxy and callDirect.
+The existing catch block in callGemini already returns { ok: false, status: 0, data: null } on any error, so the abort is handled.
+REFACTOR: Extract the timeout constant to a named export for testability. No file size change (adds ~3 lines).
+Build gate: npm run lint && npm run test && npm run build.
+Tech debt incurred: None. The timeout is a constant, not hardcoded inline. The abort error flows through existing error handling. No new Zustand subscriptions, no useEffect changes.
+Phase 1-C: Calendar Token Write Validation
+What: Validate access_token format before storing in localStorage in connectGoogleCalendar.
+TDD sequence:
+RED: Write test src/features/auth/services/__tests__/calendarAuthService.validation.test.ts:
+Mock GIS to return a token containing <script> or &;| — assert localStorage is NOT called, function returns false.
+Mock GIS to return a valid base64 token (containing /, +, =) — assert localStorage.setItem is called.
+GREEN: In calendarAuthService.ts, before lines 99-100:
+Add: if (DANGEROUS_TOKEN_CHARS.test(token)) { resolve(false); return; }
+Uses a blocklist regex instead of an allowlist — Google OAuth tokens are base64-encoded and may contain /, +, = which a narrow allowlist would reject. The blocklist targets XSS/injection chars only.
+REFACTOR: Extract const DANGEROUS_TOKEN_CHARS = /[<>"'`;&|]/; to the top of the file. Use it in both getCalendarToken and connectGoogleCalendar (replacing the existing allowlist regex in getCalendarToken). File stays well under 200 lines.
+Build gate: npm run lint && npm run test && npm run build.
+Tech debt incurred: None. Blocklist regex is DRY (single constant). Validation is defense-in-depth alongside existing read-side check. Blocklist approach is resilient to OAuth token format changes.
+Phase 1-D: Cleanup Fixes (leaveTimeout, React key, null safety)
+What: Three small isolated fixes — useProximityBar timeout leak, CanvasRadar key, useSearch null safety.
+TDD sequence:
+RED: Write test src/features/canvas/hooks/__tests__/useProximityBar.cleanup.test.ts:
+Mount hook → trigger mouseleave → unmount within 300ms → assert onProximityLost is NOT called after unmount.
+GREEN: In useProximityBar.ts, add `if (leaveTimeout) clearTimeout(leaveTimeout);` as the FIRST line INSIDE the `return () => { ... }` cleanup block (line 72). The leaveTimeout variable is declared inside the useEffect callback (line 21), so the clearTimeout must go inside the return block to execute on unmount — not before it.
+RED: Write test src/features/canvas/components/__tests__/CanvasRadar.keys.test.tsx:
+Render with nodes, assert each <circle> has a unique non-index key via data-testid or snapshot.
+GREEN: In CanvasRadar.tsx line 70 (actual: line 70), change key={i} to key={`${dot.x}-${dot.y}-${i}`}. The index tiebreaker prevents duplicate keys when two nodes map to identical radar coordinates (possible with closely-spaced nodes on a small 32px radar). The dots array only contains {x, y} — no nodeId is available.
+RED: Write test src/features/search/hooks/__tests__/useSearch.nullSafety.test.ts:
+Insert a node with data: undefined into mock store. Assert search('test') does not throw.
+GREEN: In useSearch.ts lines 45-48, add optional chaining:
+   const heading = node.data?.heading;   const prompt = node.data?.prompt;   const output = node.data?.output;
+GREEN: Similarly in src/features/workspace/components/WorkspacePoolButton.tsx line 21, the selector already accesses node.data.includeInAIPool safely via .reduce() — but add defensive ?? false:
+   (s) => s.nodes.reduce((n, node) => n + (node.data?.includeInAIPool ? 1 : 0), 0),
+REFACTOR: Verify all selectors use ?. chains — no bare .data. access outside store definitions.
+Build gate: npm run lint && npm run test && npm run build.
+Tech debt incurred: None. All three fixes are single-line defensive additions. No new files created. No selector anti-patterns introduced (all use scalar selectors via useCanvasStore((s) => ...)).
+Phase 1-E: Fix Broken isSearching + Fire-and-Forget Promises
+What: Remove the dead isSearching state from useSearch, and add .catch handlers to fire-and-forget void calls.
+TDD sequence:
+RED: Write test src/features/search/hooks/__tests__/useSearch.interface.test.ts:
+Assert useSearch() return type does NOT include isSearching (interface change).
+Assert search('query') sets query synchronously.
+GREEN: In useSearch.ts:
+Remove const [isSearching, setIsSearching] = useState(false);
+Remove setIsSearching(true) and setIsSearching(false) from search callback.
+Remove isSearching from the return object and UseSearchReturn interface.
+RED: Search codebase for any consumer of isSearching — if found, update them. If none, tests pass.
+GREEN: For fire-and-forget promises, add .catch with Sentry reporting in these files:
+useLinkPreviewFetch.ts:47 — void processUrls(...).catch((e) => captureError(e as Error));
+useFileProcessor.ts:50 — void runPostUploadSummarization(...).catch((e) => captureError(e as Error)); Even though runPostUploadSummarization has internal try/catch, unexpected errors (e.g. store access failures) should be observable in Sentry. Silent catches hide failures.
+useDocumentInsert.ts:124 — void insertFromFile(file).catch((e) => captureError(e as Error));
+useIdeaCardHandlers.ts:32 — void deleteNodeAttachments(freshAttachments).catch((e) => captureError(e as Error));
+REFACTOR: Each .catch uses captureError from sentryService for observability, not bare console.error. Import is already available in most of these modules.
+Build gate: npm run lint && npm run test && npm run build.
+Tech debt incurred & resolved:
+Incurred: Removing isSearching is a breaking interface change if any component uses it.
+Resolved: Search all consumers via structural grep. If SearchBar.tsx or similar references isSearching, update those components to remove the reference. The field was never functional, so no UI behavior changes.
+Verified: Zero hardcoded strings (all error messages flow through captureError). Zero Zustand anti-patterns (no new store subscriptions added). Zero useEffect changes (.catch is appended to existing void expressions).
+Sprint 1 Final Gate
+npm run lint          → 0 errors, 0 warningsnpm run test          → all pass (existing + 6 new test files)npm run build         → success
+New files created (Sprint 1):
+src/shared/localization/securityStrings.ts (~25 lines)
+src/config/envValidation.ts (~40 lines)
+src/features/knowledgeBank/services/__tests__/geminiClient.timeout.test.ts
+src/features/auth/services/__tests__/calendarAuthService.validation.test.ts
+src/features/canvas/hooks/__tests__/useProximityBar.cleanup.test.ts
+src/features/canvas/components/__tests__/CanvasRadar.keys.test.tsx
+src/features/search/hooks/__tests__/useSearch.nullSafety.test.ts
+src/features/search/hooks/__tests__/useSearch.interface.test.ts
+Files modified (Sprint 1): geminiClient.ts, calendarAuthService.ts, useProximityBar.ts, CanvasRadar.tsx, useSearch.ts, src/features/workspace/components/WorkspacePoolButton.tsx, useLinkPreviewFetch.ts, useFileProcessor.ts, useDocumentInsert.ts, useIdeaCardHandlers.ts, strings.ts, main.tsx, vite-env.d.ts
+Sprint 1 tech debt final audit: Zero. No TODO comments, no any types, no hardcoded strings, no bare Zustand destructuring, no missing .catch, all files under 300 lines.

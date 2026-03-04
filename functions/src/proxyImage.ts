@@ -3,10 +3,12 @@
  * Prevents user IP/UA/cookie leakage to external image servers
  */
 import { onRequest } from 'firebase-functions/v2/https';
-import { verifyAuthToken } from './utils/authVerifier.js';
+import { defineSecret } from 'firebase-functions/params';
 import { validateUrlWithDns, validateUrlFormat } from './utils/urlValidator.js';
 import { validateImageResponse } from './utils/imageValidator.js';
 import { checkRateLimit } from './utils/rateLimiter.js';
+import { ALLOWED_ORIGINS } from './utils/corsConfig.js';
+import { resolveProxyAuth } from './utils/authResolver.js';
 import {
     errorMessages,
     IMAGE_RATE_LIMIT,
@@ -14,6 +16,8 @@ import {
     MAX_IMAGE_SIZE_BYTES,
     IMAGE_CACHE_MAX_AGE_SECONDS,
 } from './utils/securityConstants.js';
+
+const urlSigningSecret = defineSecret('URL_SIGNING_SECRET');
 
 /**
  * Core handler logic extracted for testability.
@@ -34,7 +38,7 @@ export async function handleProxyImage(
     }
 
     // Rate limit check
-    if (!checkRateLimit(uid, 'proxyImage', IMAGE_RATE_LIMIT)) {
+    if (!await checkRateLimit(uid, 'proxyImage', IMAGE_RATE_LIMIT)) {
         return { type: 'error', status: 429, message: errorMessages.rateLimited };
     }
 
@@ -111,31 +115,35 @@ async function readResponseWithLimit(
 
 /**
  * Cloud Function entry point.
- * GET /proxyImage?url=<encoded_image_url>&token=<firebase_id_token>
- * Accepts auth via Authorization header OR ?token= query parameter.
- * Query param is needed because <img> tags cannot send headers.
+ * GET /proxyImage?url=<encoded_image_url>
+ * Auth: Authorization header, OR sig+exp signed URL params, OR ?token= (deprecated).
  */
 export const proxyImage = onRequest(
-    { cors: true, maxInstances: 20 },
+    { cors: ALLOWED_ORIGINS, maxInstances: 20, secrets: [urlSigningSecret] },
     async (req, res) => {
         if (req.method !== 'GET') {
             res.status(405).json({ error: errorMessages.methodNotAllowed });
             return;
         }
 
-        // Accept token from header OR query param (img tags can't send headers)
-        const headerAuth = req.headers.authorization;
-        const queryToken = req.query['token'] as string | undefined;
-        const authValue = headerAuth ?? (queryToken ? `Bearer ${queryToken}` : undefined);
+        const imageUrl = req.query['url'] as string | undefined;
+        const auth = await resolveProxyAuth(
+            req.headers.authorization,
+            {
+                token: req.query['token'] as string | undefined,
+                sig: req.query['sig'] as string | undefined,
+                exp: req.query['exp'] as string | undefined,
+                url: imageUrl,
+            },
+            urlSigningSecret.value() || undefined,
+        );
 
-        const uid = await verifyAuthToken(authValue);
-        if (!uid) {
+        if (!auth.uid) {
             res.status(401).json({ error: errorMessages.authRequired });
             return;
         }
 
-        const imageUrl = req.query['url'] as string | undefined;
-        const result = await handleProxyImage(imageUrl, uid);
+        const result = await handleProxyImage(imageUrl, auth.uid);
 
         if (result.type === 'error') {
             res.status(result.status).json({ error: result.message });

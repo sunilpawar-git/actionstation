@@ -1,0 +1,224 @@
+SPRINT 2: "DATA INTEGRITY" — Offline & Persistence Hardening
+Issues: #9, #16, #1, #7, #6, #12
+Scope: Client-side only — storage layer, autosave, subscription cache
+Risk: Medium — changes data persistence behavior, requires integration tests
+Dependency: Sprint 1 must be merged (we use securityStrings from 1-A)
+Phase 2-A: IndexedDB Error Telemetry
+What: Replace silent catches in indexedDbService.ts with Sentry-reported errors while still returning fallback values (best-effort + observable).
+TDD sequence:
+RED: Write test src/shared/services/__tests__/indexedDbService.telemetry.test.ts:
+Mock openDB to throw. Call indexedDbService.get('workspace-data', 'k'). Assert captureError was called. Assert return is undefined.
+Repeat for put, del, getAllKeys, clear.
+GREEN: In indexedDbService.ts, update each catch block:
+   catch (error) {       captureError(error instanceof Error ? error : new Error(strings.security.idbReadFailed), { store, key });       return undefined;   }
+GREEN: Add string resources to securityStrings.ts:
+idbReadFailed: 'IndexedDB read failed'
+idbWriteFailed: 'IndexedDB write failed'
+idbDeleteFailed: 'IndexedDB delete failed'
+REFACTOR: Keep indexedDbService.ts under 100 lines. Import captureError from sentryService. Each catch is 2 lines (capture + return).
+Build gate: npm run lint && npm run test && npm run build.
+Tech debt incurred: None. Fallback behavior is identical to before. Only observability is added. String resources used for error context. No Zustand involved.
+Phase 2-B: IndexedDB Version Migration Foundation
+What: Change DB_VERSION handling to support future schema migrations via oldVersion switch. Extract the upgrade handler as a named export so migration paths are directly unit-testable without bumping DB_VERSION.
+Test strategy note: Since DB_VERSION stays at 1, openDB will never trigger a version-2 upgrade in production. The tests invoke the exported upgradeHandler(mockDb, oldVersion) directly to validate each migration path. This is standard practice for IndexedDB migration testing.
+TDD sequence:
+RED: Write test src/shared/services/__tests__/indexedDbService.migration.test.ts:
+Import upgradeHandler directly (not through openDB lifecycle).
+Call upgradeHandler(mockDb, 0) → assert all 3 stores are created (fresh install).
+Call upgradeHandler(mockDb, 1) with existing stores → assert createObjectStore is NOT called (no-op for current version).
+Call upgradeHandler(mockDb, 1) simulating a future v2 path → assert only the new store is created without destroying existing data.
+GREEN: In indexedDbService.ts, extract and export the upgrade handler:
+   export function upgradeHandler(db: IDBPDatabase, oldVersion: number): void {
+       if (oldVersion < 1) {
+           db.createObjectStore(IDB_STORES.workspaceData);
+           db.createObjectStore(IDB_STORES.pinnedWorkspaces);
+           db.createObjectStore(IDB_STORES.metadata);
+       }
+       // Future: if (oldVersion < 2) { db.createObjectStore('new-store'); }
+   }
+GREEN: Wire upgradeHandler into getDb():
+   function getDb(): Promise<IDBPDatabase> {
+       dbPromise ??= openDB(DB_NAME, DB_VERSION, { upgrade: upgradeHandler });
+       return dbPromise;
+   }
+REFACTOR: DB_VERSION stays at 1 for now — the migration path is ready for when we need version 2. File stays under 100 lines. The exported upgradeHandler enables direct unit testing of each migration step.
+Build gate: npm run lint && npm run test && npm run build.
+Tech debt incurred: None. The upgrade handler now follows best practice. No behavior change for existing users. Exporting the handler is a testability improvement, not a leaky abstraction — it's a pure function with no side effects beyond IDB store creation.
+Phase 2-C: localStorage Quota Handling with User Notification
+What: Make setStorageJson and setStorageItem return a boolean indicating success, and surface quota errors to the user via toast at the store layer (not the service layer).
+SRP note: offlineQueueService.ts is a pure data service with zero UI imports. Toast notifications belong in the store layer (offlineQueueStore.queueSave), not in the service. The service returns a boolean; the store decides what to show.
+TDD sequence:
+RED: Write test src/shared/utils/__tests__/storage.quota.test.ts:
+Mock localStorage.setItem to throw DOMException with name QuotaExceededError.
+Assert setStorageJson('key', data) returns false.
+Assert setStorageJson('key', data) does NOT throw.
+Assert setStorageItem('key', 'value') returns false.
+RED: Write integration test src/features/workspace/__tests__/offlineQueue.quota.test.ts:
+Mock localStorage to throw quota error on setItem.
+Call offlineQueueStore.getState().queueSave(userId, workspaceId, nodes, edges).
+Assert toast.warning was called with strings.security.storageQuotaExceeded.
+Assert queue state reflects the failure (pendingCount did not increment).
+GREEN: In storage.ts:
+Change setStorageJson return type from void to boolean.
+Change setStorageItem return type from void to boolean.
+Return true in try, false in catch.
+In catch, add captureError call for observability.
+GREEN: In offlineQueueService.ts:
+Refactor persistQueue to return boolean from setStorageJson.
+Change enqueue() return type from void to boolean — return the result of persistQueue().
+Do NOT add toast or UI imports here — the service stays pure.
+GREEN: In offlineQueueStore.ts (queueSave action):
+Check return value of offlineQueueService.enqueue(op).
+If enqueue returns false, call toast.warning(strings.security.storageQuotaExceeded).
+   queueSave: (userId, workspaceId, nodes, edges) => {
+       const op = { /* ... */ };
+       const queued = offlineQueueService.enqueue(op);
+       if (!queued) {
+           toast.warning(strings.security.storageQuotaExceeded);
+       }
+       set({ pendingCount: offlineQueueService.size() });
+       // ... bgSync registration
+   },
+REFACTOR: Ensure storage.ts stays under 70 lines. offlineQueueService.ts stays under 75 lines with zero UI imports. offlineQueueStore.ts already imports toast — no new dependency. SRP preserved: service = data, store = UI reactivity.
+Build gate: npm run lint && npm run test && npm run build.
+Tech debt incurred & resolved:
+Incurred: Changing setStorageJson return type from void to boolean is a signature change. All callers must be verified.
+Resolved: Grep all callers — most use fire-and-forget setStorageJson(k, v). A boolean return from a previously void function is backward-compatible (callers that ignore the return still work). No breakage.
+Phase 2-D: Iterative Queue Drain with Per-Op Resilience + Dead-Letter Protection
+What: Replace recursive drainQueue with iterative for-of loop that continues on per-operation failure, and add dead-letter protection using the existing retryCount field so permanently unprocessable ops are discarded after MAX_DRAIN_RETRIES attempts.
+Design note: The retryCount field already exists on QueuedSaveOperation (set to 0 in queueSave), but drainQueue never uses it. Without dead-letter protection, a permanently failing op causes infinite queue growth and repeated error toasts on every reconnect.
+TDD sequence:
+RED: Write test src/features/workspace/stores/__tests__/offlineQueueStore.drain.test.ts:
+Enqueue 3 operations. Mock saveNodes to fail on the 2nd. Call drainQueue().
+Assert: operation 1 was dequeued (success). Operation 2 stays in queue (failed, retryCount incremented). Operation 3 was dequeued (success — not blocked by #2's failure).
+Assert: toast.error called once (for op 2). setSaved called twice (for ops 1, 3).
+RED: Write test asserting that drainQueue with 50 operations does not cause stack overflow.
+RED: Write dead-letter test:
+Enqueue 1 operation. Mock saveNodes to always fail. Call drainQueue() 3 times (MAX_DRAIN_RETRIES).
+Assert: after the 3rd drain, the op is removed from the queue.
+Assert: captureError was called with context including opId, workspaceId, and retries: 3.
+Assert: queue size is 0 after the 3rd drain.
+GREEN: Add const MAX_DRAIN_RETRIES = 3; as a named constant in offlineQueueStore.ts.
+GREEN: Import captureError from sentryService.
+GREEN: In offlineQueueStore.ts, replace drainQueue:
+   drainQueue: async () => {       set({ isDraining: true });       const { setSaving, setSaved, setError } = useSaveStatusStore.getState();       const ops = offlineQueueService.getQueue();          for (const op of ops) {           setSaving();           try {               const nodes = deserializeNodes(op.nodes);               await Promise.all([                   saveNodes(op.userId, op.workspaceId, nodes),                   saveEdges(op.userId, op.workspaceId, op.edges),                   updateWorkspaceNodeCount(op.userId, op.workspaceId, nodes.length),               ]);               offlineQueueService.dequeue(op.id);               setSaved();           } catch (error) {               op.retryCount = (op.retryCount ?? 0) + 1;               if (op.retryCount >= MAX_DRAIN_RETRIES) {                   offlineQueueService.dequeue(op.id);                   captureError(new Error(strings.offline.syncFailed), {                       opId: op.id, workspaceId: op.workspaceId, retries: op.retryCount,                   });               } else {                   offlineQueueService.updateRetryCount(op.id, op.retryCount);               }               const message = error instanceof Error ? error.message : strings.offline.syncFailed;               setError(message);               toast.error(strings.offline.syncFailed);           }       }       set({ pendingCount: offlineQueueService.size(), isDraining: false, bgSyncRegistered: false });   },
+GREEN: In offlineQueueService.ts, add updateRetryCount helper:
+   function updateRetryCount(opId: string, retryCount: number): void {       const queue = getQueue();       const op = queue.find((o) => o.id === opId);       if (op) { op.retryCount = retryCount; persistQueue(queue); }   }
+Export updateRetryCount from the service.
+REFACTOR: File stays under 110 lines. No recursion, no stack overflow risk. Actions accessed via getState() — no Zustand selector anti-pattern. No closure variable in selectors. MAX_DRAIN_RETRIES is a named constant, not hardcoded.
+Build gate: npm run lint && npm run test && npm run build.
+Tech debt incurred: None. The iterative approach is simpler and more resilient. Dead-letter protection prevents infinite queue growth. retryCount field was already defined but unused — now it serves its intended purpose.
+Phase 2-E: Autosave Stale Closure Fix + Hook Split (75-Line Limit Compliance)
+What: Use useRef to always save the latest nodes/edges, avoiding stale closure capture in the debounced save(). Also split useAutosave.ts (currently 138 lines — nearly double the 75-line hook limit) into two focused hooks.
+CLAUDE.md compliance: The 75-line hook limit is non-negotiable. useAutosave.ts at 138 lines violates this. Adding ~6 lines of refs would make it worse. The fix is to extract save logic into a separate hook.
+Hook split design:
+  useSaveCallback.ts (~50 lines): Owns latestNodesRef, latestEdgesRef, latestWorkspaceRef. Exposes a stable save() function. Contains the visibility-change flush effect (flush pending save when tab becomes hidden). Responsibility: "what to save and how."
+  useAutosave.ts (~75 lines): Calls useSaveCallback. Handles JSON diffing, debounce scheduling via setTimeout, lastSavedRef tracking, and the isWorkspaceLoading gate. Responsibility: "when to save."
+This follows SRP — save logic vs schedule logic are distinct responsibilities.
+TDD sequence:
+RED: Write test src/features/workspace/hooks/__tests__/useAutosave.staleClosure.test.ts:
+Render hook. Set nodes to [A]. Wait 500ms. Set nodes to [A, B]. Wait for debounce to fire.
+Assert saveNodes was called with [A, B] (latest), not [A] (stale).
+RED: Write test src/features/workspace/hooks/__tests__/useSaveCallback.test.ts:
+Assert save() reads from refs, not closure: update latestNodesRef after useCallback creation, call save(), assert the ref value was used.
+Assert visibility-change flush calls save() when document.hidden becomes true with a pending timeout.
+GREEN: Create src/features/workspace/hooks/useSaveCallback.ts:
+   export function useSaveCallback(workspaceId: string) {
+       const nodes = useCanvasStore((s) => s.nodes);
+       const edges = useCanvasStore((s) => s.edges);
+       const currentWorkspace = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId)) ?? null;
+       const user = useAuthStore((s) => s.user);
+       const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+       const lastPersistedWorkspaceRef = useRef('');
+
+       const latestNodesRef = useRef(nodes);
+       const latestEdgesRef = useRef(edges);
+       const latestWorkspaceRef = useRef(currentWorkspace);
+       latestNodesRef.current = nodes;
+       latestEdgesRef.current = edges;
+       latestWorkspaceRef.current = currentWorkspace;
+
+       const save = useCallback(async () => {
+           const currentNodes = latestNodesRef.current;
+           const currentEdges = latestEdgesRef.current;
+           const workspace = latestWorkspaceRef.current;
+           // ... rest of save logic using currentNodes, currentEdges, workspace
+       }, [user, workspaceId]);
+
+       // Flush pending save when tab becomes hidden
+       useEffect(() => {
+           const flush = () => {
+               if (document.hidden && timeoutRef.current) {
+                   clearTimeout(timeoutRef.current);
+                   timeoutRef.current = null;
+                   void save();
+               }
+           };
+           document.addEventListener('visibilitychange', flush);
+           return () => document.removeEventListener('visibilitychange', flush);
+       }, [save]);
+
+       return { save, nodes, edges, currentWorkspace, timeoutRef, lastPersistedWorkspaceRef };
+   }
+GREEN: Refactor useAutosave.ts to consume useSaveCallback:
+   export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = false) {
+       const { save, nodes, edges, currentWorkspace, timeoutRef, lastPersistedWorkspaceRef }
+           = useSaveCallback(workspaceId);
+       const lastSavedRef = useRef({ nodes: '', edges: '', workspace: '', positions: '' });
+       // ... debounce scheduling useEffect (unchanged logic)
+   }
+REFACTOR: useSaveCallback.ts stays under 50 lines. useAutosave.ts stays under 75 lines. Both are within CLAUDE.md limits. No behavior change — only structural split.
+Build gate: npm run lint && npm run test && npm run build.
+Tech debt incurred & resolved:
+Incurred: Using refs alongside selectors is a pattern that could confuse future developers.
+Resolved: Add a brief doc comment explaining why refs are used: "Refs ensure save() always persists the latest state, avoiding stale closure capture in debounced callbacks." This is a well-known React pattern, not tech debt.
+Zustand/ReactFlow safety check: The save callback no longer closes over nodes/edges, which means it won't trigger unnecessary re-creation. The effect still depends on selector values for change detection — this is correct. No "Maximum update depth" risk because save stability improved (fewer re-creations → fewer effect re-runs).
+Phase 2-F: Subscription Cache TTL Invalidation
+What: Add a TTL to the subscription service cache, expose a clearCache() function, and add a refreshSubscription action to the store.
+TDD sequence:
+RED: Write test src/features/subscription/services/__tests__/subscriptionService.cache.test.ts:
+Call getSubscription(userId) → returns cached value.
+Advance time by CACHE_TTL_MS + 1. Call again → assert Firestore getDoc is called again (cache expired).
+Assert clearCache() resets the cache: call getSubscription(userId), call clearCache(), call getSubscription(userId) again → assert Firestore getDoc was called twice (cache was invalidated).
+RED: Write test src/features/subscription/stores/__tests__/subscriptionStore.refresh.test.ts:
+Assert loadSubscription clears cache before fetching.
+Assert calling loadSubscription twice with same userId results in two Firestore reads (no stale cache on manual refresh).
+GREEN: In subscriptionService.ts:
+Add let cachedAt: number = 0; and const CACHE_TTL_MS = 5 * 60 * 1000; (5 minutes).
+In getSubscription, add: if (Date.now() - cachedAt > CACHE_TTL_MS) { cachedSubscription = null; }
+Set cachedAt = Date.now() when caching.
+Add and export clearCache function:
+   export function clearCache(): void {
+       cachedSubscription = null;
+       cachedUserId = null;
+       cachedAt = 0;
+   }
+GREEN: In subscriptionStore.ts:
+In loadSubscription, call subscriptionService.clearCache() before fetching so manual refreshes always get fresh data.
+REFACTOR: Both files stay under 100 lines. Cache TTL is a named constant, not hardcoded. clearCache is exported for both store usage and test verification. String resource not needed (no user-facing change).
+Build gate: npm run lint && npm run test && npm run build.
+Tech debt incurred: None. Cache TTL follows standard pattern. CACHE_TTL_MS is a named constant. clearCache is the standard pattern for manual cache invalidation. No Zustand anti-patterns (store only uses set/get).
+Phase Dependency Graph & Execution Order
+Dependencies:
+  Sprint 1 merged → 2-A, 2-B, 2-C, 2-E, 2-F (all can start after Sprint 1)
+  2-C → 2-D (2-D depends on 2-C because offlineQueueService.enqueue return type changes in 2-C, and drainQueue in 2-D depends on the updated service)
+Parallelization:
+  2-A and 2-B both touch indexedDbService.ts but different sections (catch blocks vs upgrade handler). Can be done in either order but should be separate commits.
+  2-E and 2-F are fully independent of each other and of 2-A/2-B/2-C/2-D. Can be done in parallel with anything else.
+Recommended execution order: 2-A → 2-B → 2-C → 2-D → 2-E → 2-F
+Alternative (faster): 2-A → 2-B → (2-C → 2-D) in parallel with (2-E + 2-F)
+Sprint 2 Final Gate
+npm run lint          → 0 errorsnpm run test          → all pass (existing + ~11 new test files)  npm run build         → successfind src -name "*.ts*" | xargs wc -l | awk '$1 > 300'  → empty
+New files created (Sprint 2):
+src/shared/services/__tests__/indexedDbService.telemetry.test.ts
+src/shared/services/__tests__/indexedDbService.migration.test.ts
+src/shared/utils/__tests__/storage.quota.test.ts
+src/features/workspace/__tests__/offlineQueue.quota.test.ts
+src/features/workspace/stores/__tests__/offlineQueueStore.drain.test.ts
+src/features/workspace/hooks/__tests__/useAutosave.staleClosure.test.ts
+src/features/workspace/hooks/__tests__/useSaveCallback.test.ts
+src/features/workspace/hooks/useSaveCallback.ts
+src/features/subscription/services/__tests__/subscriptionService.cache.test.ts
+src/features/subscription/stores/__tests__/subscriptionStore.refresh.test.ts
+Files modified (Sprint 2): indexedDbService.ts, storage.ts, offlineQueueService.ts, offlineQueueStore.ts, useAutosave.ts, subscriptionService.ts, subscriptionStore.ts, securityStrings.ts
+Sprint 2 tech debt final audit: Zero. No any types. No TODO comments. All setStorage* callers verified for new return type. No Zustand bare destructuring. No closure variables in selectors. All files under 300 lines (hooks under 75 lines). All string resources used via strings.* or securityStrings.*. Dead-letter protection prevents infinite queue growth via MAX_DRAIN_RETRIES. Service layer (offlineQueueService) has zero UI imports — SRP preserved.

@@ -5,8 +5,8 @@
  */
 import * as Sentry from '@sentry/react';
 
-const DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
-const ENV = (import.meta.env.VITE_APP_ENV as string | undefined) ?? import.meta.env.MODE;
+const DSN = import.meta.env.VITE_SENTRY_DSN;
+const ENV = import.meta.env.VITE_APP_ENV ?? import.meta.env.MODE;
 
 /**
  * Initialize Sentry. Call once at app startup before rendering.

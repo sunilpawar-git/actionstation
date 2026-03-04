@@ -4,9 +4,7 @@
  */
 
 /** Base URL for Cloud Functions (from environment variable) */
-const CLOUD_FUNCTIONS_URL = (
-    import.meta.env.VITE_CLOUD_FUNCTIONS_URL as string | undefined
-)?.trim() ?? '';
+const CLOUD_FUNCTIONS_URL = (import.meta.env.VITE_CLOUD_FUNCTIONS_URL ?? '').trim();
 
 /** Endpoint for fetching link metadata via server proxy */
 export function getFetchLinkMetaUrl(): string {

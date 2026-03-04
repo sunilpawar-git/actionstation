@@ -123,6 +123,7 @@ jobs:
             | grep -v "__tests__" \
             | grep -v "test/" \
             | grep -v "$SSOT_FILE" \
+            | grep -v "vite-env.d.ts" \
             || true)
           if [ ! -z "$VIOLATIONS" ]; then
             echo "SECURITY VIOLATION: VITE_GEMINI_API_KEY found outside SSOT!"

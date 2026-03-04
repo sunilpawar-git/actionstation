@@ -13,24 +13,26 @@ const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 export const STORAGE_KEY = 'eden_calendar_token';
 export const EXPIRY_KEY = 'eden_calendar_expiry';
 
+/** Reject tokens containing XSS/injection or header-injection characters */
+export const DANGEROUS_TOKEN_CHARS = /[<>"'`;&|\r\n\0]/;
+
 export function getCalendarToken(): string | null {
     const token = localStorage.getItem(STORAGE_KEY);
     const expiry = localStorage.getItem(EXPIRY_KEY);
     if (!token || !expiry) return null;
 
-    // Validate token format (OAuth tokens are alphanumeric with dots, dashes, underscores)
-    if (!/^[A-Za-z0-9._-]+$/.test(token)) {
+    if (DANGEROUS_TOKEN_CHARS.test(token)) {
         console.warn('Invalid calendar token format detected, clearing');
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(EXPIRY_KEY);
         return null;
     }
 
-    // Check if token is expired
-    if (Date.now() > parseInt(expiry, 10)) {
+    const expiryMs = parseInt(expiry, 10);
+    if (Number.isNaN(expiryMs) || Date.now() > expiryMs) {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(EXPIRY_KEY);
-        return null; // Force reconnection
+        return null;
     }
     return token;
 }
@@ -73,7 +75,7 @@ function ensureGisScript(): Promise<void> {
  * Shows a popup, then saves the access token to localStorage.
  */
 export async function connectGoogleCalendar(): Promise<boolean> {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId || !auth.currentUser) return false;
 
     await ensureGisScript();
@@ -91,6 +93,12 @@ export async function connectGoogleCalendar(): Promise<boolean> {
                     return;
                 }
                 const token = response.access_token;
+
+                if (DANGEROUS_TOKEN_CHARS.test(token)) {
+                    resolve(false);
+                    return;
+                }
+
                 const expiresInStr = response.expires_in;
                 const expiresIn = typeof expiresInStr === 'number' ? expiresInStr : (Number(expiresInStr) || 3599); // Default 1 hr
                 // Subtract 1 minute just to be safe with margins
@@ -126,7 +134,7 @@ export function disconnectGoogleCalendar(): boolean {
     if (token) {
         // Optimistically revoke the token, but don't fail if it doesn't work
         try {
-            fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
+            fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             }).catch(() => {

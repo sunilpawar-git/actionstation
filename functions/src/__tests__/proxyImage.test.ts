@@ -14,13 +14,16 @@ vi.mock('firebase-admin/auth', () => ({
     }),
 }));
 
+const originalFetch = globalThis.fetch;
+
 describe('proxyImage', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.useFakeTimers();
-        clearRateLimitStore();
+        await clearRateLimitStore();
     });
 
     afterEach(() => {
+        globalThis.fetch = originalFetch;
         vi.useRealTimers();
         vi.restoreAllMocks();
     });

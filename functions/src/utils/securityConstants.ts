@@ -59,6 +59,11 @@ export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta
 /** Default Gemini model */
 export const GEMINI_MODEL = 'gemini-2.0-flash';
 
+/** Base URL for Cloud Functions — used to construct signed proxy URLs */
+export const FUNCTIONS_BASE_URL = (
+    process.env.FUNCTIONS_BASE_URL ?? ''
+).replace(/\/$/, '');
+
 /** Error messages returned to clients */
 export const errorMessages = {
     authRequired: 'Authentication required',

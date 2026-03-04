@@ -18,7 +18,8 @@ export function WorkspacePoolButton() {
     const currentWorkspaceId = useWorkspaceStore((s) => s.currentWorkspaceId);
     const nodeCount = useCanvasStore((s) => s.nodes.length);
     const individualPoolCount = useCanvasStore(
-        (s) => s.nodes.reduce((n, node) => n + (node.data.includeInAIPool ? 1 : 0), 0),
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defense-in-depth for runtime nulls
+        (s) => s.nodes.reduce((n, node) => n + (node.data?.includeInAIPool ? 1 : 0), 0),
     );
 
     const isPooled = useMemo(
