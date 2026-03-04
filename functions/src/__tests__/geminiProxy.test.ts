@@ -23,13 +23,16 @@ const MOCK_GEMINI_RESPONSE = {
     candidates: [{ content: { parts: [{ text: 'Summary result' }] } }],
 };
 
+const originalFetch = globalThis.fetch;
+
 describe('geminiProxy', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.useFakeTimers();
-        clearRateLimitStore();
+        await clearRateLimitStore();
     });
 
     afterEach(() => {
+        globalThis.fetch = originalFetch;
         vi.useRealTimers();
         vi.restoreAllMocks();
     });
@@ -47,8 +50,8 @@ describe('geminiProxy', () => {
                 json: () => Promise.resolve(MOCK_GEMINI_RESPONSE),
             }));
 
-            // Exhaust the rate limit (30 requests)
-            for (let i = 0; i < 30; i++) {
+            // Exhaust the rate limit (GEMINI_RATE_LIMIT = 60)
+            for (let i = 0; i < 60; i++) {
                 await handleGeminiProxy(VALID_BODY, 'rate-user', 'test-key');
             }
 

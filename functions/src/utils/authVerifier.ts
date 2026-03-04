@@ -5,9 +5,9 @@
  */
 import { getAuth } from 'firebase-admin/auth';
 
-/** Check if running in Firebase emulator */
+/** Check if running in Firebase emulator (K_SERVICE is set by Cloud Functions runtime) */
 function isEmulator(): boolean {
-    return process.env.FUNCTIONS_EMULATOR === 'true';
+    return process.env.FUNCTIONS_EMULATOR === 'true' && !process.env.K_SERVICE;
 }
 
 /**

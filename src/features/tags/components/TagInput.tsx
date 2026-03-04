@@ -21,8 +21,6 @@ export function TagInput({ selectedTagIds, onChange, compact = false }: TagInput
     const inputRef = useRef<HTMLInputElement>(null);
     
     const tags = useTagStore((state) => state.tags);
-    const addTag = useTagStore((state) => state.addTag);
-    const getTagByName = useTagStore((state) => state.getTagByName);
 
     const selectedTags = selectedTagIds
         .map((id) => tags.find((t) => t.id === id))
@@ -46,7 +44,7 @@ export function TagInput({ selectedTagIds, onChange, compact = false }: TagInput
             } else if (e.key === 'Enter') {
                 const parsed = tagNameSchema.safeParse(inputValue);
                 if (!parsed.success) return;
-                // Find or create tag
+                const { getTagByName, addTag } = useTagStore.getState();
                 const tag = getTagByName(parsed.data) ?? addTag(parsed.data);
                 if (tag && !selectedTagIds.includes(tag.id)) {
                     onChange([...selectedTagIds, tag.id]);
@@ -55,7 +53,7 @@ export function TagInput({ selectedTagIds, onChange, compact = false }: TagInput
                 setIsInputVisible(false);
             }
         },
-        [inputValue, getTagByName, addTag, selectedTagIds, onChange]
+        [inputValue, selectedTagIds, onChange]
     );
 
     const handleRemoveTag = useCallback(

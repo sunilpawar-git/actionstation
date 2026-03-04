@@ -1,7 +1,7 @@
 /**
  * useAutosave Hook - Debounced autosave with offline queue support
  */
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { saveNodes, saveEdges, saveWorkspace } from '@/features/workspace/services/workspaceService';
@@ -26,7 +26,11 @@ function serializeWorkspacePoolFields(workspace: Workspace | null): string {
 export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = false) {
     const nodes = useCanvasStore((s) => s.nodes);
     const edges = useCanvasStore((s) => s.edges);
-    const currentWorkspace = useWorkspaceStore((s) => s.workspaces.find((w) => w.id === workspaceId)) ?? null;
+    const workspaces = useWorkspaceStore((s) => s.workspaces);
+    const currentWorkspace = useMemo(
+        () => workspaces.find((w) => w.id === workspaceId) ?? null,
+        [workspaces, workspaceId],
+    );
     const user = useAuthStore((s) => s.user);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastSavedRef = useRef({ nodes: '', edges: '', workspace: '', positions: '' });

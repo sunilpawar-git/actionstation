@@ -8,7 +8,14 @@ import { verifyAuthToken } from '../utils/authVerifier.js';
 import { clearRateLimitStore } from '../utils/rateLimiter.js';
 import * as urlValidator from '../utils/urlValidator.js';
 
-// Mock firebase-admin/auth for verifyAuthToken tests
+vi.mock('../utils/securityConstants.js', async (importOriginal) => {
+    const actual = await importOriginal<Record<string, unknown>>();
+    return {
+        ...actual,
+        FUNCTIONS_BASE_URL: 'https://us-central1-eden-so.cloudfunctions.net',
+    };
+});
+
 vi.mock('firebase-admin/auth', () => ({
     getAuth: () => ({
         verifyIdToken: vi.fn().mockImplementation((token: string) => {
@@ -20,13 +27,16 @@ vi.mock('firebase-admin/auth', () => ({
     }),
 }));
 
+const originalFetch = globalThis.fetch;
+
 describe('fetchLinkMeta', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.useFakeTimers();
-        clearRateLimitStore();
+        await clearRateLimitStore();
     });
 
     afterEach(() => {
+        globalThis.fetch = originalFetch;
         vi.useRealTimers();
         vi.restoreAllMocks();
     });
@@ -189,6 +199,34 @@ describe('fetchLinkMeta', () => {
                 'user-1',
             );
             expect(result.status).toBe(400);
+        });
+
+        it('includes signed proxy URLs when signingSecret is provided', async () => {
+            vi.spyOn(urlValidator, 'validateUrlWithDns')
+                .mockResolvedValue({ valid: true });
+
+            const html = `
+                <html><head>
+                    <meta property="og:image" content="https://example.com/img.png" />
+                    <link rel="icon" href="https://example.com/favicon.ico" />
+                </head><body></body></html>
+            `;
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+                ok: true,
+                headers: new Headers(),
+                text: () => Promise.resolve(html),
+            }));
+
+            const result = await handleFetchLinkMeta(
+                { url: 'https://example.com' },
+                'user-1',
+                'test-signing-secret',
+            );
+
+            expect(result.status).toBe(200);
+            expect(result.data.proxyImage).toBeDefined();
+            expect(result.data.proxyImage).toContain('sig=');
+            expect(result.data.proxyImage).toContain('exp=');
         });
     });
 });
