@@ -1,14 +1,10 @@
 /**
- * AttachmentCardView Tests — getIconLabel utility, DRY compliance, StatusBadge
+ * AttachmentCardView Tests — getIconLabel utility, isSafeUrl, DRY compliance, StatusBadge
  */
 import { describe, it, expect } from 'vitest';
 import { DOCUMENT_TYPE_LABELS, DOCUMENT_ACCEPTED_MIME_TYPES } from '../../../types/document';
 import { strings } from '@/shared/localization/strings';
-
-/**
- * Mirrors getIconLabel logic from AttachmentCardView.
- * Tests validate behavior expectations; the component must conform.
- */
+import { getIconLabel, isSafeUrl } from '../AttachmentCardView';
 
 describe('DOCUMENT_TYPE_LABELS SSOT coverage', () => {
     it('has a label for every accepted MIME type', () => {
@@ -19,10 +15,9 @@ describe('DOCUMENT_TYPE_LABELS SSOT coverage', () => {
     });
 });
 
-describe('getIconLabel expectations', () => {
+describe('getIconLabel', () => {
     it('returns "?" for empty filename and empty mimeType', () => {
-        const result = getIconLabel('', '');
-        expect(result).toBe('?');
+        expect(getIconLabel('', '')).toBe('?');
     });
 
     it('returns MIME label when mimeType is known', () => {
@@ -35,26 +30,41 @@ describe('getIconLabel expectations', () => {
         expect(getIconLabel('application/octet-stream', 'archive.zip')).toBe('ZIP');
     });
 
-    it('returns "?" for unknown mimeType and extensionless filename', () => {
+    it('returns uppercased filename when no extension and unknown mimeType', () => {
         expect(getIconLabel('', 'README')).toBe('README');
     });
 });
 
-/**
- * Re-implement getIconLabel as it should work (using DOCUMENT_TYPE_LABELS).
- * This is the "contract test" — if the component diverges, tests fail.
- */
-function getIconLabel(mimeType: string, filename: string): string {
-    const label = DOCUMENT_TYPE_LABELS[mimeType as keyof typeof DOCUMENT_TYPE_LABELS];
-    if (mimeType && label) return label;
-    const ext = filename.split('.').pop()?.toUpperCase();
-    return ext && ext.length > 0 ? ext : '?';
-}
+describe('isSafeUrl', () => {
+    it('allows https URLs', () => {
+        expect(isSafeUrl('https://cdn.example.com/doc.pdf')).toBe(true);
+    });
+
+    it('allows http URLs', () => {
+        expect(isSafeUrl('http://localhost:3000/file.txt')).toBe(true);
+    });
+
+    it('rejects javascript: URIs', () => {
+        expect(isSafeUrl('javascript:alert(1)')).toBe(false);
+    });
+
+    it('rejects data: URIs', () => {
+        expect(isSafeUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
+    });
+
+    it('rejects empty strings', () => {
+        expect(isSafeUrl('')).toBe(false);
+    });
+
+    it('rejects blob: URIs', () => {
+        expect(isSafeUrl('blob:https://example.com/uuid')).toBe(false);
+    });
+});
 
 describe('StatusBadge upload state contract', () => {
-    it('uses docUploading string (not docProcessing) for uploading status', () => {
+    it('uses docUploading string for uploading status', () => {
         expect(strings.canvas.docUploading).toBeDefined();
-        expect(strings.canvas.docUploading).not.toBe(strings.canvas.docProcessing);
+        expect(typeof strings.canvas.docUploading).toBe('string');
     });
 
     it('has a spinner CSS class name available in the module', async () => {

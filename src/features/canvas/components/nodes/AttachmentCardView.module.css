@@ -22,7 +22,7 @@
 
 .card:hover {
     border-color: var(--color-primary-light);
-    box-shadow: 0 2px 8px hsla(220, 13%, 13%, 0.06);
+    box-shadow: var(--shadow-sm);
 }
 
 .cardUploading {

@@ -11,8 +11,15 @@ import { DOCUMENT_TYPE_LABELS } from '../../types/document';
 import { strings } from '@/shared/localization/strings';
 import styles from './AttachmentCardView.module.css';
 
+const SAFE_URL_SCHEMES = /^https?:\/\//i;
+
+/** Validates URL has a safe scheme (http/https only) */
+export function isSafeUrl(url: string): boolean {
+    return SAFE_URL_SCHEMES.test(url);
+}
+
 /** Derive a display label from MIME type, falling back to the uppercased file extension */
-function getIconLabel(mimeType: string, filename: string): string {
+export function getIconLabel(mimeType: string, filename: string): string {
     const label = DOCUMENT_TYPE_LABELS[mimeType as keyof typeof DOCUMENT_TYPE_LABELS];
     if (mimeType && label) return label;
     const ext = filename.split('.').pop()?.toUpperCase();
@@ -47,7 +54,7 @@ export const AttachmentCardView = React.memo(function AttachmentCardView({ node,
     const { url, filename, thumbnailUrl, mimeType, status } = attrs;
 
     const handleDownload = useCallback(() => {
-        if (!url) return;
+        if (!url || !isSafeUrl(url)) return;
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
@@ -56,7 +63,7 @@ export const AttachmentCardView = React.memo(function AttachmentCardView({ node,
     }, [url, filename]);
 
     const handleOpenNewTab = useCallback(() => {
-        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        if (url && isSafeUrl(url)) window.open(url, '_blank', 'noopener,noreferrer');
     }, [url]);
 
     const handleRemove = useCallback(() => {
@@ -71,7 +78,7 @@ export const AttachmentCardView = React.memo(function AttachmentCardView({ node,
                 role="group" aria-label={filename}>
                 {/* Thumbnail or file-type icon */}
                 <div className={styles.thumb}>
-                    {thumbnailUrl
+                    {thumbnailUrl && isSafeUrl(thumbnailUrl)
                         ? <img src={thumbnailUrl} alt={filename} className={styles.thumbImg} loading="lazy" />
                         : <span className={styles.thumbIcon} aria-hidden="true">{iconLabel}</span>
                     }

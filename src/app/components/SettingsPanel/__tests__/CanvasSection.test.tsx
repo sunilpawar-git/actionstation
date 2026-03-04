@@ -78,14 +78,18 @@ describe('CanvasSection', () => {
         it('reflects autoAnalyzeDocuments setting state', () => {
             useSettingsStore.setState({ autoAnalyzeDocuments: true });
             render(<CanvasSection />);
-            const toggle = screen.getByRole('switch', { name: /Auto-analyze documents/i });
+            const toggle = screen.getByRole('switch', {
+                name: new RegExp(strings.settings.autoAnalyzeDocuments, 'i'),
+            });
             expect(toggle).toBeChecked();
         });
 
         it('toggles autoAnalyzeDocuments when clicked', () => {
             useSettingsStore.setState({ autoAnalyzeDocuments: true });
             render(<CanvasSection />);
-            const toggle = screen.getByRole('switch', { name: /Auto-analyze documents/i });
+            const toggle = screen.getByRole('switch', {
+                name: new RegExp(strings.settings.autoAnalyzeDocuments, 'i'),
+            });
             fireEvent.click(toggle);
             expect(useSettingsStore.getState().autoAnalyzeDocuments).toBe(false);
         });
