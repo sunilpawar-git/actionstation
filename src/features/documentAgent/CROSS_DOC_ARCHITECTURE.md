@@ -138,10 +138,10 @@ Aggregation nodes summarize patterns across all analyzed documents:
 
 ### Storage
 
-Aggregation metadata stored on a special node type marker:
-```typescript
-tags: ['aggregation', 'auto-extracted']
-```
+Aggregation nodes are identified by their ID prefix (`agg-`). No tags are auto-assigned
+to any document agent nodes (insight, cross-reference, or aggregation). Tags are user-chosen
+via the UtilsBar.
+
 No new Firestore collections. The aggregation node is a regular `IdeaNode`.
 
 ---

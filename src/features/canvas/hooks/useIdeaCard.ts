@@ -1,4 +1,5 @@
 import { useCallback, useState, useRef } from 'react';
+import { useEditorState } from '@tiptap/react';
 import { useCanvasStore } from '../stores/canvasStore';
 import { useFocusStore } from '../stores/focusStore';
 import { useNodeData } from './useNodeData';
@@ -11,6 +12,7 @@ import { useBarPinOpen } from './useBarPinOpen';
 import { useNodeGeneration } from '@/features/ai/hooks/useNodeGeneration';
 import { useNodeImageUpload } from './useNodeImageUpload';
 import { useIdeaCardCalendar } from '@/features/calendar/hooks/useIdeaCardCalendar';
+import { hasUploadingAttachment } from '../utils/editorUploadState';
 import type { IdeaNodeData } from '../types/node';
 import type { NodeHeadingHandle } from '../components/nodes/NodeHeading';
 import type { DocumentInsertFn } from '../extensions/fileHandlerExtension';
@@ -73,10 +75,15 @@ export function useIdeaCard({ id, rfData, selected }: UseIdeaCardParams) {
 
     useLinkPreviewRetry(id, linkPreviews);
     const hasContent = Boolean(output);
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- returns null when editor is null (overload signature)
+    const isDocumentUploading = useEditorState({
+        editor,
+        selector: ({ editor: e }) => hasUploadingAttachment(e),
+    }) ?? false;
 
     return {
         resolvedData, heading, prompt, output, isGenerating, isPinned, isCollapsed, tagIds, linkPreviews, calendarEvent,
         isAICard, showTagInput, contentRef, cardWrapperRef, barContainerRef, headingRef,
-        pinOpenHandlers, editor, hasContent, isEditing, isPinnedOpen, calendar, registerProximityLostFn, ...handlers,
+        pinOpenHandlers, editor, hasContent, isEditing, isPinnedOpen, isDocumentUploading, calendar, registerProximityLostFn, ...handlers,
     };
 }

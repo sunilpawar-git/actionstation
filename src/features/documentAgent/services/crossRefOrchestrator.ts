@@ -10,7 +10,7 @@ import { captureError } from '@/shared/services/sentryService';
 import { toast } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
 import { trackCrossReferenceGenerated } from '@/shared/services/analyticsService';
-import { createIdeaNode } from '@/features/canvas/types/node';
+import { createIdeaNode, type NodeColorKey } from '@/features/canvas/types/node';
 import { createEdge } from '@/features/canvas/types/edge';
 import { buildEntityIndex, queryEntityIndex } from './entityIndexService';
 import { buildCrossRefPrompt, buildCrossRefRequestBody, parseCrossRefResponse } from './crossReferenceService';
@@ -28,6 +28,7 @@ export async function attemptCrossReference(
     workspaceId: string,
     result: ExtractionResult,
     filename: string,
+    parentColorKey?: NodeColorKey,
 ): Promise<void> {
     const { nodes } = useCanvasStore.getState();
 
@@ -79,8 +80,7 @@ export async function attemptCrossReference(
         ...node.data,
         heading: strings.documentAgent.crossRefHeading,
         output: markdown,
-        colorKey: 'warning',
-        tags: [strings.documentAgent.autoExtractedTag, 'cross-reference'],
+        colorKey: parentColorKey ?? 'default',
         includeInAIPool: true,
     };
 
@@ -110,9 +110,10 @@ export async function safeCrossReference(
     workspaceId: string,
     result: ExtractionResult,
     filename: string,
+    parentColorKey?: NodeColorKey,
 ): Promise<void> {
     try {
-        await attemptCrossReference(nodeId, workspaceId, result, filename);
+        await attemptCrossReference(nodeId, workspaceId, result, filename, parentColorKey);
     } catch (error: unknown) {
         captureError(error instanceof Error ? error : new Error(strings.documentAgent.crossRefNone));
     }

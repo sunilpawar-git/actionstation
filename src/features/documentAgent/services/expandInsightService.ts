@@ -80,8 +80,6 @@ export function expandInsightToNodes(
     insightNode: CanvasNode,
     result: ExtractionResult,
     parentDocNodeId: string,
-    _existingNodes: CanvasNode[],
-    _isFreeFlow: boolean,
 ): ExpandResult {
     const sections = buildSections(result);
     const nodes: CanvasNode[] = [];
@@ -101,7 +99,6 @@ export function expandInsightToNodes(
             heading: section.heading,
             output: formatBulletList(section.items),
             colorKey: section.colorKey,
-            tags: [strings.documentAgent.autoExtractedTag],
             includeInAIPool: true,
         };
 

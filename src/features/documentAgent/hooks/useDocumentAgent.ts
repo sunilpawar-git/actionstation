@@ -90,7 +90,7 @@ export function useDocumentAgent(): {
                 toast.success(strings.documentAgent.analysisComplete);
                 trackDocumentAgentCompleted(result.classification, result.confidence);
 
-                void safeCrossReference(nodeId, workspaceId, result, filename).catch((e: unknown) =>
+                void safeCrossReference(nodeId, workspaceId, result, filename, parentColorKey).catch((e: unknown) =>
                     captureError(e instanceof Error ? e : new Error(String(e))),
                 );
 

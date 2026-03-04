@@ -229,6 +229,42 @@
     opacity: 0.8;
 }
 
+/* Document upload overlay — subtle animated border glow */
+.uploadOverlay {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-lg);
+    border: 2px solid var(--color-primary-light);
+    pointer-events: none;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    background: var(--color-overlay-dim);
+    animation: uploadPulse 1.5s ease-in-out infinite;
+}
+
+.uploadSpinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--color-primary-light);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.uploadLabel {
+    font-size: var(--font-size-xs);
+    color: var(--color-primary);
+    font-weight: var(--font-weight-medium);
+}
+
+@keyframes uploadPulse {
+    0%, 100% { border-color: var(--color-primary-light); }
+    50% { border-color: var(--color-primary); }
+}
+
 /* Wrapper must also auto-size so ReactFlow container doesn't force full height */
 .cardWrapperCollapsed {
     height: auto !important;

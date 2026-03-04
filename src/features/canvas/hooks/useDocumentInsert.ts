@@ -10,6 +10,8 @@ import type { DocumentUploadFn } from '../services/documentInsertService';
 import { DOCUMENT_ACCEPTED_MIME_TYPES } from '../types/document';
 import type { AttachmentNodeAttrs, AttachmentStatus } from '../extensions/attachmentExtension';
 import { captureError } from '@/shared/services/sentryService';
+import { toast } from '@/shared/stores/toastStore';
+import { strings } from '@/shared/localization/strings';
 
 const FILE_ACCEPT = DOCUMENT_ACCEPTED_MIME_TYPES.join(',');
 const UPLOADING: AttachmentStatus = 'uploading';
@@ -83,6 +85,8 @@ export function useDocumentInsert(
                 tempId,
             } satisfies AttachmentNodeAttrs,
         });
+
+        toast.info(strings.canvas.docUploading);
 
         const result = await processDocumentForNode(file, uploadFn);
 

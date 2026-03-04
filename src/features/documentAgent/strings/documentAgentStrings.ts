@@ -11,7 +11,6 @@ export const documentAgentStrings = {
     keyFactsSection: 'Key Facts',
     actionItemsSection: 'Action Items',
     questionsSection: 'Questions to Consider',
-    autoExtractedTag: 'auto-extracted',
     confidenceFooterHigh: 'Auto-analyzed · High confidence',
     confidenceFooterMedium: 'Auto-analyzed · Medium confidence — verify details',
     confidenceFooterLow: 'Auto-analyzed · Low confidence — review carefully',

@@ -41,31 +41,30 @@ describe('buildInsightSpawn', () => {
         expect(node.position).toEqual(mockPosition);
     });
 
-    it('sets colorKey to success for high confidence', () => {
+    it('uses default color when no parentColorKey provided', () => {
         const { node } = buildInsightSpawn('parent-1', 'ws-1', mockPosition, mockResult, 'bill.pdf');
 
-        expect(node.data.colorKey).toBe('success');
+        expect(node.data.colorKey).toBe('default');
     });
 
-    it('sets colorKey to warning for medium confidence', () => {
+    it('uses default color regardless of medium confidence', () => {
         const medResult = { ...mockResult, confidence: 'medium' as const };
         const { node } = buildInsightSpawn('parent-1', 'ws-1', mockPosition, medResult, 'f.pdf');
 
-        expect(node.data.colorKey).toBe('warning');
+        expect(node.data.colorKey).toBe('default');
     });
 
-    it('sets colorKey to default for low confidence', () => {
+    it('uses default color regardless of low confidence', () => {
         const lowResult = { ...mockResult, confidence: 'low' as const };
         const { node } = buildInsightSpawn('parent-1', 'ws-1', mockPosition, lowResult, 'f.pdf');
 
         expect(node.data.colorKey).toBe('default');
     });
 
-    it('sets tags with classification and auto-extracted tag', () => {
+    it('does not auto-populate tags on insight nodes', () => {
         const { node } = buildInsightSpawn('parent-1', 'ws-1', mockPosition, mockResult, 'bill.pdf');
 
-        expect(node.data.tags).toContain('invoice');
-        expect(node.data.tags).toContain(strings.documentAgent.autoExtractedTag);
+        expect(node.data.tags).toBeUndefined();
     });
 
     it('sets includeInAIPool to true', () => {
@@ -117,17 +116,24 @@ describe('buildInsightSpawn', () => {
         expect(node.data.colorKey).toBe('warning');
     });
 
-    it('falls back to confidence color when parent is default', () => {
+    it('inherits default when parent is default', () => {
         const { node } = buildInsightSpawn('parent-1', 'ws-1', mockPosition, mockResult, 'f.pdf', 'default');
 
-        expect(node.data.colorKey).toBe('success');
+        expect(node.data.colorKey).toBe('default');
     });
 
-    it('falls back to confidence color when parentColorKey is undefined', () => {
+    it('inherits default when parentColorKey is undefined', () => {
         const medResult = { ...mockResult, confidence: 'medium' as const };
         const { node } = buildInsightSpawn('parent-1', 'ws-1', mockPosition, medResult, 'f.pdf');
 
-        expect(node.data.colorKey).toBe('warning');
+        expect(node.data.colorKey).toBe('default');
+    });
+
+    it('inherits parent success color regardless of confidence level', () => {
+        const lowResult = { ...mockResult, confidence: 'low' as const };
+        const { node } = buildInsightSpawn('parent-1', 'ws-1', mockPosition, lowResult, 'f.pdf', 'success');
+
+        expect(node.data.colorKey).toBe('success');
     });
 });
 

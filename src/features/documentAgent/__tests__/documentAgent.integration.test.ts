@@ -121,7 +121,7 @@ describe('Document Agent Integration', () => {
         expect(newState.edges).toHaveLength(1);
     });
 
-    it('spawned node has correct heading and tags', async () => {
+    it('spawned node has correct heading, inherits parent color, and has no auto-tags', async () => {
         const { result } = renderHook(() => useDocumentAgent());
 
         await act(async () => {
@@ -133,9 +133,8 @@ describe('Document Agent Integration', () => {
         const insightNode = newState.nodes[0];
 
         expect(insightNode?.data.heading).toBe(strings.documentAgent.insightHeading);
-        expect(insightNode?.data.tags).toContain('invoice');
-        expect(insightNode?.data.tags).toContain(strings.documentAgent.autoExtractedTag);
-        expect(insightNode?.data.colorKey).toBe('success');
+        expect(insightNode?.data.tags).toBeUndefined();
+        expect(insightNode?.data.colorKey).toBe('default');
     });
 
     it('spawned edge has derived relationship type', async () => {

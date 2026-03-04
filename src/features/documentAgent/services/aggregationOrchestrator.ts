@@ -26,7 +26,7 @@ const STORAGE_KEY_LAST_AGG = 'docAgent-lastAggregationAt';
 let analysisCount = getStorageItem<number>(STORAGE_KEY_COUNT, 0);
 let lastAggregationAt = getStorageItem<number>(STORAGE_KEY_LAST_AGG, 0);
 
-const AGGREGATION_TAG = 'aggregation';
+const AGGREGATION_NODE_PREFIX = 'agg-';
 
 /** Increment analysis counter and check if aggregation should run */
 export function incrementAndCheck(): boolean {
@@ -84,20 +84,19 @@ export async function runAggregation(workspaceId: string): Promise<void> {
     if (!markdown) return;
 
     const existingAgg = nodes.find(
-        (n) => n.data.tags?.includes(AGGREGATION_TAG) && n.workspaceId === workspaceId,
+        (n) => n.id.startsWith(AGGREGATION_NODE_PREFIX) && n.workspaceId === workspaceId,
     );
 
     if (existingAgg) {
         useCanvasStore.getState().updateNodeOutput(existingAgg.id, markdown);
     } else {
-        const nodeId = `agg-${crypto.randomUUID()}`;
+        const nodeId = `${AGGREGATION_NODE_PREFIX}${crypto.randomUUID()}`;
         const node = createIdeaNode(nodeId, workspaceId, { x: 50, y: 50 });
         node.data = {
             ...node.data,
             heading: strings.documentAgent.aggregationHeading,
             output: markdown,
-            colorKey: 'warning',
-            tags: [AGGREGATION_TAG, strings.documentAgent.autoExtractedTag],
+            colorKey: 'default',
             includeInAIPool: true,
         };
         useCanvasStore.setState((s) => ({ nodes: [...s.nodes, node] }));

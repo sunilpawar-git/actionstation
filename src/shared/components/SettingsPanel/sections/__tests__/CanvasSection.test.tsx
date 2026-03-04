@@ -42,8 +42,7 @@ function applyOverrides(overrides: Record<string, unknown>) {
         const state = buildCanvasSettingsState(overrides);
         return typeof selector === 'function' ? selector(state) : state;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(useSettingsStore).mockImplementation(impl as any);
+    vi.mocked(useSettingsStore).mockImplementation(impl as unknown as typeof useSettingsStore);
     Object.assign(useSettingsStore, { getState: () => buildCanvasSettingsState(overrides) });
 }
 

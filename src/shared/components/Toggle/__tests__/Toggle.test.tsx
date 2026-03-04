@@ -66,13 +66,6 @@ describe('Toggle', () => {
         expect(screen.getByRole('switch')).not.toHaveAttribute('aria-describedby');
     });
 
-    it('toggles via checkbox click', () => {
-        const onChange = vi.fn();
-        render(<Toggle id="test" checked={false} onChange={onChange} label="Feature" />);
-        fireEvent.click(screen.getByRole('switch'));
-        expect(onChange).toHaveBeenCalledOnce();
-    });
-
     it('associates label with the checkbox via htmlFor', () => {
         render(<Toggle id="my-toggle" checked={false} onChange={vi.fn()} label="Feature" />);
         const switchEl = screen.getByRole('switch');

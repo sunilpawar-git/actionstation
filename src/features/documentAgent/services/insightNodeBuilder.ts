@@ -9,19 +9,13 @@ import { calculateMasonryPosition } from '@/features/canvas/services/gridLayoutS
 import { strings } from '@/shared/localization/strings';
 import type { CanvasNode, NodePosition, NodeColorKey } from '@/features/canvas/types/node';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
-import type { ExtractionResult, ConfidenceLevel } from '../types/documentAgent';
+import type { ExtractionResult } from '../types/documentAgent';
 import { formatInsightMarkdown } from './insightFormatter';
 
 export interface InsightSpawnResult {
     node: CanvasNode;
     edge: CanvasEdge;
 }
-
-const CONFIDENCE_COLOR: Record<ConfidenceLevel, NodeColorKey> = {
-    high: 'success',
-    medium: 'warning',
-    low: 'default',
-};
 
 /** Pure function: builds insight node + edge from extraction result */
 export function buildInsightSpawn(
@@ -35,16 +29,11 @@ export function buildInsightSpawn(
     const nodeId = `insight-${crypto.randomUUID()}`;
     const node = createIdeaNode(nodeId, workspaceId, position);
 
-    const colorKey = (parentColorKey && parentColorKey !== 'default')
-        ? parentColorKey
-        : CONFIDENCE_COLOR[result.confidence];
-
     node.data = {
         ...node.data,
         heading: strings.documentAgent.insightHeading,
         output: formatInsightMarkdown(result, filename),
-        colorKey,
-        tags: [result.classification, strings.documentAgent.autoExtractedTag],
+        colorKey: parentColorKey ?? 'default',
         includeInAIPool: true,
     };
 
