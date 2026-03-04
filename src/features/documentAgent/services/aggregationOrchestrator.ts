@@ -85,7 +85,7 @@ export async function runAggregation(workspaceId: string): Promise<void> {
             ...node.data,
             heading: strings.documentAgent.aggregationHeading,
             output: markdown,
-            colorKey: 'accent',
+            colorKey: 'warning',
             tags: [AGGREGATION_TAG, strings.documentAgent.autoExtractedTag],
             includeInAIPool: true,
         };

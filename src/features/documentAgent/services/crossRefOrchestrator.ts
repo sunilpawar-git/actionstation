@@ -73,7 +73,7 @@ export async function attemptCrossReference(
         ...node.data,
         heading: strings.documentAgent.crossRefHeading,
         output: markdown,
-        colorKey: 'accent',
+        colorKey: 'warning',
         tags: [strings.documentAgent.autoExtractedTag, 'cross-reference'],
         includeInAIPool: true,
     };

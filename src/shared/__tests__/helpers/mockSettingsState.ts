@@ -39,6 +39,8 @@ export interface MockSettingsOverrides {
     setLastSettingsTab?: ReturnType<typeof vi.fn>;
     getResolvedTheme?: () => 'light' | 'dark' | 'sepia' | 'grey' | 'darkBlack';
     loadFromStorage?: ReturnType<typeof vi.fn>;
+    autoAnalyzeDocuments?: boolean;
+    toggleAutoAnalyzeDocuments?: ReturnType<typeof vi.fn>;
 }
 
 /** Creates a complete mock SettingsState with optional type-safe overrides */
@@ -70,6 +72,8 @@ export function createMockSettingsState(overrides: MockSettingsOverrides = {}) {
         setLastSettingsTab: vi.fn(),
         getResolvedTheme: () => 'light' as const,
         loadFromStorage: vi.fn(),
+        autoAnalyzeDocuments: true,
+        toggleAutoAnalyzeDocuments: vi.fn(),
         ...overrides,
     };
 }
