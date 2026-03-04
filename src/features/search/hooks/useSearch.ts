@@ -10,7 +10,6 @@ import type { SearchResult } from '../types/search';
 interface UseSearchReturn {
     query: string;
     results: SearchResult[];
-    isSearching: boolean;
     search: (query: string) => void;
     clear: () => void;
 }
@@ -18,7 +17,6 @@ interface UseSearchReturn {
 
 export function useSearch(): UseSearchReturn {
     const [query, setQuery] = useState('');
-    const [isSearching, setIsSearching] = useState(false);
 
     const nodes = useCanvasStore((state) => state.nodes);
     const workspaces = useWorkspaceStore((state) => state.workspaces);
@@ -42,10 +40,12 @@ export function useSearch(): UseSearchReturn {
         const lowerQuery = query.toLowerCase();
 
         nodes.forEach((node) => {
-            const heading = node.data.heading;
+            /* eslint-disable @typescript-eslint/no-unnecessary-condition -- defense-in-depth for runtime nulls */
+            const heading = node.data?.heading;
             // eslint-disable-next-line @typescript-eslint/no-deprecated
-            const prompt = node.data.prompt;
-            const output = node.data.output;
+            const prompt = node.data?.prompt;
+            const output = node.data?.output;
+            /* eslint-enable @typescript-eslint/no-unnecessary-condition */
             const workspaceId = node.workspaceId;
             const workspaceName = workspaceMap.get(workspaceId) ?? 'Unknown';
 
@@ -89,9 +89,7 @@ export function useSearch(): UseSearchReturn {
     }, [query, nodes, workspaceMap]);
 
     const search = useCallback((newQuery: string) => {
-        setIsSearching(true);
         setQuery(newQuery);
-        setIsSearching(false);
     }, []);
 
     const clear = useCallback(() => {
@@ -101,7 +99,6 @@ export function useSearch(): UseSearchReturn {
     return {
         query,
         results,
-        isSearching,
         search,
         clear,
     };

@@ -9,6 +9,7 @@ import { processDocumentForNode } from '../services/documentInsertService';
 import type { DocumentUploadFn } from '../services/documentInsertService';
 import { DOCUMENT_ACCEPTED_MIME_TYPES } from '../types/document';
 import type { AttachmentNodeAttrs, AttachmentStatus } from '../extensions/attachmentExtension';
+import { captureError } from '@/shared/services/sentryService';
 
 const FILE_ACCEPT = DOCUMENT_ACCEPTED_MIME_TYPES.join(',');
 const UPLOADING: AttachmentStatus = 'uploading';
@@ -121,7 +122,7 @@ export function useDocumentInsert(
         input.value = '';
         input.onchange = () => {
             const file = input.files?.[0];
-            if (file) void insertFromFile(file);
+            if (file) void insertFromFile(file).catch((e: unknown) => captureError(e as Error));
         };
         input.click();
     }, [editor, insertFromFile]);

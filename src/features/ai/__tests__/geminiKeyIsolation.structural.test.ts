@@ -22,6 +22,9 @@ const SSOT_FILE = 'features/knowledgeBank/services/geminiClient.ts';
 /** Test setup file is also allowed to stub env vars */
 const TEST_SETUP_FILE = 'test/setup.ts';
 
+/** Type declaration file declares all env vars */
+const ENV_DECLARATION_FILE = 'vite-env.d.ts';
+
 /** Collect all .ts/.tsx source files (excluding node_modules, __tests__, dist) */
 function getSourceFiles(dir: string, results: string[] = []): string[] {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -58,7 +61,7 @@ describe('Gemini API Key Isolation (S1 prevention)', () => {
 
         for (const file of sourceFiles) {
             const relPath = rel(file);
-            if (relPath === SSOT_FILE || relPath === TEST_SETUP_FILE) continue;
+            if (relPath === SSOT_FILE || relPath === TEST_SETUP_FILE || relPath === ENV_DECLARATION_FILE) continue;
 
             const content = read(file);
             if (content.includes('VITE_GEMINI_API_KEY')) {

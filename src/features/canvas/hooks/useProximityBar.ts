@@ -69,6 +69,7 @@ export function useProximityBar(
         window.addEventListener('resize', onResize, { passive: true });
 
         return () => {
+            if (leaveTimeout) clearTimeout(leaveTimeout);
             card.removeEventListener('mouseenter', onMouseEnter);
             card.removeEventListener('mousemove', onMouseMove);
             card.removeEventListener('mouseleave', onMouseLeave);

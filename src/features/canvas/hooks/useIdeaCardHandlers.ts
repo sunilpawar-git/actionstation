@@ -8,6 +8,7 @@ import { useIdeaCardImageHandlers } from './useIdeaCardImageHandlers';
 import { useNodeInput, type NodeShortcutMap } from './useNodeInput';
 import { useNodeShortcuts } from './useNodeShortcuts';
 import { deleteNodeAttachments } from '../services/documentUploadService';
+import { captureError } from '@/shared/services/sentryService';
 import type { UseIdeaCardHandlersParams, NodeColorKey } from './useIdeaCardHandlers.types';
 
 export function useIdeaCardHandlers(params: UseIdeaCardHandlersParams) {
@@ -29,7 +30,7 @@ export function useIdeaCardHandlers(params: UseIdeaCardHandlersParams) {
         calendar.cleanupOnDelete();
         // Read attachments fresh from the store (resolvedData may be a stale prop snapshot).
         const freshAttachments = useCanvasStore.getState().nodes.find((n) => n.id === id)?.data.attachments;
-        if (freshAttachments && freshAttachments.length > 0) void deleteNodeAttachments(freshAttachments);
+        if (freshAttachments && freshAttachments.length > 0) void deleteNodeAttachments(freshAttachments).catch((e: unknown) => captureError(e as Error));
         rawDelete();
     }, [calendar, id, rawDelete]);
 
