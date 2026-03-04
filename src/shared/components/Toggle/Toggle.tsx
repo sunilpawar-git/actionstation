@@ -19,13 +19,13 @@ export const Toggle = React.memo(function Toggle({ checked, onChange, label, des
     const descriptionId = description ? `${id}-desc` : undefined;
 
     return (
-        <div className={styles.container}>
-            <label className={styles.label} htmlFor={id}>
+        <label className={styles.container} htmlFor={id}>
+            <span className={styles.label}>
                 <span className={styles.labelText}>{label}</span>
                 {description != null && (
                     <span id={descriptionId} className={styles.description}>{description}</span>
                 )}
-            </label>
+            </span>
             <input
                 type="checkbox"
                 role="switch"
@@ -43,6 +43,6 @@ export const Toggle = React.memo(function Toggle({ checked, onChange, label, des
             >
                 <span className={`${styles.knob} ${checked ? styles.knobOn : ''}`} />
             </span>
-        </div>
+        </label>
     );
 });

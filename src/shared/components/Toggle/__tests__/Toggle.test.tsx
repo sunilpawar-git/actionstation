@@ -78,4 +78,27 @@ describe('Toggle', () => {
         const switchEl = screen.getByRole('switch');
         expect(switchEl).toHaveAttribute('id', 'my-toggle');
     });
+
+    it('calls onChange when the label text is clicked', () => {
+        const onChange = vi.fn();
+        render(<Toggle id="test" checked={false} onChange={onChange} label="Enable feature" />);
+        fireEvent.click(screen.getByText('Enable feature'));
+        expect(onChange).toHaveBeenCalledOnce();
+    });
+
+    it('calls onChange when the description text is clicked', () => {
+        const onChange = vi.fn();
+        render(
+            <Toggle id="test" checked={false} onChange={onChange} label="Feature" description="Some details" />,
+        );
+        fireEvent.click(screen.getByText('Some details'));
+        expect(onChange).toHaveBeenCalledOnce();
+    });
+
+    it('does not call onChange when disabled and label is clicked', () => {
+        const onChange = vi.fn();
+        render(<Toggle id="test" checked={false} onChange={onChange} label="Feature" disabled />);
+        fireEvent.click(screen.getByText('Feature'));
+        expect(onChange).not.toHaveBeenCalled();
+    });
 });

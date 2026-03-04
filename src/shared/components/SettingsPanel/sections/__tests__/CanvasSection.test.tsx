@@ -13,6 +13,7 @@ const mockToggleCanvasFreeFlow = vi.fn();
 const mockSetAutoSave = vi.fn();
 const mockSetCanvasScrollMode = vi.fn();
 const mockSetConnectorStyle = vi.fn();
+const mockToggleAutoAnalyzeDocuments = vi.fn();
 
 function buildCanvasSettingsState(overrides?: Record<string, unknown>) {
     return createMockSettingsState({
@@ -22,6 +23,7 @@ function buildCanvasSettingsState(overrides?: Record<string, unknown>) {
         setAutoSave: mockSetAutoSave,
         setCanvasScrollMode: mockSetCanvasScrollMode,
         setConnectorStyle: mockSetConnectorStyle,
+        toggleAutoAnalyzeDocuments: mockToggleAutoAnalyzeDocuments,
         ...overrides,
     });
 }
@@ -139,5 +141,31 @@ describe('CanvasSection', () => {
         const thickOption = screen.getByLabelText(strings.settings.connectorThick);
         fireEvent.click(thickOption);
         expect(mockSetConnectorStyle).toHaveBeenCalledWith('thick');
+    });
+
+    it('should render auto-analyze documents toggle', () => {
+        render(<CanvasSection />);
+        expect(screen.getByText(strings.settings.autoAnalyzeDocuments)).toBeInTheDocument();
+    });
+
+    it('should reflect autoAnalyzeDocuments state in switch', () => {
+        applyOverrides({ autoAnalyzeDocuments: false });
+
+        render(<CanvasSection />);
+        const switchEl = screen.getByRole('switch', { name: /Auto-analyze documents/ });
+        expect(switchEl).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('should call toggleAutoAnalyzeDocuments when the toggle switch is clicked', () => {
+        render(<CanvasSection />);
+        const switchEl = screen.getByRole('switch', { name: /Auto-analyze documents/ });
+        fireEvent.click(switchEl);
+        expect(mockToggleAutoAnalyzeDocuments).toHaveBeenCalledOnce();
+    });
+
+    it('should call toggleAutoAnalyzeDocuments when the label text is clicked', () => {
+        render(<CanvasSection />);
+        fireEvent.click(screen.getByText(strings.settings.autoAnalyzeDocuments));
+        expect(mockToggleAutoAnalyzeDocuments).toHaveBeenCalledOnce();
     });
 });

@@ -11,13 +11,13 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--space-md);
+    cursor: pointer;
 }
 
 .label {
     display: flex;
     flex-direction: column;
     gap: var(--toggle-padding);
-    cursor: pointer;
     flex: 1;
     min-width: 0;
 }
