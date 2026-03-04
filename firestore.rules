@@ -5,6 +5,11 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
+
+    // Rate limit documents — server-side only, no client access
+    match /_rateLimits/{doc} {
+      allow read, write: if false;
+    }
     
     // User-scoped data
     match /users/{userId} {

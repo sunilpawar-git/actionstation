@@ -67,7 +67,7 @@ export const CanvasRadar = memo(function CanvasRadar() {
                 </defs>
                 {dots.map((dot, i) => (
                     <circle
-                        key={i}
+                        key={`${dot.x}-${dot.y}-${i}`}
                         cx={dot.x}
                         cy={dot.y}
                         r={DOT_RADIUS}

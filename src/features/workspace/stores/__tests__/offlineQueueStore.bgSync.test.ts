@@ -8,9 +8,11 @@ import { useOfflineQueueStore } from '../offlineQueueStore';
 // Mock dependencies
 vi.mock('../../services/offlineQueueService', () => ({
     offlineQueueService: {
-        enqueue: vi.fn(),
+        enqueue: vi.fn().mockReturnValue(true),
         dequeue: vi.fn(),
+        getQueue: vi.fn().mockReturnValue([]),
         getOldestOperation: vi.fn().mockReturnValue(null),
+        updateRetryCount: vi.fn(),
         size: vi.fn().mockReturnValue(0),
         clear: vi.fn(),
     },
@@ -37,7 +39,7 @@ vi.mock('@/shared/stores/saveStatusStore', () => ({
 }));
 
 vi.mock('@/shared/stores/toastStore', () => ({
-    toast: { error: vi.fn(), info: vi.fn() },
+    toast: { error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }));
 
 const mockRegisterSync = vi.fn().mockResolvedValue(false);

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useCanvasStore, getNodeMap } from '../stores/canvasStore';
 import { fetchLinkPreview } from '../services/linkPreviewService';
 import { getFromCache, setInCache } from '../services/linkPreviewCache';
+import { captureError } from '@/shared/services/sentryService';
 
 /** Debounce delay before fetching (ms) */
 const DEBOUNCE_MS = 500;
@@ -44,7 +45,7 @@ export function useLinkPreviewFetch(nodeId: string, urls: string[]): void {
             const controller = new AbortController();
             abortRef.current = controller;
 
-            void processUrls(nodeId, stableUrls, controller.signal);
+            void processUrls(nodeId, stableUrls, controller.signal).catch((e: unknown) => captureError(e as Error));
         }, DEBOUNCE_MS);
 
         return () => {

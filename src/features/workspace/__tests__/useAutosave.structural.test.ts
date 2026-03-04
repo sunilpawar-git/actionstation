@@ -7,6 +7,8 @@ import { resolve } from 'path';
 import { describe, it, expect } from 'vitest';
 
 const SRC = readFileSync(resolve(__dirname, '../hooks/useAutosave.ts'), 'utf-8');
+const SAVE_CB_SRC = readFileSync(resolve(__dirname, '../hooks/useSaveCallback.ts'), 'utf-8');
+const COMBINED = `${SRC}\n${SAVE_CB_SRC}`;
 
 describe('useAutosave — structural integrity', () => {
     describe('position-excluded content fingerprinting', () => {
@@ -28,8 +30,8 @@ describe('useAutosave — structural integrity', () => {
 
     describe('selector isolation (prevents full-tree rerenders)', () => {
         it('uses targeted selectors instead of bare useCanvasStore()', () => {
-            expect(SRC).not.toMatch(/useCanvasStore\(\s*\)/);
-            expect(SRC).toMatch(/useCanvasStore\(\s*\(\s*s\s*\)/);
+            expect(COMBINED).not.toMatch(/useCanvasStore\(\s*\)/);
+            expect(COMBINED).toMatch(/useCanvasStore\(\s*\(\s*s\s*\)/);
         });
     });
 });

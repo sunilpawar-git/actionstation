@@ -25,7 +25,7 @@ vi.mock('@/shared/stores/saveStatusStore', () => ({
 }));
 
 vi.mock('@/shared/stores/toastStore', () => ({
-    toast: { error: vi.fn(), info: vi.fn(), success: vi.fn() },
+    toast: { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() },
 }));
 
 describe('offlineQueueStore', () => {
@@ -82,13 +82,12 @@ describe('offlineQueueStore', () => {
             expect(mockSaveNodes).not.toHaveBeenCalled();
         });
 
-        it('should stop on failure', async () => {
+        it('should keep failed op in queue when retryCount < MAX_DRAIN_RETRIES', async () => {
             mockSaveNodes.mockRejectedValueOnce(new Error('Network error'));
             useOfflineQueueStore.getState().queueSave('user-1', 'ws-1', [], []);
 
             await useOfflineQueueStore.getState().drainQueue();
 
-            // Operation stays in queue on failure
             expect(useOfflineQueueStore.getState().pendingCount).toBe(1);
             expect(useOfflineQueueStore.getState().isDraining).toBe(false);
         });

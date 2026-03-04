@@ -7,6 +7,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { verifyAuthToken } from './utils/authVerifier.js';
 import { checkRateLimit } from './utils/rateLimiter.js';
+import { ALLOWED_ORIGINS } from './utils/corsConfig.js';
 import {
     errorMessages,
     GEMINI_RATE_LIMIT,
@@ -50,7 +51,7 @@ export async function handleGeminiProxy(
     }
 
     // Rate limit
-    if (!checkRateLimit(uid, 'geminiProxy', GEMINI_RATE_LIMIT)) {
+    if (!await checkRateLimit(uid, 'geminiProxy', GEMINI_RATE_LIMIT)) {
         return { status: 429, data: { error: errorMessages.rateLimited } };
     }
 
@@ -114,7 +115,7 @@ function capOutputTokens(body: GeminiProxyRequest): GeminiProxyRequest {
  * Requires Firebase Auth token in Authorization header.
  */
 export const geminiProxy = onRequest(
-    { cors: true, maxInstances: 10, secrets: [geminiApiKey] },
+    { cors: ALLOWED_ORIGINS, maxInstances: 10, secrets: [geminiApiKey] },
     async (req, res) => {
         if (req.method !== 'POST') {
             res.status(405).json({ error: errorMessages.methodNotAllowed });

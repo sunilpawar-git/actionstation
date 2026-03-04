@@ -33,6 +33,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()((set, get) => ({
     loadSubscription: async (userId: string) => {
         set({ isLoading: true });
         try {
+            subscriptionService.clearCache();
             const info = await subscriptionService.getSubscription(userId);
             set({
                 tier: info.tier,

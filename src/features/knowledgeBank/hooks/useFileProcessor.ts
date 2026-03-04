@@ -8,6 +8,7 @@ import { persistParseResult } from '../services/parseResultPersister';
 import { parseWithPdfFallback } from '../services/pdfFallbackService';
 import { runPostUploadSummarization } from '../services/postUploadSummarizer';
 import { useKnowledgeBankStore } from '../stores/knowledgeBankStore';
+import { captureError } from '@/shared/services/sentryService';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { useWorkspaceStore } from '@/features/workspace/stores/workspaceStore';
 import { KB_MAX_FILE_SIZE } from '../types/knowledgeBank';
@@ -58,7 +59,7 @@ export function useFileProcessor() {
                 onComplete: () => {
                     useKnowledgeBankStore.getState().setSummarizingEntryIds([]);
                 },
-            });
+            }).catch((e: unknown) => captureError(e as Error));
         } catch (error) {
             // Only known ParserErrors (always localised) surface to the user; everything else uses uploadFailed.
             const msg = error instanceof Error && 'code' in error

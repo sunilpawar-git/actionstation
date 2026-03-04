@@ -35,14 +35,18 @@ function isDevBypassEnabled(): boolean {
 /** In-memory cache to avoid repeated Firestore reads */
 let cachedSubscription: SubscriptionInfo | null = null;
 let cachedUserId: string | null = null;
+let cachedAt = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 async function getSubscription(userId: string): Promise<SubscriptionInfo> {
-    // DEV ONLY: Bypass subscription check if env var is set
     if (isDevBypassEnabled()) {
         return DEV_PRO_SUBSCRIPTION;
     }
 
-    // Return cached if same user
+    if (Date.now() - cachedAt > CACHE_TTL_MS) {
+        cachedSubscription = null;
+    }
+
     if (cachedUserId === userId && cachedSubscription) {
         return cachedSubscription;
     }
@@ -53,6 +57,7 @@ async function getSubscription(userId: string): Promise<SubscriptionInfo> {
         if (!subDoc.exists()) {
             cachedSubscription = DEFAULT_SUBSCRIPTION;
             cachedUserId = userId;
+            cachedAt = Date.now();
             return DEFAULT_SUBSCRIPTION;
         }
 
@@ -73,6 +78,7 @@ async function getSubscription(userId: string): Promise<SubscriptionInfo> {
 
         cachedSubscription = info;
         cachedUserId = userId;
+        cachedAt = Date.now();
         return info;
     } catch {
         // Offline or error: return default (free)
@@ -83,6 +89,7 @@ async function getSubscription(userId: string): Promise<SubscriptionInfo> {
 function clearCache(): void {
     cachedSubscription = null;
     cachedUserId = null;
+    cachedAt = 0;
 }
 
 export const subscriptionService = {

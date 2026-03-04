@@ -13,8 +13,11 @@ import { useSubscriptionStore } from '@/features/subscription/stores/subscriptio
 import { GATED_FEATURES } from '@/features/subscription/types/subscription';
 import { toast } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
+import { captureError } from '@/shared/services/sentryService';
 import type { CanvasNode } from '@/features/canvas/types/node';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
+
+const MAX_DRAIN_RETRIES = 3;
 
 interface OfflineQueueState {
     pendingCount: number;
@@ -30,7 +33,7 @@ interface OfflineQueueActions {
 
 type OfflineQueueStore = OfflineQueueState & OfflineQueueActions;
 
-export const useOfflineQueueStore = create<OfflineQueueStore>()((set, get) => ({
+export const useOfflineQueueStore = create<OfflineQueueStore>()((set) => ({
     pendingCount: offlineQueueService.size(),
     isDraining: false,
     bgSyncRegistered: false,
@@ -45,7 +48,10 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()((set, get) => ({
             queuedAt: Date.now(),
             retryCount: 0,
         };
-        offlineQueueService.enqueue(op);
+        const queued = offlineQueueService.enqueue(op);
+        if (!queued) {
+            toast.warning(strings.security.storageQuotaExceeded);
+        }
         set({ pendingCount: offlineQueueService.size() });
 
         // Attempt Background Sync registration (non-blocking, gated to Pro)
@@ -60,42 +66,43 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()((set, get) => ({
     },
 
     drainQueue: async () => {
-        const oldest = offlineQueueService.getOldestOperation();
-        if (!oldest) {
+        const ops = offlineQueueService.getQueue();
+        if (ops.length === 0) {
             set({ bgSyncRegistered: false });
             return;
         }
 
         set({ isDraining: true });
+        const { setSaving, setSaved, setError } = useSaveStatusStore.getState();
 
-        try {
-            const { setSaving, setSaved } = useSaveStatusStore.getState();
+        for (const op of ops) {
             setSaving();
-
-            const nodes = deserializeNodes(oldest.nodes);
-            await Promise.all([
-                saveNodes(oldest.userId, oldest.workspaceId, nodes),
-                saveEdges(oldest.userId, oldest.workspaceId, oldest.edges),
-                updateWorkspaceNodeCount(oldest.userId, oldest.workspaceId, nodes.length),
-            ]);
-
-            offlineQueueService.dequeue(oldest.id);
-            set({ pendingCount: offlineQueueService.size() });
-            setSaved();
-
-            // Recurse to drain remaining operations
-            const remaining = offlineQueueService.getOldestOperation();
-            if (remaining) {
-                await get().drainQueue();
+            try {
+                const nodes = deserializeNodes(op.nodes);
+                await Promise.all([
+                    saveNodes(op.userId, op.workspaceId, nodes),
+                    saveEdges(op.userId, op.workspaceId, op.edges),
+                    updateWorkspaceNodeCount(op.userId, op.workspaceId, nodes.length),
+                ]);
+                offlineQueueService.dequeue(op.id);
+                setSaved();
+            } catch (error) {
+                const newRetryCount = op.retryCount + 1;
+                if (newRetryCount >= MAX_DRAIN_RETRIES) {
+                    offlineQueueService.dequeue(op.id);
+                    captureError(new Error(strings.offline.syncFailed), {
+                        opId: op.id, workspaceId: op.workspaceId, retries: newRetryCount,
+                    });
+                } else {
+                    offlineQueueService.updateRetryCount(op.id, newRetryCount);
+                }
+                const message = error instanceof Error ? error.message : strings.offline.syncFailed;
+                setError(message);
+                toast.error(strings.offline.syncFailed);
             }
-        } catch (error) {
-            const { setError } = useSaveStatusStore.getState();
-            const message = error instanceof Error ? error.message : strings.offline.syncFailed;
-            setError(message);
-            toast.error(strings.offline.syncFailed);
-        } finally {
-            set({ isDraining: false, bgSyncRegistered: false });
         }
+
+        set({ pendingCount: offlineQueueService.size(), isDraining: false, bgSyncRegistered: false });
     },
 
     refreshCount: () => {

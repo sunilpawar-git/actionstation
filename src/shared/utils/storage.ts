@@ -2,6 +2,8 @@
  * Storage Utilities - Shared localStorage helpers
  * SSOT for all localStorage access patterns
  */
+import { captureError } from '@/shared/services/sentryService';
+import { strings } from '@/shared/localization/strings';
 
 /** Safely read a typed value from localStorage */
 export function getStorageItem<T>(key: string, defaultValue: T): T {
@@ -23,11 +25,13 @@ export function getStorageItem<T>(key: string, defaultValue: T): T {
 }
 
 /** Safely write a primitive value to localStorage */
-export function setStorageItem(key: string, value: string | number | boolean): void {
+export function setStorageItem(key: string, value: string | number | boolean): boolean {
     try {
         localStorage.setItem(key, String(value));
-    } catch {
-        // Silently fail if localStorage is unavailable
+        return true;
+    } catch (error) {
+        captureError(error instanceof Error ? error : new Error(strings.security.localStorageWriteFailed), { key });
+        return false;
     }
 }
 
@@ -58,10 +62,12 @@ export function getStorageJson<T>(key: string, defaultValue: T): T {
 }
 
 /** Safely write a JSON-serialized value to localStorage */
-export function setStorageJson(key: string, value: unknown): void {
+export function setStorageJson(key: string, value: unknown): boolean {
     try {
         localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-        // Silently fail if localStorage is unavailable
+        return true;
+    } catch (error) {
+        captureError(error instanceof Error ? error : new Error(strings.security.localStorageWriteFailed), { key });
+        return false;
     }
 }
