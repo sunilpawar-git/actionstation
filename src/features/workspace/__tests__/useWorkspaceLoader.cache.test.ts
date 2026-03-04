@@ -90,6 +90,7 @@ describe('useWorkspaceLoader cache-first loading', () => {
         await waitFor(() => {
             expect(result.current.isLoading).toBe(false);
         });
+        await waitFor(() => expect(mockLoadKBEntries).toHaveBeenCalled());
 
         expect(mockCanvasSetState).toHaveBeenCalledWith(
             expect.objectContaining({ nodes: cachedNodes, edges: cachedEdges })
@@ -114,6 +115,7 @@ describe('useWorkspaceLoader cache-first loading', () => {
         await waitFor(() => {
             expect(mockLoadNodes).toHaveBeenCalledWith('user-1', 'ws-bg');
         });
+        await waitFor(() => expect(mockLoadKBEntries).toHaveBeenCalled());
     });
 
     it('background refresh handles nodes without updatedAt gracefully', async () => {
@@ -127,7 +129,7 @@ describe('useWorkspaceLoader cache-first loading', () => {
         mockLoadNodes.mockResolvedValue([{ id: 'fresh-node' }]);
         mockLoadEdges.mockResolvedValue([]);
 
-        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
 
         renderHook(() => useWorkspaceLoader('ws-bg-safe'));
 
@@ -135,6 +137,7 @@ describe('useWorkspaceLoader cache-first loading', () => {
             expect(mockLoadNodes).toHaveBeenCalledWith('user-1', 'ws-bg-safe');
             expect(consoleSpy).not.toHaveBeenCalled();
         });
+        await waitFor(() => expect(mockLoadKBEntries).toHaveBeenCalled());
 
         consoleSpy.mockRestore();
     });
@@ -160,7 +163,7 @@ describe('useWorkspaceLoader cache-first loading', () => {
         mockIsOnline.mockReturnValue(false);
         mockLoadNodes.mockRejectedValue(new Error('offline'));
 
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
         const { result } = renderHook(() => useWorkspaceLoader('ws-none'));
 
@@ -168,6 +171,7 @@ describe('useWorkspaceLoader cache-first loading', () => {
             expect(result.current.isLoading).toBe(false);
             expect(result.current.error).toBeTruthy();
         });
+        await waitFor(() => expect(mockLoadKBEntries).toHaveBeenCalled());
 
         consoleSpy.mockRestore();
     });
