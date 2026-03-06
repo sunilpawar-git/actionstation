@@ -97,7 +97,7 @@ describe('useWorkspaceLoader cache-first loading', () => {
         );
 
         unmount();
-        await new Promise((r) => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 250));
     });
 
     it('background-refreshes from Firestore after cache hit when online', async () => {
@@ -121,7 +121,7 @@ describe('useWorkspaceLoader cache-first loading', () => {
         await waitFor(() => expect(mockLoadKBEntries).toHaveBeenCalled());
 
         unmount();
-        await new Promise((r) => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 250));
     });
 
     it('background refresh handles nodes without updatedAt gracefully', async () => {
@@ -146,7 +146,7 @@ describe('useWorkspaceLoader cache-first loading', () => {
         await waitFor(() => expect(mockLoadKBEntries).toHaveBeenCalled());
 
         unmount();
-        await new Promise((r) => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 250));
         consoleSpy.mockRestore();
     });
 
@@ -182,7 +182,7 @@ describe('useWorkspaceLoader cache-first loading', () => {
         await waitFor(() => expect(mockLoadKBEntries).toHaveBeenCalled());
 
         unmount();
-        await new Promise((r) => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 250));
         consoleSpy.mockRestore();
     });
 });
