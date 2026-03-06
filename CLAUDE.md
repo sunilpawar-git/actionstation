@@ -23,9 +23,12 @@ src/
 │   │   ├── components/    # View: LoginButton, UserAvatar
 │   │   ├── services/      # Side effects: authService
 │   │   └── __tests__/     # Co-located tests
-│   ├── canvas/
-│   ├── ai/
-│   └── workspace/
+│   ├── canvas/            # Nodes, edges, ReactFlow integration
+│   ├── ai/                # Gemini generation, transformation
+│   ├── workspace/         # Workspace CRUD, loader, sync
+│   ├── knowledgeBank/     # KB entries, TF-IDF scoring
+│   ├── calendar/          # Google Calendar sync
+│   └── documentAgent/     # Image analysis, auto-spawn
 ├── shared/
 │   ├── components/        # Reusable UI (Button, Toast)
 │   ├── hooks/             # Generic hooks (useDebounce)
@@ -57,6 +60,17 @@ style={{ color: '#3b82f6' }}
 import { strings } from '@/shared/localization/strings';
 <button>{strings.common.submit}</button>
 className={styles.primaryButton}  // Uses CSS variable
+```
+
+## 🆔 ID GENERATION CONVENTION
+
+```typescript
+// ✅ ALWAYS use crypto.randomUUID() for node/edge IDs
+const id = `idea-${crypto.randomUUID()}`;
+const edgeId = `edge-${crypto.randomUUID()}`;
+
+// ❌ NEVER use Date.now() — collision risk under rapid creation
+// const id = `idea-${Date.now()}`; // TWO nodes in <1ms = same ID
 ```
 
 ## ⚡ PERFORMANCE RULES (ReactFlow 500+ Nodes)
@@ -157,6 +171,24 @@ interface CanvasState {
 }
 ```
 
+### Canvas Store Architecture
+
+The canvas store uses a **factory slice pattern** to stay under 300 lines:
+- `canvasStore.ts` (~120 lines) — thin orchestrator, re-exports `EMPTY_SELECTED_IDS`/`getNodeMap`
+- `canvasStoreActions.ts` (~235 lines) — 6 factory functions spread into `create()`
+- `canvasStoreUtils.ts` (~21 lines) — shared constants (avoids circular imports)
+
+New store slices for upcoming features (synthesis, clustering) add ONE factory spread each.
+
+### Toast Helpers
+
+```typescript
+// ✅ Use typed toast helpers (not raw addToast)
+import { toast } from '@/shared/stores/toastStore';
+toast.success(strings.canvas.nodeCopied);
+toast.error(strings.errors.saveFailed);
+```
+
 ### 🔴 CRITICAL: Zustand Selector Pattern (Prevents "Maximum Update Depth" Errors)
 
 The **selector pattern is MANDATORY**. Bare store subscriptions cause cascading re-renders and infinite loops in ReactFlow.
@@ -216,33 +248,7 @@ const handleUpdate = useCallback(() => {
 }, []);
 ```
 
-**Testing/Mocking Pattern:**
-
-When writing tests, mock Zustand stores to handle BOTH selector calls and direct calls:
-
-```typescript
-// Mock setup that handles selector pattern
-const mockRemoveToastFn = vi.fn();
-let mockToasts = [];
-
-vi.mock('../../stores/toastStore', () => ({
-    useToastStore: Object.assign(
-        vi.fn((selector?: (s: any) => unknown) => {
-            const state = { toasts: mockToasts, removeToast: mockRemoveToastFn };
-            // Handle both: selector calls and direct calls
-            return typeof selector === 'function' ? selector(state) : state;
-        }),
-        {
-            getState: () => ({ toasts: mockToasts, removeToast: mockRemoveToastFn }),
-        }
-    ),
-}));
-```
-
-This allows your component to:
-- Call `const toasts = useToastStore((s) => s.toasts)` ✅
-- Call `useToastStore.getState().removeToast(id)` ✅
-- Both work correctly in tests ✅
+**Testing/Mocking:** See `src/shared/components/__tests__/Toast.test.tsx` for the canonical Zustand mock pattern (handles both selectors and `getState()`).
 
 ### 🔴 CRITICAL: Closure Variable Anti-Pattern (Causes Drag Lag)
 
