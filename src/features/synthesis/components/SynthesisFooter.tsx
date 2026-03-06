@@ -24,7 +24,7 @@ export const SynthesisFooter = React.memo(function SynthesisFooter({
     return (
         <div className={styles.footer}>
             <button className={styles.sourceLink} onClick={handleHighlightSources} type="button" aria-label={synthesisStrings.labels.highlightSources}>
-                {synthesisStrings.labels.synthesisOf} {sourceCount} {synthesisStrings.labels.ideas}
+                {synthesisStrings.labels.viewSources(sourceCount)}
             </button>
             <button
                 className={styles.reSynthBtn}

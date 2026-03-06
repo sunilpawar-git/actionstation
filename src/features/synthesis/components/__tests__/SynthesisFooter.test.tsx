@@ -30,22 +30,20 @@ describe('SynthesisFooter', () => {
         vi.clearAllMocks();
     });
 
-    test('renders synthesis of N ideas text', () => {
+    test('renders action-oriented source link with count', () => {
         render(<SynthesisFooter {...defaultProps} />);
-        expect(
-            screen.getByText(
-                `${synthesisStrings.labels.synthesisOf} 5 ${synthesisStrings.labels.ideas}`
-            )
-        ).toBeDefined();
+        const linkText = `${synthesisStrings.labels.viewSources(5)}`;
+        expect(screen.getByText(linkText)).toBeDefined();
+    });
+
+    test('source link text does NOT repeat the card title', () => {
+        render(<SynthesisFooter {...defaultProps} />);
+        expect(screen.queryByText(/Synthesis of/i)).toBeNull();
     });
 
     test('click source link selects source nodes on canvas', () => {
         render(<SynthesisFooter {...defaultProps} />);
-        fireEvent.click(
-            screen.getByText(
-                `${synthesisStrings.labels.synthesisOf} 5 ${synthesisStrings.labels.ideas}`
-            )
-        );
+        fireEvent.click(screen.getByText(synthesisStrings.labels.viewSources(5)));
         expect(mockClearSelection).toHaveBeenCalledOnce();
         expect(mockSelectNode).toHaveBeenCalledTimes(5);
         expect(mockSelectNode).toHaveBeenCalledWith('A');

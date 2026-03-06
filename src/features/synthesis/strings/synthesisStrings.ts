@@ -14,6 +14,7 @@ export const synthesisStrings = {
     labels: {
         synthesisOf: 'Synthesis of',
         ideas: 'ideas',
+        viewSources: (count: number) => `View ${count} sources`,
         selectNodes: 'Select connected nodes to synthesize',
         synthesize: 'Synthesize',
         reSynthesize: 'Re-synthesize',

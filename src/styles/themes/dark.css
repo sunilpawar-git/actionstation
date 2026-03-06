@@ -51,6 +51,9 @@
   --node-status-success: hsl(145, 50%, 45%);
   --node-status-success-bg: hsl(145, 30%, 18%);
   --node-status-success-border: hsl(145, 25%, 30%);
+  --node-status-synthesis: hsl(260, 55%, 65%);
+  --node-status-synthesis-bg: hsl(260, 35%, 18%);
+  --node-status-synthesis-border: hsl(260, 30%, 32%);
 
   /* Toast notification colors - Dark */
   --color-success-bg: hsl(145, 50%, 35%);

@@ -51,6 +51,9 @@
   --node-status-success: hsl(145, 45%, 42%);
   --node-status-success-bg: hsl(145, 25%, 12%);
   --node-status-success-border: hsl(145, 20%, 24%);
+  --node-status-synthesis: hsl(260, 55%, 62%);
+  --node-status-synthesis-bg: hsl(260, 30%, 12%);
+  --node-status-synthesis-border: hsl(260, 25%, 24%);
 
   --color-success-bg: hsl(145, 45%, 32%);
   --color-success-text: hsl(145, 50%, 95%);
