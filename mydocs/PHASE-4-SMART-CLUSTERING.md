@@ -8,35 +8,36 @@ As canvases grow beyond 20-30 nodes, users lose the "peripheral vision" advantag
 
 Two complementary features:
 
-1. **AI-powered clustering**: Users click "Cluster" and the AI groups nodes by content similarity, draws visual boundaries around groups, and labels each cluster. Users can accept (auto-arrange into clusters) or dismiss.
+1. **AI-powered clustering**: Users click "Cluster" and the AI groups nodes by content similarity, draws visual boundaries around groups, and labels each cluster. Users can accept (boundaries persist) or dismiss.
 
-2. **Semantic zoom**: At low zoom levels, nodes progressively simplify — first showing only headings, then collapsing to colored dots with cluster labels prominent. This makes the macro structure visible without squinting at tiny text.
+2. **Semantic zoom**: At low zoom levels, nodes progressively simplify — first showing only headings, then collapsing to colored badges with cluster labels prominent. This makes the macro structure visible without squinting at tiny text.
 
-## Architecture Decision
+## Architecture Decisions
 
-- **New feature module**: `src/features/clustering/` (services + components)
-- **TF-IDF reuse**: Leverages existing `nodePoolBuilder.ts` TF-IDF infrastructure
-- **Cluster state**: Stored on workspace level in Zustand (`useCanvasStore`) as `clusterGroups: ClusterGroup[]`
-- **Persisted**: Cluster groups saved to Firestore alongside nodes/edges
-- **Semantic zoom**: Implemented in `IdeaCard` via viewport zoom subscription (existing ReactFlow `useStore` pattern)
-- **No new Zustand store**: Clusters are canvas state (they describe spatial organization of nodes)
-- **Security**: AI labeling uses the same Gemini pipeline (sanitized, gated)
+- **New feature module**: `src/features/clustering/` (services + components + types + hooks)
+- **TF-IDF reuse**: The existing `tfidfScorer.ts` (pure math) and `relevanceScorer.ts` (tokenization) in `src/features/knowledgeBank/services/` are directly importable. The clustering service builds TF-IDF vectors per node, then computes cosine similarity between them. No code duplication — import the functions.
+- **Cluster state as a separate store slice**: `canvasStore.ts` is at **282/300 lines**. Adding cluster state + actions inline would exceed the limit. Cluster state lives in a dedicated `clusterSlice.ts` that is composed into `canvasStore` via Zustand slice pattern (same pattern as `utilsBarLayoutSlice.ts`).
+- **Persisted as workspace metadata field** (not a subcollection): Cluster data is small (8 clusters x 10 nodeIds = ~2KB). Storing it as a field on the workspace document avoids a new subcollection, new Firestore rules, and a new load/save cycle. It saves/loads atomically with the workspace.
+- **Semantic zoom via CSS, not conditional rendering**: Swapping components (TipTap editor vs dot) at zoom thresholds causes ALL 500+ nodes to re-render simultaneously — a performance cliff. Instead, use CSS classes driven by a single `data-zoom-level` attribute on the canvas container, and hide/show content sections with `display: none`. Zero React re-renders on zoom change.
+- **No auto-arrangement**: Accepting clusters draws boundaries around nodes at their current positions. It does NOT move nodes. Auto-arranging 50+ nodes is a separate force-directed layout feature with its own UX concerns (undo, animation, overlap resolution). Cut from scope.
+- **Security**: AI labeling uses the existing Gemini pipeline. Labels are sanitized (length-clamped, trimmed, no HTML).
 
 ---
 
-## Sub-phase 4A: Content Similarity Scoring
+## Sub-phase 4A: Types & Cluster Store Slice
 
 ### What We Build
 
-A service that computes pairwise content similarity between nodes using TF-IDF vectors, then groups similar nodes into clusters.
+Define cluster types and create a dedicated Zustand store slice for cluster state, composed into the canvas store.
 
 ### Files
 
 | File | Action | Lines (est.) |
 |------|--------|-------------|
-| `src/features/clustering/services/similarityService.ts` | NEW | ~70 |
-| `src/features/clustering/services/__tests__/similarityService.test.ts` | NEW | ~120 |
-| `src/features/clustering/types/cluster.ts` | NEW | ~30 |
+| `src/features/clustering/types/cluster.ts` | NEW | ~25 |
+| `src/features/clustering/stores/clusterSlice.ts` | NEW | ~55 |
+| `src/features/clustering/stores/__tests__/clusterSlice.test.ts` | NEW | ~60 |
+| `src/features/canvas/stores/canvasStore.ts` | EDIT | +3 lines (compose slice) |
 
 ### Implementation
 
@@ -44,11 +45,10 @@ A service that computes pairwise content similarity between nodes using TF-IDF v
 
 ```typescript
 export interface ClusterGroup {
-  readonly id: string;                    // unique cluster ID
-  readonly nodeIds: readonly string[];    // nodes in this cluster
-  readonly label: string;                 // AI-generated or default label
-  readonly color: string;                 // CSS variable name, e.g. '--cluster-color-1'
-  readonly boundingBox: ClusterBounds;    // computed from node positions
+  readonly id: string;
+  readonly nodeIds: readonly string[];
+  readonly label: string;
+  readonly colorIndex: number;  // 0-7, indexes into CSS variable palette
 }
 
 export interface ClusterBounds {
@@ -58,104 +58,167 @@ export interface ClusterBounds {
   readonly height: number;
 }
 
-export interface SimilarityResult {
-  readonly clusters: readonly ClusterGroup[];
-  readonly unclustered: readonly string[];  // nodes that didn't fit any cluster
+// Computed at render time, NOT stored — avoids stale data on drag
+export interface ClusterGroupWithBounds extends ClusterGroup {
+  readonly bounds: ClusterBounds;
 }
 ```
 
-**`similarityService.ts`**:
+Key difference from original plan: **No `boundingBox` stored in ClusterGroup**. Bounding boxes are derived at render time from current node positions. This eliminates the entire `updateClusterBounds` action, the `onNodeDragStop` hook, and the stale-bounds problem. Cheaper to compute 8 bounding boxes per frame than to maintain sync.
+
+**Why `colorIndex` not CSS variable name**: Storing `'--cluster-color-1'` as a string in the type is fragile (rename breaks it) and violates separation of concerns (CSS implementation detail in data model). An integer index is pure data; the component maps it to `var(--cluster-color-${index + 1})`.
+
+**`clusterSlice.ts`**:
 
 ```typescript
-export function computeClusters(
-  nodes: readonly CanvasNode[],
-  minClusterSize: number = 2,
-  similarityThreshold: number = 0.15
-): SimilarityResult
+export interface ClusterSlice {
+  clusterGroups: readonly ClusterGroup[];
+  setClusterGroups: (groups: ClusterGroup[]) => void;
+  clearClusterGroups: () => void;
+  pruneDeletedNodes: (existingNodeIds: ReadonlySet<string>) => void;
+}
+
+// Zustand slice creator pattern
+export const createClusterSlice: StateCreator<ClusterSlice> = (set) => ({
+  clusterGroups: [],
+  setClusterGroups: (groups) => set({ clusterGroups: groups }),
+  clearClusterGroups: () => set({ clusterGroups: [] }),
+  pruneDeletedNodes: (existingNodeIds) => set((state) => ({
+    clusterGroups: state.clusterGroups
+      .map((g) => ({ ...g, nodeIds: g.nodeIds.filter((id) => existingNodeIds.has(id)) }))
+      .filter((g) => g.nodeIds.length >= 2),
+  })),
+});
 ```
 
-**Algorithm**:
-1. Extract text per node: `heading + ' ' + output` (plain text, no HTML)
-2. Build TF-IDF vectors using existing `computeTfIdf` from `nodePoolBuilder.ts` (refactored to a shared utility if needed)
-3. Compute cosine similarity matrix (pairwise)
-4. Agglomerative clustering:
-   - Start: each node is its own cluster
-   - Merge: repeatedly merge the two most similar clusters (average linkage)
-   - Stop: when max inter-cluster similarity drops below `similarityThreshold`
-   - Filter: remove clusters smaller than `minClusterSize`
-5. Assign colors from a rotating palette of CSS variable names (`--cluster-color-1` through `--cluster-color-8`)
-6. Compute bounding box per cluster from node positions + padding (40px)
-7. Default labels: `Cluster 1`, `Cluster 2`, etc. (AI labeling happens separately in 4B)
+**canvasStore.ts** — compose:
 
-**Security**: Pure computation on in-memory node data. No external calls. No user input used as code.
+```typescript
+// Add to canvasStore creation (3 lines):
+...createClusterSlice(set, get, store),
+```
+
+This keeps canvasStore at ~285 lines (under 300).
 
 ### TDD Tests
 
 ```
-1. 2 similar nodes → grouped in 1 cluster
-2. 2 dissimilar nodes → 2 separate clusters (or unclustered)
-3. 5 nodes, 3 similar + 2 similar → 2 clusters
-4. Single node → unclustered (below minClusterSize)
-5. All identical content → 1 cluster containing all
-6. All completely different → all unclustered
-7. Empty nodes (no heading/output) → excluded from clustering
-8. Bounding box correctly encloses all node positions + padding
-9. Colors rotate through palette (no two adjacent clusters same color)
-10. 50 nodes → completes in < 100ms (performance test)
-11. Threshold 0 → every node in its own cluster
-12. Threshold 1 → all nodes in one cluster
+1. setClusterGroups replaces cluster state atomically
+2. clearClusterGroups resets to []
+3. pruneDeletedNodes removes stale nodeIds from all clusters
+4. pruneDeletedNodes removes clusters that drop below 2 nodes
+5. Initial state has empty clusterGroups
+6. Cluster state accessible via selector: useCanvasStore((s) => s.clusterGroups)
 ```
 
 ### Tech Debt Checkpoint
 
-- [ ] File under 300 lines
-- [ ] Reuses TF-IDF infrastructure (DRY — no reimplementation)
-- [ ] Pure function — no side effects
+- [ ] clusterSlice under 60 lines
+- [ ] canvasStore stays under 300 lines
 - [ ] No `any` types
+- [ ] No bounding box in stored state (computed at render)
 - [ ] Zero lint errors
 
 ---
 
-## Sub-phase 4B: AI Cluster Labeling
+## Sub-phase 4B: Content Similarity & Clustering Algorithm
 
 ### What We Build
 
-A service that sends cluster node summaries to Gemini and receives short descriptive labels.
+A pure service that computes pairwise content similarity between nodes using TF-IDF cosine similarity, then groups them via agglomerative clustering.
 
 ### Files
 
 | File | Action | Lines (est.) |
 |------|--------|-------------|
-| `src/features/clustering/services/clusterLabelService.ts` | NEW | ~45 |
-| `src/features/clustering/services/__tests__/clusterLabelService.test.ts` | NEW | ~60 |
-| `src/shared/localization/clusterStrings.ts` | NEW | ~30 |
-| `src/shared/localization/strings.ts` | EDIT | +2 lines |
+| `src/features/clustering/services/similarityService.ts` | NEW | ~80 |
+| `src/features/clustering/services/__tests__/similarityService.test.ts` | NEW | ~120 |
 
 ### Implementation
 
-**`clusterStrings.ts`**:
+**`similarityService.ts`**:
 
 ```typescript
-export const clusterStrings = {
-  labels: {
-    cluster: 'Cluster',
-    suggestClusters: 'Suggest clusters',
-    accept: 'Accept',
-    dismiss: 'Dismiss',
-    recluster: 'Re-cluster',
-    clearClusters: 'Clear clusters',
-    clustering: 'Analyzing themes...',
-    noThemes: 'No clear themes detected',
-    unclustered: 'Unclustered',
-  },
-  prompts: {
-    labelInstruction: 'Given the following group of related ideas, provide a short label (2-4 words) that describes their common theme. Return ONLY the label text, nothing else.',
-    ideaPrefix: 'Idea',
-  },
-} as const;
+import { tokenizeRaw } from '@/features/knowledgeBank/services/relevanceScorer';
+import { buildCorpusIDF } from '@/features/knowledgeBank/services/tfidfScorer';
+
+export function computeClusters(
+  nodes: readonly CanvasNode[],
+  options?: { minClusterSize?: number; similarityThreshold?: number }
+): SimilarityResult
 ```
 
-**`clusterLabelService.ts`**:
+**Algorithm**:
+1. Extract text per node: `(heading ?? '') + ' ' + (output ?? '')` (plain text, strip HTML via existing sanitizer)
+2. Tokenize each node's text via `tokenizeRaw()` (preserves duplicates for TF-IDF)
+3. Build TF-IDF vectors using `buildCorpusIDF()` from existing `tfidfScorer.ts`
+4. Compute cosine similarity matrix (pairwise) — this is the new math:
+   ```typescript
+   function cosineSimilarity(vecA: Map<string, number>, vecB: Map<string, number>): number
+   function buildTfIdfVector(tokens: string[], idfMap: Map<string, number>): Map<string, number>
+   ```
+5. Agglomerative clustering (average linkage):
+   - Start: each node is its own cluster
+   - Merge: repeatedly merge the two most similar clusters
+   - Stop: when max inter-cluster similarity drops below `similarityThreshold` (default: 0.15)
+   - Filter: remove clusters smaller than `minClusterSize` (default: 2)
+6. Assign `colorIndex` 0-7 using a graph-coloring heuristic: adjacent clusters (sharing a bounding-box overlap) get different colors. Fallback to round-robin if no adjacency.
+7. Default labels: `'Cluster 1'`, `'Cluster 2'`, etc. (AI labeling is a separate step)
+
+**Why reuse existing TF-IDF**: `tfidfScorer.ts` already has `buildCorpusIDF()` and `computeTF()`. The clustering service only adds `buildTfIdfVector()` (TF * IDF per term) and `cosineSimilarity()` — two small pure functions. No duplication.
+
+**Complexity**: O(n^2) for the similarity matrix, O(n^2 log n) for agglomerative clustering. For n=500, this is ~250K comparisons — completes in <50ms on modern hardware. For n=1000+, the plan includes an input cap (cluster only the first 500 nodes by content length, rest go to "unclustered").
+
+**Security**: Pure computation on in-memory data. No external calls. No user input used as code.
+
+### TDD Tests
+
+```
+1. 2 similar nodes -> grouped in 1 cluster
+2. 2 dissimilar nodes -> both unclustered
+3. 5 nodes, 3 similar + 2 similar -> 2 clusters
+4. Single node -> unclustered (below minClusterSize)
+5. All identical content -> 1 cluster containing all
+6. All completely different -> all unclustered
+7. Empty nodes (no heading/output) -> excluded from clustering
+8. colorIndex values are 0-7 (within palette range)
+9. Adjacent clusters (overlapping bounds) get different colorIndex
+10. 100 nodes -> completes in < 200ms (performance test)
+11. threshold=0 -> every node unclustered (nothing merges)
+12. threshold=1 -> all nodes in one cluster
+13. Nodes > 500 -> capped, excess goes to unclustered
+14. cosineSimilarity of identical vectors -> 1.0
+15. cosineSimilarity of orthogonal vectors -> 0.0
+```
+
+### Tech Debt Checkpoint
+
+- [ ] File under 100 lines (helper functions extracted if needed)
+- [ ] Imports from existing tfidfScorer/relevanceScorer (no reimplementation)
+- [ ] Pure functions — no side effects, no store access
+- [ ] Input capped at 500 nodes
+- [ ] No `any` types
+- [ ] Zero lint errors
+
+---
+
+## Sub-phase 4C: AI Cluster Labeling
+
+### What We Build
+
+A service that sends cluster content summaries to Gemini and receives short descriptive labels. Uses a **single batched call** for all clusters (not one call per cluster).
+
+### Files
+
+| File | Action | Lines (est.) |
+|------|--------|-------------|
+| `src/features/clustering/services/clusterLabelService.ts` | NEW | ~50 |
+| `src/features/clustering/services/__tests__/clusterLabelService.test.ts` | NEW | ~70 |
+| `src/shared/localization/clusterStrings.ts` | NEW | ~25 |
+
+### Implementation
+
+**Why a single batched call**: The original plan fired one Gemini call per cluster (8 clusters = 8 API calls). A single call is cheaper, faster, and avoids rate limiting:
 
 ```typescript
 export async function labelClusters(
@@ -164,96 +227,78 @@ export async function labelClusters(
 ): Promise<readonly ClusterGroup[]>
 ```
 
-**Flow**:
-1. For each cluster, collect node headings (first 5 nodes max — budget control)
-2. Build prompt: `labelInstruction` + listed headings
-3. Call Gemini (lightweight call — short response expected)
-4. Parse response: trim whitespace, take first line, clamp to 40 chars
-5. Return clusters with updated `label` fields
-6. On error per cluster: keep default label (`Cluster N`), log warning, continue
+**Prompt structure** (single call):
 
-**Parallelization**: All cluster labeling calls fire in parallel via `Promise.allSettled()`. Each is independent.
+```
+You are labeling groups of related ideas. For each numbered group below,
+provide a short label (2-4 words) that describes the common theme.
+Return ONLY the labels, one per line, in order.
 
-**Security**: Node headings placed in clearly delimited prompt blocks. Response clamped to 40 chars (prevents injection of long content). No HTML in labels.
+Group 1:
+- "Heading A"
+- "Heading B"
+- "Heading C"
+
+Group 2:
+- "Heading D"
+- "Heading E"
+```
+
+**Response parsing**:
+1. Split response by newlines
+2. Trim each line, remove leading numbering (e.g., "1. " or "1) ")
+3. Clamp each label to 40 characters
+4. If fewer lines than clusters, keep default labels for unmatched ones
+5. Sanitize: strip HTML tags, trim whitespace
+
+**Budget control**: Max 5 headings per cluster in the prompt. Max 10 clusters per call. If more than 10 clusters, only label the largest 10; rest keep default labels.
+
+**Error handling**: If the Gemini call fails entirely, all clusters keep their default `'Cluster N'` labels. No toast — silent degradation (labels are a nice-to-have, not critical).
+
+**`clusterStrings.ts`**:
+
+```typescript
+export const clusterStrings = {
+  labels: {
+    cluster: 'Cluster',
+    suggestClusters: 'Find themes',
+    accept: 'Accept',
+    dismiss: 'Dismiss',
+    clearClusters: 'Clear themes',
+    analyzing: 'Analyzing themes...',
+    noThemes: 'No clear themes detected',
+    unclustered: 'Unclustered',
+    foundThemes: (count: number) => `Found ${count} theme${count !== 1 ? 's' : ''}`,
+  },
+  prompts: {
+    labelInstruction: 'You are labeling groups of related ideas. For each numbered group below, provide a short label (2-4 words) that describes the common theme. Return ONLY the labels, one per line, in order.',
+    groupPrefix: 'Group',
+  },
+} as const;
+```
 
 ### TDD Tests
 
 ```
-1. Single cluster → Gemini called with headings → label updated
-2. 3 clusters → 3 parallel Gemini calls
-3. Gemini error for 1 cluster → that cluster keeps default label, others labeled
-4. Response > 40 chars → truncated
-5. Response with multiple lines → only first line used
-6. Empty cluster → skipped (no Gemini call)
-7. All prompts use clusterStrings constants
+1. Single cluster -> Gemini called with headings -> label updated
+2. 3 clusters -> single Gemini call with all 3 groups
+3. Gemini error -> all clusters keep default labels, no throw
+4. Response line > 40 chars -> truncated
+5. Response with fewer lines than clusters -> unmatched keep defaults
+6. Response with leading numbers ("1. Label") -> numbers stripped
+7. Cluster with > 5 nodes -> only first 5 headings in prompt
+8. > 10 clusters -> only 10 largest labeled, rest keep defaults
+9. All prompts use clusterStrings constants
+10. Labels sanitized: no HTML tags in output
 ```
 
 ### Tech Debt Checkpoint
 
-- [ ] File under 300 lines
-- [ ] All strings from `clusterStrings`
-- [ ] Response sanitized (length clamped, trimmed)
-- [ ] Graceful degradation per cluster
-- [ ] Zero lint errors
-
----
-
-## Sub-phase 4C: Canvas Store Extension for Clusters
-
-### What We Build
-
-Add `clusterGroups` state and actions to `useCanvasStore`.
-
-### Files
-
-| File | Action | Lines (est.) |
-|------|--------|-------------|
-| `src/features/canvas/stores/canvasStore.ts` | EDIT | +15 lines |
-| `src/features/clustering/types/cluster.ts` | Already created in 4A |
-| `src/features/canvas/stores/__tests__/canvasStore.cluster.test.ts` | NEW | ~60 |
-
-### Implementation
-
-**New state field**:
-```typescript
-clusterGroups: ClusterGroup[]  // default: []
-```
-
-**New actions**:
-```typescript
-setClusterGroups: (groups: ClusterGroup[]) => void
-clearClusterGroups: () => void
-updateClusterBounds: () => void  // recalculates bounding boxes from current node positions
-```
-
-**`setClusterGroups`**: Single `setState` call — atomic update, no cascading.
-
-**`updateClusterBounds`**: Called after node drag ends (not during — performance). Reads current node positions, recomputes `boundingBox` for each cluster. Uses `getState()` internally — no selector closure risk.
-
-**Integration with existing persistence**: `clusterGroups` serialized alongside nodes/edges in Firestore. Added to the workspace save/load cycle.
-
-**Zustand safety**:
-- `clusterGroups` accessed via selector: `useCanvasStore((s) => s.clusterGroups)`
-- `setClusterGroups` called via `getState()`
-- `updateClusterBounds` hooked to ReactFlow's `onNodeDragStop` (existing handler in `useCanvasHandlers.ts`)
-- No intermediate state — single atomic update
-
-### TDD Tests
-
-```
-1. setClusterGroups replaces cluster state atomically
-2. clearClusterGroups resets to []
-3. updateClusterBounds recalculates from current node positions
-4. Cluster state survives node deletion (orphaned nodeIds filtered out)
-5. Initial state has empty clusterGroups
-```
-
-### Tech Debt Checkpoint
-
-- [ ] canvasStore stays under 300 lines (currently 282 + 15 = 297 — tight but OK)
-- [ ] If over 300: extract cluster slice to `clices/clusterSlice.ts` and merge
-- [ ] Single setState per action
-- [ ] No closure variables
+- [ ] File under 60 lines
+- [ ] All strings from clusterStrings
+- [ ] Single API call (not per-cluster)
+- [ ] Response sanitized (length clamped, trimmed, HTML stripped)
+- [ ] Graceful degradation on error
 - [ ] Zero lint errors
 
 ---
@@ -262,118 +307,168 @@ updateClusterBounds: () => void  // recalculates bounding boxes from current nod
 
 ### What We Build
 
-A React component that draws translucent colored rectangles behind clustered nodes, with labels.
+A React component that draws translucent colored boundaries behind clustered nodes with labels. Boundaries are computed from current node positions at render time (no stored bounding boxes).
 
 ### Files
 
 | File | Action | Lines (est.) |
 |------|--------|-------------|
-| `src/features/clustering/components/ClusterBoundary.tsx` | NEW | ~55 |
-| `src/features/clustering/components/ClusterBoundary.module.css` | NEW | ~40 |
-| `src/features/clustering/components/__tests__/ClusterBoundary.test.tsx` | NEW | ~70 |
-| `src/features/canvas/components/CanvasView.tsx` | EDIT | +5 lines (render ClusterBoundaries) |
-| `src/styles/variables.css` | EDIT | +10 lines (cluster color palette) |
+| `src/features/clustering/components/ClusterBoundaries.tsx` | NEW | ~65 |
+| `src/features/clustering/components/ClusterBoundaries.module.css` | NEW | ~40 |
+| `src/features/clustering/components/__tests__/ClusterBoundaries.test.tsx` | NEW | ~70 |
+| `src/features/canvas/components/CanvasView.tsx` | EDIT | +5 lines |
+| `src/styles/cluster-colors.css` | NEW | ~15 |
+| `src/styles/variables.css` | EDIT | +1 line (import) |
 
 ### Implementation
 
-**`variables.css`** — cluster color palette:
+**Why a separate `cluster-colors.css`**: `variables.css` is at **292/300 lines**. Adding 12 cluster color variables would overflow. A separate file follows CLAUDE.md's SOLID principle (single responsibility) and is imported by `variables.css` via `@import`.
+
+**`cluster-colors.css`**:
+
 ```css
---cluster-color-1: oklch(0.85 0.12 200);  /* cyan-blue */
---cluster-color-2: oklch(0.85 0.12 140);  /* green */
---cluster-color-3: oklch(0.85 0.12 320);  /* purple */
---cluster-color-4: oklch(0.85 0.12 60);   /* amber */
---cluster-color-5: oklch(0.85 0.12 20);   /* coral */
---cluster-color-6: oklch(0.85 0.12 260);  /* indigo */
---cluster-color-7: oklch(0.85 0.12 100);  /* lime */
---cluster-color-8: oklch(0.85 0.12 350);  /* pink */
---cluster-opacity: 0.08;
---cluster-border-opacity: 0.25;
---cluster-label-opacity: 0.7;
+/* Cluster group color palette — 8 hues evenly spaced in oklch */
+:root {
+  --cluster-color-1: oklch(0.85 0.10 200);  /* cyan */
+  --cluster-color-2: oklch(0.85 0.10 140);  /* green */
+  --cluster-color-3: oklch(0.85 0.10 310);  /* purple */
+  --cluster-color-4: oklch(0.85 0.10 60);   /* amber */
+  --cluster-color-5: oklch(0.85 0.10 20);   /* coral */
+  --cluster-color-6: oklch(0.85 0.10 260);  /* indigo */
+  --cluster-color-7: oklch(0.85 0.10 100);  /* lime */
+  --cluster-color-8: oklch(0.85 0.10 350);  /* pink */
+  --cluster-bg-opacity: 0.08;
+  --cluster-border-opacity: 0.3;
+  --cluster-label-opacity: 0.7;
+  --cluster-boundary-padding: 40px;
+  --cluster-boundary-radius: var(--radius-xl);
+}
 ```
 
-**`ClusterBoundary.tsx`**:
+**`ClusterBoundaries.tsx`** — renders ALL boundaries in a single component:
 
 ```typescript
-interface ClusterBoundaryProps {
-  readonly cluster: ClusterGroup;
+interface ClusterBoundariesProps {
+  readonly clusters: readonly ClusterGroup[];
+  readonly nodes: readonly CanvasNode[];
 }
 
-export const ClusterBoundary = React.memo(function ClusterBoundary({
-  cluster
-}: ClusterBoundaryProps) {
-  // Positioned absolutely within ReactFlow's viewport layer
-  // ReactFlow transforms handle zoom/pan automatically
-  const { x, y, width, height } = cluster.boundingBox;
+export const ClusterBoundaries = React.memo(function ClusterBoundaries({
+  clusters, nodes,
+}: ClusterBoundariesProps) {
+  const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+
+  const clustersWithBounds = useMemo(() =>
+    clusters.map((cluster) => ({
+      ...cluster,
+      bounds: computeBoundsFromNodes(cluster.nodeIds, nodeMap),
+    })).filter((c) => c.bounds !== null),
+    [clusters, nodeMap],
+  );
 
   return (
-    <div
-      className={styles.boundary}
-      style={{
-        transform: `translate(${x}px, ${y}px)`,
-        width: `${width}px`,
-        height: `${height}px`,
-        backgroundColor: `var(${cluster.color})`,
-      }}
-      role="group"
-      aria-label={cluster.label}
-    >
-      <span className={styles.label}>{cluster.label}</span>
-    </div>
+    <>
+      {clustersWithBounds.map((cluster) => (
+        <div
+          key={cluster.id}
+          className={styles.boundary}
+          style={{
+            transform: `translate(${cluster.bounds.x}px, ${cluster.bounds.y}px)`,
+            width: `${cluster.bounds.width}px`,
+            height: `${cluster.bounds.height}px`,
+            '--cluster-hue': `var(--cluster-color-${cluster.colorIndex + 1})`,
+          } as React.CSSProperties}
+          role="group"
+          aria-label={cluster.label}
+        >
+          <span className={styles.label}>{cluster.label}</span>
+        </div>
+      ))}
+    </>
   );
 });
 ```
 
-**CSS**:
-- `.boundary`: `position: absolute`, `opacity: var(--cluster-opacity)`, `border-radius: var(--radius-xl)`, `border: 2px solid` with `opacity: var(--cluster-border-opacity)`, `pointer-events: none` (click-through to nodes)
-- `.label`: `position: absolute`, `top: calc(-1 * var(--space-lg))`, `left: var(--space-sm)`, `font-size: var(--font-size-sm)`, `color: var(--color-text-secondary)`, `opacity: var(--cluster-label-opacity)`
+**`computeBoundsFromNodes`** — pure helper (~15 lines):
 
-**CanvasView.tsx** — render cluster boundaries below nodes:
 ```typescript
-// Inside the ReactFlow component, as a background layer
-const clusterGroups = useCanvasStore((s) => s.clusterGroups);
-// ... render ClusterBoundary for each group
+function computeBoundsFromNodes(
+  nodeIds: readonly string[],
+  nodeMap: ReadonlyMap<string, CanvasNode>
+): ClusterBounds | null {
+  const clusterNodes = nodeIds.map((id) => nodeMap.get(id)).filter(Boolean);
+  if (clusterNodes.length === 0) return null;
+
+  const padding = 40; // matches --cluster-boundary-padding
+  const minX = Math.min(...clusterNodes.map((n) => n.position.x)) - padding;
+  const minY = Math.min(...clusterNodes.map((n) => n.position.y)) - padding;
+  const maxX = Math.max(...clusterNodes.map((n) => n.position.x + (n.width ?? 200))) + padding;
+  const maxY = Math.max(...clusterNodes.map((n) => n.position.y + (n.height ?? 100))) + padding;
+
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
 ```
 
-**Performance**: `React.memo` on each boundary. Boundaries only re-render when their specific cluster's bounds change. `pointer-events: none` ensures no interference with node interactions.
+Key difference: **Uses `n.width` and `n.height`**, not just position. The original plan only said "node positions + padding" which would produce boundaries that clip the right/bottom edges of nodes.
+
+**CanvasView.tsx** — insert between Background and ZoomControls:
+
+```typescript
+const clusterGroups = useCanvasStore((s) => s.clusterGroups);
+
+// Inside ReactFlow:
+{clusterGroups.length > 0 && (
+  <ClusterBoundaries clusters={clusterGroups} nodes={nodes} />
+)}
+```
+
+**CSS**:
+- `.boundary`: `position: absolute`, `pointer-events: none`, background uses `var(--cluster-hue)` with opacity, rounded corners, dashed border
+- `.label`: positioned above boundary top-left, `font-size: var(--font-size-sm)`, `color: var(--color-text-secondary)`
+
+**Performance**: `React.memo` + `useMemo` on `clustersWithBounds`. Boundaries only re-render when `clusters` or `nodes` reference changes. `pointer-events: none` ensures no interference with node interactions.
 
 ### TDD Tests
 
 ```
-1. Renders boundary at correct position and size
+1. Renders boundary at correct position (accounts for node width/height)
 2. Label text matches cluster.label
-3. Background color uses cluster.color CSS variable
+3. Background color uses cluster colorIndex mapped to CSS variable
 4. pointer-events: none (no click interference)
 5. React.memo prevents unnecessary re-renders
 6. aria-label set for accessibility
 7. No boundaries rendered when clusterGroups is empty
-8. Multiple clusters render independently
+8. Cluster with all deleted nodes -> filtered out (bounds = null)
+9. Boundary padding is 40px on each side
 ```
 
 ### Tech Debt Checkpoint
 
-- [ ] Component under 100 lines
+- [ ] Component under 75 lines
+- [ ] variables.css stays under 300 lines (cluster colors in separate file)
 - [ ] All CSS uses variables
 - [ ] React.memo applied
-- [ ] No Zustand anti-patterns (single selector for clusterGroups)
+- [ ] Bounds computed at render (no stored bounding boxes to go stale)
+- [ ] No Zustand anti-patterns
 - [ ] Zero lint errors
 
 ---
 
-## Sub-phase 4E: Cluster Suggestion UI
+## Sub-phase 4E: Cluster Suggestion UI & Orchestration
 
 ### What We Build
 
-A "Cluster" button in workspace controls that triggers clustering, shows a preview, and lets users accept or dismiss.
+A "Find themes" button in workspace controls that triggers clustering, shows a preview notification, and lets users accept or dismiss.
 
 ### Files
 
 | File | Action | Lines (est.) |
 |------|--------|-------------|
-| `src/features/clustering/hooks/useClusterSuggestion.ts` | NEW | ~70 |
+| `src/features/clustering/hooks/useClusterSuggestion.ts` | NEW | ~65 |
 | `src/features/clustering/hooks/__tests__/useClusterSuggestion.test.ts` | NEW | ~100 |
-| `src/features/clustering/components/ClusterPreviewBar.tsx` | NEW | ~45 |
-| `src/features/clustering/components/ClusterPreviewBar.module.css` | NEW | ~30 |
-| `src/features/clustering/components/__tests__/ClusterPreviewBar.test.tsx` | NEW | ~60 |
+| `src/features/clustering/components/ClusterPreviewBar.tsx` | NEW | ~40 |
+| `src/features/clustering/components/ClusterPreviewBar.module.css` | NEW | ~25 |
+| `src/features/clustering/components/__tests__/ClusterPreviewBar.test.tsx` | NEW | ~50 |
 | `src/features/workspace/components/WorkspaceControls.tsx` | EDIT | +8 lines |
 
 ### Implementation
@@ -381,45 +476,58 @@ A "Cluster" button in workspace controls that triggers clustering, shows a previ
 **`useClusterSuggestion.ts`**:
 
 ```typescript
-interface UseClusterSuggestionReturn {
-  readonly suggestClusters: () => Promise<void>;
-  readonly acceptClusters: () => void;
-  readonly dismissClusters: () => void;
-  readonly isClustering: boolean;
-  readonly previewGroups: readonly ClusterGroup[] | null;  // null = no preview
+type ClusterPhase = 'idle' | 'computing' | 'labeling' | 'preview';
+
+interface ClusterSuggestionState {
+  phase: ClusterPhase;
+  previewGroups: readonly ClusterGroup[] | null;
 }
 
-export function useClusterSuggestion(): UseClusterSuggestionReturn
+export function useClusterSuggestion(): {
+  suggestClusters: () => Promise<void>;
+  acceptClusters: () => void;
+  dismissClusters: () => void;
+  phase: ClusterPhase;
+  previewGroups: readonly ClusterGroup[] | null;
+}
 ```
 
 **Flow**:
 1. `suggestClusters()`:
-   - Read nodes from `getState()` (fresh, no closure)
-   - Call `computeClusters(nodes)`
-   - Call `labelClusters(clusters, nodes)` (AI labeling)
-   - Set `previewGroups` in local `useReducer` state
-   - Render preview boundaries with dashed borders (visual distinction from accepted)
+   - Set phase to `'computing'`
+   - Read nodes from `useCanvasStore.getState().nodes` (fresh, no closure)
+   - Call `computeClusters(nodes)` (sync, pure)
+   - If no clusters found: toast "No clear themes detected", return to `'idle'`
+   - Set phase to `'labeling'`
+   - Call `labelClusters(clusters, nodes)` (async, Gemini)
+   - Set `previewGroups`, phase to `'preview'`
+   - Render preview boundaries (with dashed borders — CSS class `styles.preview`)
 2. `acceptClusters()`:
    - Call `useCanvasStore.getState().setClusterGroups(previewGroups)`
-   - Optionally auto-arrange nodes into cluster formations
-   - Clear preview state
+   - Clear preview state, return to `'idle'`
 3. `dismissClusters()`:
-   - Clear preview state (no store mutation)
+   - Clear preview state, return to `'idle'` (no store mutation)
 
-**Zustand safety**: All store reads inside callbacks use `getState()`. Preview state is local `useReducer` — completely isolated from canvas store.
+**Preview rendering**: When `phase === 'preview'`, ClusterBoundaries receives the preview groups with a `isPreview` flag that applies dashed borders instead of solid.
 
-**`ClusterPreviewBar.tsx`** — floating notification bar:
+**Zustand safety**: All store reads use `getState()` inside callbacks. Preview state is local `useReducer` — completely isolated from canvas store.
+
+**`ClusterPreviewBar.tsx`** — floating notification:
+
 ```typescript
 // Shows: "Found 3 themes  [Accept] [Dismiss]"
-// Positioned at bottom of canvas, above zoom controls
+// Positioned at bottom-center of canvas, above zoom controls
 ```
 
-**WorkspaceControls.tsx** — add cluster button:
+**WorkspaceControls.tsx** — add button:
+
 ```typescript
-<button onClick={suggestClusters} disabled={isClustering}
-  aria-label={clusterStrings.labels.suggestClusters}>
-  <ClusterIcon size={20} />
-</button>
+<TooltipButton
+  icon={<ClusterIcon />}
+  label={clusterStrings.labels.suggestClusters}
+  onClick={suggestClusters}
+  disabled={phase !== 'idle'}
+/>
 ```
 
 ### TDD Tests
@@ -427,29 +535,31 @@ export function useClusterSuggestion(): UseClusterSuggestionReturn
 **useClusterSuggestion.test.ts**:
 ```
 1. suggestClusters calls computeClusters with current nodes
-2. suggestClusters calls labelClusters for AI labels
-3. Preview groups set after successful clustering
+2. suggestClusters calls labelClusters after computing
+3. Preview groups set after successful labeling
 4. acceptClusters commits to canvas store (single setState)
 5. dismissClusters clears preview without store mutation
-6. isClustering = true during processing
-7. Error → preview stays null, toast shown
-8. No stale closures (uses getState() inside callbacks)
+6. phase transitions: idle -> computing -> labeling -> preview
+7. No clusters found -> toast shown, returns to idle
+8. Labeling error -> preview shown with default labels (graceful)
+9. No stale closures (uses getState() inside callbacks)
 ```
 
 **ClusterPreviewBar.test.tsx**:
 ```
-1. Renders cluster count text
+1. Renders theme count text from clusterStrings
 2. Accept button calls acceptClusters
 3. Dismiss button calls dismissClusters
 4. Not rendered when previewGroups is null
-5. All labels from clusterStrings
+5. Shows "Analyzing themes..." during computing/labeling phase
+6. All labels from clusterStrings
 ```
 
 ### Tech Debt Checkpoint
 
 - [ ] Hook under 75 lines
-- [ ] Component under 100 lines
-- [ ] Local useReducer for preview state
+- [ ] Component under 50 lines
+- [ ] Local useReducer for preview state (no store pollution)
 - [ ] All strings from clusterStrings
 - [ ] WorkspaceControls stays under 100 lines
 - [ ] Zero lint errors
@@ -460,94 +570,189 @@ export function useClusterSuggestion(): UseClusterSuggestionReturn
 
 ### What We Build
 
-Progressive node simplification at low zoom levels.
+Progressive node simplification at low zoom levels using CSS-only visibility switching (no React re-renders on zoom change).
+
+### Architecture Decision: CSS-Only Approach
+
+The original plan used conditional rendering (`{zoomLevel === 'dot' ? <Dot/> : <Full/>}`). This causes a **performance cliff**: when crossing a zoom threshold, ALL 500+ nodes unmount their TipTap editors and remount dots simultaneously. A single frame spike.
+
+The CSS approach: set a `data-zoom-level` attribute on the canvas container, and use CSS descendant selectors to hide/show content sections. Zero React re-renders. TipTap editors stay mounted but invisible (`display: none`), preserving their state.
 
 ### Files
 
 | File | Action | Lines (est.) |
 |------|--------|-------------|
-| `src/features/canvas/hooks/useSemanticZoom.ts` | NEW | ~30 |
-| `src/features/canvas/components/nodes/IdeaCard.tsx` | EDIT | +8 lines |
-| `src/features/canvas/components/nodes/IdeaCard.module.css` | EDIT | +15 lines |
-| `src/features/canvas/hooks/__tests__/useSemanticZoom.test.ts` | NEW | ~40 |
-| `src/styles/variables.css` | EDIT | +3 lines |
+| `src/features/canvas/hooks/useSemanticZoom.ts` | NEW | ~25 |
+| `src/features/canvas/components/CanvasView.tsx` | EDIT | +5 lines |
+| `src/features/canvas/components/nodes/IdeaCard.module.css` | EDIT | +12 lines |
+| `src/features/canvas/hooks/__tests__/useSemanticZoom.test.ts` | NEW | ~30 |
 
 ### Implementation
 
-**`useSemanticZoom.ts`**:
+**`useSemanticZoom.ts`** — sets a data attribute on the canvas container:
 
 ```typescript
+const HEADING_THRESHOLD = 0.5;
+const DOT_THRESHOLD = 0.25;
+
 export type ZoomLevel = 'full' | 'heading' | 'dot';
 
-export function useSemanticZoom(): ZoomLevel {
-  // Read zoom from ReactFlow's internal store — this is the sanctioned pattern
-  const zoom = useStore((s) => s.transform[2]);  // ReactFlow useStore, NOT Zustand
+export function useSemanticZoom(containerRef: React.RefObject<HTMLElement>): void {
+  // Read zoom from ReactFlow's internal store (sanctioned pattern)
+  const zoom = useStore((s) => s.transform[2]);
 
-  if (zoom >= 0.5) return 'full';
-  if (zoom >= 0.25) return 'heading';
-  return 'dot';
+  const level: ZoomLevel = zoom >= HEADING_THRESHOLD ? 'full'
+    : zoom >= DOT_THRESHOLD ? 'heading'
+    : 'dot';
+
+  // Set attribute imperatively — does NOT cause React re-renders
+  useEffect(() => {
+    containerRef.current?.setAttribute('data-zoom-level', level);
+  }, [level, containerRef]);
 }
 ```
 
-**`variables.css`**:
+**Key insight**: `useEffect` only fires when `level` changes (3 discrete values), not on every zoom tick. And it sets a DOM attribute, not React state — so zero component re-renders.
+
+**`IdeaCard.module.css`** — CSS descendant selectors:
+
 ```css
---semantic-zoom-heading-threshold: 0.5;
---semantic-zoom-dot-threshold: 0.25;
---semantic-zoom-dot-size: 24px;
+/* Semantic zoom: heading-only mode */
+[data-zoom-level="heading"] .contentSection,
+[data-zoom-level="heading"] .nodeUtilsBar,
+[data-zoom-level="heading"] .tagList {
+  display: none;
+}
+
+[data-zoom-level="heading"] .headingSection {
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Semantic zoom: dot mode */
+[data-zoom-level="dot"] .ideaCard {
+  width: var(--semantic-zoom-dot-size, 24px);
+  height: var(--semantic-zoom-dot-size, 24px);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+[data-zoom-level="dot"] .headingSection,
+[data-zoom-level="dot"] .contentSection,
+[data-zoom-level="dot"] .nodeUtilsBar,
+[data-zoom-level="dot"] .tagList {
+  display: none;
+}
 ```
 
-**IdeaCard.tsx** — conditional rendering:
+**CanvasView.tsx** — wire the hook:
+
 ```typescript
-const zoomLevel = useSemanticZoom();
+const containerRef = useRef<HTMLDivElement>(null);
+useSemanticZoom(containerRef);
 
-// In render:
-{zoomLevel === 'dot' ? (
-  <div className={styles.dotView} style={{ backgroundColor: nodeColorVar }} />
-) : (
-  <>
-    <IdeaCardHeadingSection ... />
-    {zoomLevel === 'full' && <IdeaCardContentSection ... />}
-  </>
-)}
+// On the wrapper div:
+<div ref={containerRef} className={getContainerClassName(isSwitching)} data-canvas-container>
 ```
 
-**CSS**:
-- `.dotView`: `width: var(--semantic-zoom-dot-size)`, `height: var(--semantic-zoom-dot-size)`, `border-radius: var(--radius-full)`, no border, just colored dot
-- `.headingOnly`: heading text uses `var(--font-size-sm)`, no padding, `overflow: hidden`, `text-overflow: ellipsis`, `white-space: nowrap`
-
-**Performance**: `useStore` from ReactFlow is already optimized — the selector `(s) => s.transform[2]` only triggers re-render when zoom changes. The conditional rendering eliminates heavy TipTap editors at low zoom, dramatically improving performance with 100+ nodes.
+**Performance**: CSS `display: none` removes elements from layout without unmounting React components. TipTap editors stay alive but invisible. Transitioning between zoom levels is a single DOM attribute change — the browser handles CSS recalculation, not React.
 
 ### TDD Tests
 
 ```
-1. zoom >= 0.5 → returns 'full'
-2. zoom 0.3 → returns 'heading'
-3. zoom 0.2 → returns 'dot'
-4. zoom exactly 0.5 → 'full' (boundary)
-5. zoom exactly 0.25 → 'heading' (boundary)
-6. IdeaCard at 'full' zoom → renders heading + content
-7. IdeaCard at 'heading' zoom → renders heading only
-8. IdeaCard at 'dot' zoom → renders colored dot
+1. zoom >= 0.5 -> sets data-zoom-level="full"
+2. zoom 0.3 -> sets data-zoom-level="heading"
+3. zoom 0.2 -> sets data-zoom-level="dot"
+4. zoom exactly 0.5 -> "full" (boundary)
+5. zoom exactly 0.25 -> "heading" (boundary)
+6. Attribute only changes on threshold crossing (not every zoom tick)
+7. Hook does not cause component re-render (imperative DOM update)
 ```
 
 ### Tech Debt Checkpoint
 
-- [ ] Hook under 75 lines (target: ~30)
-- [ ] IdeaCard stays under 100 lines
+- [ ] Hook under 30 lines
+- [ ] No React state for zoom level (imperative DOM attribute)
 - [ ] CSS uses variables
-- [ ] No Zustand involvement (uses ReactFlow's useStore)
+- [ ] No conditional rendering in IdeaCard (zero component changes)
+- [ ] CanvasView stays under 140 lines
 - [ ] Zero lint errors
 
 ---
 
-## Sub-phase 4G: Structural & Integration Tests
+## Sub-phase 4G: Persistence & Cleanup
+
+### What We Build
+
+Save/load cluster groups with workspace data. Prune deleted nodes from clusters on workspace load.
 
 ### Files
 
 | File | Action | Lines (est.) |
 |------|--------|-------------|
-| `src/features/clustering/__tests__/clustering.structural.test.ts` | NEW | ~50 |
-| `src/features/clustering/__tests__/clustering.integration.test.ts` | NEW | ~90 |
+| `src/features/workspace/services/workspaceService.ts` | EDIT | +8 lines (save/load clusterGroups field) |
+| `src/features/workspace/hooks/useWorkspaceLoader.ts` | EDIT | +5 lines (load + prune clusters) |
+| `src/features/workspace/types/workspace.ts` | EDIT | +2 lines (add clusterGroups to Workspace type) |
+
+### Implementation
+
+**Why metadata field, not subcollection**: Cluster data is tiny. 8 clusters x 15 nodeIds x 36 chars = ~4KB. It fits easily in the workspace document alongside `canvasSettings`, `name`, etc. This avoids:
+- A new Firestore subcollection
+- New security rules (`match /clusterGroups/{id}`)
+- A separate load/save cycle
+- An extra Firestore read on workspace switch
+
+**workspaceService.ts**:
+
+```typescript
+// In saveWorkspace():
+clusterGroups: removeUndefined(workspace.clusterGroups ?? []),
+
+// In loadWorkspace():
+clusterGroups: doc.data().clusterGroups ?? [],
+```
+
+**useWorkspaceLoader.ts** — on workspace load:
+
+```typescript
+// After loading nodes:
+const existingNodeIds = new Set(nodes.map((n) => n.id));
+useCanvasStore.getState().setClusterGroups(workspace.clusterGroups ?? []);
+useCanvasStore.getState().pruneDeletedNodes(existingNodeIds);
+```
+
+**Node deletion integration**: When nodes are deleted, clusters should be pruned. Add a call to `pruneDeletedNodes` after `deleteNode` in the relevant handler (or in the save cycle before persisting).
+
+### TDD Tests
+
+```
+1. Workspace saves with clusterGroups field
+2. Workspace loads with clusterGroups -> set in store
+3. Workspace without clusterGroups field -> defaults to []
+4. Clusters pruned of deleted nodeIds on load
+5. Clusters with < 2 nodes after pruning -> removed
+```
+
+### Tech Debt Checkpoint
+
+- [ ] workspaceService.ts stays under 300 lines
+- [ ] No new subcollection needed
+- [ ] No new Firestore security rules needed
+- [ ] Prune on load prevents orphan accumulation
+- [ ] Zero lint errors
+
+---
+
+## Sub-phase 4H: Structural & Integration Tests
+
+### Files
+
+| File | Action | Lines (est.) |
+|------|--------|-------------|
+| `src/features/clustering/__tests__/clustering.structural.test.ts` | NEW | ~45 |
+| `src/features/clustering/__tests__/clustering.integration.test.ts` | NEW | ~80 |
 
 ### Structural Tests
 
@@ -555,19 +760,22 @@ const zoomLevel = useSemanticZoom();
 1. All clustering files under 300 lines
 2. No hardcoded strings in components (grep scan)
 3. No any types in clustering feature
-4. ClusterBoundary uses React.memo
-5. No Zustand anti-patterns
-6. Cluster color variables defined in variables.css
+4. ClusterBoundaries uses React.memo
+5. No Zustand anti-patterns (bare destructuring scan)
+6. Cluster color variables defined in cluster-colors.css
+7. No bounding boxes stored in ClusterGroup type (computed at render)
+8. similarityService imports from existing tfidfScorer (no reimplementation)
 ```
 
 ### Integration Test
 
 ```
-1. Full flow: 10 nodes with 2 themes → computeClusters → 2 groups → label → accept → boundaries visible
-2. Accept + drag node → updateClusterBounds recalculates
-3. Clear clusters → boundaries removed
-4. Semantic zoom at 0.3 → nodes show headings only → cluster labels prominent
-5. Cluster with nodes deleted → cluster filtered on next updateBounds
+1. Full flow: 10 nodes with 2 themes -> computeClusters -> 2 groups -> label -> accept -> boundaries rendered
+2. Accept clusters -> save workspace -> reload -> clusters persisted
+3. Clear clusters -> boundaries removed
+4. Semantic zoom at 0.3 -> data-zoom-level="heading" on container
+5. Delete node in cluster -> prune on next load -> cluster updated
+6. Cluster with all nodes deleted -> cluster removed entirely
 ```
 
 ### Build Gate Checklist (Full Phase 4)
@@ -581,20 +789,58 @@ find src/features/clustering -name "*.ts*" | xargs wc -l | awk '$1 > 300'  # emp
 
 ---
 
-## Phase 4 Tech Debt Audit
+## Phase 4 Summary
 
-| Potential Debt | How We Prevented It |
+### Execution Order
+
+| Phase | What | Why This Order |
+|-------|------|----------------|
+| 4A | Types + store slice | Foundation: types used everywhere, store needed by all features |
+| 4B | Similarity service | Pure algorithm: no deps on UI or store (testable in isolation) |
+| 4C | AI labeling service | Depends on 4B output (ClusterGroup[]) |
+| 4D | Boundary renderer | Depends on 4A types + 4B output for visual testing |
+| 4E | Suggestion UI | Orchestrates 4B + 4C + 4D together |
+| 4F | Semantic zoom | Independent of clustering (can ship separately) |
+| 4G | Persistence | Depends on 4A (store), 4E (full flow working) |
+| 4H | Structural tests | Validates final state of all sub-phases |
+
+### What Was Changed From the Original Plan
+
+| Change | Reason |
+|--------|--------|
+| Bounding boxes computed at render, not stored | Eliminates `updateClusterBounds` action, `onNodeDragStop` hook, and stale-bounds bugs. 8 bounding boxes are trivial to compute per frame. |
+| Cluster store as separate slice, not inline in canvasStore | `canvasStore.ts` is at 282/300 lines. Adding inline would overflow the 300-line limit. |
+| Cluster colors in separate CSS file | `variables.css` is at 292/300 lines. Adding 12 variables would overflow. |
+| `colorIndex: number` instead of `color: string` | Separates data model from CSS implementation. Pure number is easier to test, serialize, and doesn't break if CSS variable names change. |
+| Single batched Gemini call for labeling | Original: 1 call per cluster (8 clusters = 8 API calls). Batched: 1 call total. Cheaper, faster, no rate limiting. |
+| CSS-only semantic zoom | Original: conditional rendering swaps TipTap/dot. This causes 500+ simultaneous unmount/mount. CSS `display:none` is zero-cost. |
+| No auto-arrangement on accept | Auto-arranging 50+ nodes is a major UX feature (undo, animation, overlap). Cut from scope — ship boundaries first. |
+| Persistence as workspace field, not subcollection | Cluster data is ~4KB. Subcollection adds: new Firestore rules, new load/save cycle, new security surface. Not worth it. |
+| Node width/height in bounds calculation | Original only used `position` (top-left corner). Boundaries would clip node right/bottom edges. |
+| Input cap at 500 nodes | Agglomerative clustering is O(n^2 log n). Uncapped at 1000+ nodes = multi-second computation. |
+| Added Sub-phase 4G (Persistence) | Original plan said "serialized alongside nodes/edges" but didn't specify how. Needed explicit implementation. |
+| `workspaceService.ts` listed as affected file | Original plan didn't mention this 289-line file at all, despite it being the persistence layer. |
+
+### Tech Debt Audit
+
+| Potential Debt | How We Prevent It |
 |---------------|-------------------|
-| Duplicate TF-IDF logic | Shared utility extracted from nodePoolBuilder (DRY) |
-| Cluster state cascade | Single `setClusterGroups` atomic update; preview in local reducer |
-| Stale bounding boxes after drag | `updateClusterBounds` on `onNodeDragStop` (not during drag) |
-| Large canvasStore | Monitor line count — extract to cluster slice if approaching 300 |
-| Hardcoded colors | 8-color palette as CSS variables, referenced by name in cluster objects |
-| Performance at 100+ nodes | Semantic zoom eliminates TipTap rendering at low zoom; clustering is O(n²) but runs once on-demand |
-| Zustand anti-patterns | All callbacks use getState(); preview state isolated in useReducer |
-| Security | AI labeling response clamped to 40 chars; no HTML in labels |
-| Orphaned clusters | Clusters filtered on bound update — stale nodeIds removed |
+| Duplicate TF-IDF logic | Direct imports from existing `tfidfScorer.ts` + `relevanceScorer.ts` |
+| canvasStore overflow | Cluster state in dedicated `clusterSlice.ts` composed via Zustand slice pattern |
+| variables.css overflow | Cluster colors in separate `cluster-colors.css` imported by variables.css |
+| Stale bounding boxes | No stored bounds — computed at render from live node positions |
+| Performance cliff on zoom | CSS-only zoom (DOM attribute + descendant selectors, zero React re-renders) |
+| O(n^2) at scale | Input capped at 500 nodes; excess goes to "unclustered" |
+| API cost per cluster | Single batched Gemini call for all labels (not per-cluster) |
+| Orphaned nodeIds | `pruneDeletedNodes` runs on workspace load and node deletion |
+| Hardcoded colors | 8-color palette as CSS variables in dedicated file |
+| Zustand anti-patterns | All callbacks use getState(); preview state in local useReducer |
+| Firestore complexity | Metadata field (not subcollection) — no new rules, no new load cycle |
 
-**Net new files**: 18 (10 source + 8 test)
-**Files modified**: 5 (canvasStore, CanvasView, IdeaCard, WorkspaceControls, variables.css, strings.ts)
-**Estimated total new lines**: ~1,400 (source + tests)
+### Net Impact
+
+**Net new files**: 16 (9 source + 2 CSS + 5 test)
+**Files modified**: 6 (canvasStore, CanvasView, WorkspaceControls, workspaceService, useWorkspaceLoader, workspace type)
+**Estimated total new lines**: ~1,200 (source + tests)
+**canvasStore.ts**: stays at ~285 lines (under 300)
+**variables.css**: stays at 293 lines (under 300)
