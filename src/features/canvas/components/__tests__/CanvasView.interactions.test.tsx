@@ -198,7 +198,7 @@ describe('CanvasView', () => {
             expect(props.nodesDraggable).toBe(true);
             expect(props.elementsSelectable).toBe(true);
             expect(props.nodesConnectable).toBe(true);
-            expect(props.panOnDrag).toBe(true);
+            expect(props.panOnDrag).toEqual([1, 2]);
         });
     });
 });

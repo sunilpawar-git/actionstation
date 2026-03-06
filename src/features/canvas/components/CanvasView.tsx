@@ -107,7 +107,7 @@ function CanvasViewInner() {
                 maxZoom={2}
                 zoomOnScroll={!isInteractionDisabled && !isNavigateMode}
                 panOnScroll={!isInteractionDisabled && isNavigateMode}
-                panOnDrag={!isInteractionDisabled}
+                panOnDrag={isInteractionDisabled ? false : [1, 2]}
                 nodesDraggable={!isInteractionDisabled}
                 noDragClassName="nodrag"
                 elementsSelectable={!isInteractionDisabled}
@@ -115,6 +115,8 @@ function CanvasViewInner() {
                 {...(isNavigateMode && { panOnScrollMode: PanOnScrollMode.Free })}
                 selectionOnDrag={!isInteractionDisabled}
                 selectionMode={SelectionMode.Partial}
+                panActivationKeyCode="Space"
+                multiSelectionKeyCode="Shift"
             >
                 <ViewportSync viewport={viewport} />
                 {canvasGrid && <Background variant={BackgroundVariant.Dots} gap={16} size={1} />}
