@@ -1,6 +1,4 @@
-/**
- * Workspace Service - Firestore persistence for workspaces
- */
+/** Workspace Service - Firestore persistence for workspaces */
 import { doc, setDoc, getDoc, getDocs, collection, writeBatch, serverTimestamp, getCountFromServer, updateDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import type { Workspace } from '../types/workspace';
@@ -49,6 +47,7 @@ export async function saveWorkspace(userId: string, workspace: Workspace): Promi
         type: workspace.type ?? 'workspace',
         nodeCount: workspace.nodeCount ?? 0,
         includeAllNodesInPool: workspace.includeAllNodesInPool ?? false,
+        clusterGroups: workspace.clusterGroups ?? [],
     });
 }
 
@@ -72,6 +71,16 @@ interface WorkspaceDoc {
     type?: 'workspace' | 'divider';
     nodeCount?: number;
     includeAllNodesInPool?: boolean;
+    clusterGroups?: unknown[];
+}
+
+function validateClusterGroups(raw: unknown[] | undefined): Workspace['clusterGroups'] {
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((item): item is NonNullable<Workspace['clusterGroups']>[number] =>
+        typeof item === 'object' && item !== null && typeof (item as Record<string, unknown>).id === 'string'
+        && Array.isArray((item as Record<string, unknown>).nodeIds)
+        && typeof (item as Record<string, unknown>).label === 'string'
+        && typeof (item as Record<string, unknown>).colorIndex === 'number');
 }
 
 /** Load workspace from Firestore */
@@ -108,6 +117,7 @@ export async function loadWorkspace(userId: string, workspaceId: string): Promis
         type: data.type ?? 'workspace',
         nodeCount: nodeCount ?? 0,
         includeAllNodesInPool: data.includeAllNodesInPool ?? false,
+        clusterGroups: validateClusterGroups(data.clusterGroups),
     };
 }
 
@@ -152,6 +162,7 @@ export async function loadUserWorkspaces(userId: string): Promise<Workspace[]> {
                 type: data.type ?? 'workspace',
                 nodeCount: nodeCount ?? 0,
                 includeAllNodesInPool: data.includeAllNodesInPool ?? false,
+                clusterGroups: validateClusterGroups(data.clusterGroups),
             };
         }));
 
@@ -285,5 +296,4 @@ export async function deleteWorkspace(userId: string, workspaceId: string): Prom
     // 5. Commit batch
     await batch.commit();
 }
-
 export { updateWorkspaceOrder } from './workspaceOrderService';

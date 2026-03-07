@@ -16,7 +16,9 @@ import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
 import { toast } from '@/shared/stores/toastStore';
 
 vi.mock('@/features/canvas/stores/canvasStore', () => ({
-    useCanvasStore: vi.fn(),
+    useCanvasStore: Object.assign(vi.fn(), {
+        getState: () => ({ nodes: [], edges: [], clearClusterGroups: vi.fn(), setClusterGroups: vi.fn(), pruneDeletedNodes: vi.fn() }),
+    }),
 }));
 
 /** Selector-aware mock: applies selector when called with one, returns full state otherwise */
@@ -42,6 +44,12 @@ vi.mock('@/features/auth/stores/authStore', () => ({
 vi.mock('@/features/workspace/services/workspaceService', () => ({
     saveNodes: vi.fn().mockResolvedValue(undefined),
     saveEdges: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/features/workspace/stores/workspaceStore', () => ({
+    useWorkspaceStore: Object.assign(vi.fn(() => []), {
+        getState: () => ({ workspaces: [], setNodeCount: vi.fn() }),
+    }),
 }));
 
 vi.mock('@/features/workspace/services/workspaceCache', () => ({

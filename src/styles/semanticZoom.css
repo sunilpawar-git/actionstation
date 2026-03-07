@@ -1,0 +1,31 @@
+/* Semantic zoom — CSS-only node simplification at low zoom levels */
+/* Uses data-node-section attributes (CSS Modules safe, non-hashed) */
+
+/* Heading-only mode: hide content, tags, and utils bar */
+.react-flow[data-zoom-level="heading"] [data-node-section="content"],
+.react-flow[data-zoom-level="heading"] [data-node-section="tags"],
+.react-flow[data-zoom-level="heading"] [data-node-section="utils"] {
+    display: none;
+}
+
+.react-flow[data-zoom-level="heading"] [data-node-section="heading"] {
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Dot mode: collapse to colored dot, hide all sections */
+.react-flow[data-zoom-level="dot"] [data-node-section="card"] {
+    width: var(--semantic-zoom-dot-size, 24px);
+    height: var(--semantic-zoom-dot-size, 24px);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.react-flow[data-zoom-level="dot"] [data-node-section="heading"],
+.react-flow[data-zoom-level="dot"] [data-node-section="content"],
+.react-flow[data-zoom-level="dot"] [data-node-section="tags"],
+.react-flow[data-zoom-level="dot"] [data-node-section="utils"] {
+    display: none;
+}

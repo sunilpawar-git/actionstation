@@ -15,10 +15,13 @@ import { ZoomControls } from './ZoomControls';
 import { FocusOverlay } from './FocusOverlay';
 import { ViewportSync } from './ViewportSync';
 import { SelectionToolbar } from '@/features/synthesis/components/SelectionToolbar';
+import { ClusterOverlay } from '@/features/clustering/components/ClusterOverlay';
 import { buildRfNodes, cleanupDataShells, type PrevRfNodes } from './buildRfNodes';
 import { mapCanvasEdgesToRfEdges, applyPositionAndRemoveChanges } from './canvasChangeHelpers';
 import { nodeTypes, edgeTypes, DEFAULT_EDGE_OPTIONS, SNAP_GRID } from './canvasViewConstants';
 import { useCanvasHandlers } from '../hooks/useCanvasHandlers';
+import { useSemanticZoom } from '../hooks/useSemanticZoom';
+import '@/styles/semanticZoom.css';
 import { dragPositionReducer, INITIAL_DRAG_STATE } from '../hooks/dragPositionReducer';
 import styles from './CanvasView.module.css';
 
@@ -57,6 +60,7 @@ function CanvasViewInner() {
     const prevRfNodesRef = useRef<PrevRfNodes>({ arr: [], map: new Map() });
     const [dragState, dragDispatch] = useReducer(dragPositionReducer, INITIAL_DRAG_STATE);
     const handlers = useCanvasHandlers(currentWorkspaceId, isCanvasLocked, dragDispatch);
+    useSemanticZoom();
 
     const overridesRef = useRef(dragState.overrides);
     overridesRef.current = dragState.overrides;
@@ -122,6 +126,7 @@ function CanvasViewInner() {
                 {canvasGrid && <Background variant={BackgroundVariant.Dots} gap={16} size={1} />}
                 <ZoomControls />
             </ReactFlow>
+            <ClusterOverlay />
             <SelectionToolbar />
             <FocusOverlay />
         </div>

@@ -70,11 +70,20 @@ vi.mock('@/features/canvas/stores/canvasStore', () => ({
                 edges: cachedEdges,
                 viewport: { x: 32, y: 32, zoom: 1 },
                 editingNodeId: null,
+                clearClusterGroups: vi.fn(),
+                setClusterGroups: vi.fn(),
+                pruneDeletedNodes: vi.fn(),
             }),
             setState: (...args: unknown[]) => mockCanvasSetState(...args),
         }
     ),
     EMPTY_SELECTED_IDS: Object.freeze(new Set<string>()),
+}));
+
+vi.mock('../stores/workspaceStore', () => ({
+    useWorkspaceStore: Object.assign(vi.fn(), {
+        getState: () => ({ workspaces: [] }),
+    }),
 }));
 
 describe('Double-load guard integration', () => {

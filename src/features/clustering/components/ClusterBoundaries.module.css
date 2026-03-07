@@ -1,0 +1,31 @@
+.layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.boundary {
+    position: absolute;
+    background: color-mix(in oklch, var(--cluster-hue) 8%, transparent);
+    border: 1px solid color-mix(in oklch, var(--cluster-hue) 30%, transparent);
+    border-radius: var(--cluster-boundary-radius);
+    transition: opacity var(--transition-fast);
+}
+
+.preview {
+    border-style: dashed;
+    border-width: 2px;
+}
+
+.label {
+    position: absolute;
+    top: calc(-1 * var(--space-lg));
+    left: var(--space-sm);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    opacity: var(--cluster-label-opacity);
+    white-space: nowrap;
+    user-select: none;
+}

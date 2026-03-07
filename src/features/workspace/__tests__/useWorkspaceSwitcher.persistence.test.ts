@@ -77,6 +77,7 @@ vi.mock('../stores/workspaceStore', () => ({
         },
         {
             getState: () => ({
+                workspaces: [],
                 setNodeCount: mockSetNodeCount,
                 setSwitching: mockSetSwitching,
                 setCurrentWorkspaceId: mockSetCurrentWorkspaceId,
@@ -94,7 +95,7 @@ describe('useWorkspaceSwitcher — persistence & cache', () => {
         localStorage.clear();
         mockLoadNodes.mockResolvedValue(mockNodes);
         mockLoadEdges.mockResolvedValue(mockEdges);
-        mockGetState.mockReturnValue({ nodes: [], edges: [] });
+        mockGetState.mockReturnValue({ nodes: [], edges: [], clearClusterGroups: vi.fn(), setClusterGroups: vi.fn(), pruneDeletedNodes: vi.fn() });
         mockCacheGet.mockReturnValue(null);
     });
 
@@ -135,7 +136,7 @@ describe('useWorkspaceSwitcher — persistence & cache', () => {
     });
 
     it('saves current workspace before switching when data exists', async () => {
-        mockGetState.mockReturnValue({ nodes: mockNodes, edges: mockEdges });
+        mockGetState.mockReturnValue({ nodes: mockNodes, edges: mockEdges, clearClusterGroups: vi.fn(), setClusterGroups: vi.fn(), pruneDeletedNodes: vi.fn() });
 
         const { result } = renderHook(() => useWorkspaceSwitcher());
 

@@ -113,7 +113,7 @@ describe('WorkspaceControls', () => {
             const { container } = render(<WorkspaceControls />);
 
             const dividers = container.querySelectorAll('[class*="divider"]');
-            expect(dividers.length).toBe(5);
+            expect(dividers.length).toBe(6);
         });
     });
 

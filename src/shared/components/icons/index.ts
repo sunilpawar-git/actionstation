@@ -18,3 +18,4 @@ export * from './BrainIcon';
 export * from './PaperclipIcon';
 export * from './AlertTriangleIcon';
 export * from './BookOpenIcon';
+export * from './ClusterIcon';

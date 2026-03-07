@@ -18,7 +18,7 @@ Two complementary features:
 - **TF-IDF reuse**: The existing `tfidfScorer.ts` (pure math) and `relevanceScorer.ts` (tokenization) in `src/features/knowledgeBank/services/` are directly importable. The clustering service builds TF-IDF vectors per node, then computes cosine similarity between them. No code duplication — import the functions.
 - **Cluster state as a separate store slice**: `canvasStore.ts` is a **120-line thin orchestrator** that composes 6 factory functions from `canvasStoreActions.ts` (235 lines). While there is line-count headroom, cluster state belongs in a dedicated `clusterSlice.ts` for **separation of concerns** (SRP) — clustering is an independent domain from core canvas CRUD. The slice is composed into `canvasStore` via the same factory pattern used by `createNodeMutationActions`, `createSelectionActions`, etc.
 - **Persisted as workspace metadata field** (not a subcollection): Cluster data is small (8 clusters x 10 nodeIds = ~2KB). Storing it as a field on the workspace document avoids a new subcollection, new Firestore rules, and a new load/save cycle. It saves/loads atomically with the workspace.
-- **Semantic zoom via CSS, not conditional rendering**: Swapping components (TipTap editor vs dot) at zoom thresholds causes ALL 500+ nodes to re-render simultaneously — a performance cliff. Instead, use CSS classes driven by a single `data-zoom-level` attribute on the canvas container, and hide/show content sections with `display: none`. Zero React re-renders on zoom change.
+- **Semantic zoom via global CSS, not conditional rendering**: Swapping components (TipTap editor vs dot) at zoom thresholds causes ALL 500+ nodes to re-render simultaneously — a performance cliff. Instead, set a `data-zoom-level` attribute on the `.react-flow` wrapper and use a **global (non-module) CSS file** (`semanticZoom.css`) with descendant selectors targeting `.react-flow__node` (a non-hashed global class from ReactFlow). CSS Modules would mangle local class names, making ancestor-descendant selectors impossible across component boundaries. Zero React re-renders on zoom change.
 - **No auto-arrangement**: Accepting clusters draws boundaries around nodes at their current positions. It does NOT move nodes. Auto-arranging 50+ nodes is a separate force-directed layout feature with its own UX concerns (undo, animation, overlap resolution). Cut from scope.
 - **Security**: AI labeling uses the existing Gemini pipeline. Labels are sanitized (length-clamped, trimmed, no HTML).
 
@@ -162,7 +162,7 @@ export function computeClusters(
    - Merge: repeatedly merge the two most similar clusters
    - Stop: when max inter-cluster similarity drops below `similarityThreshold` (default: 0.15)
    - Filter: remove clusters smaller than `minClusterSize` (default: 2)
-6. Assign `colorIndex` 0-7 using a graph-coloring heuristic: adjacent clusters (sharing a bounding-box overlap) get different colors. Fallback to round-robin if no adjacency.
+6. Assign `colorIndex` 0-7 via **round-robin** (`index % 8`). Graph-coloring (adjacent clusters get different colors) was considered but creates a circular dependency: color assignment needs bounding boxes, but bounding boxes are computed at render time in 4D. With 8 colors and typically 3-8 clusters, round-robin already avoids visual confusion. This also keeps the similarity service truly pure — no position data needed.
 7. Default labels: `'Cluster 1'`, `'Cluster 2'`, etc. (AI labeling is a separate step)
 
 **Why reuse existing TF-IDF**: `tfidfScorer.ts` already has `buildCorpusIDF()` and `computeTF()`. The clustering service only adds `buildTfIdfVector()` (TF * IDF per term) and `cosineSimilarity()` — two small pure functions. No duplication.
@@ -182,7 +182,7 @@ export function computeClusters(
 6. All completely different -> all unclustered
 7. Empty nodes (no heading/output) -> excluded from clustering
 8. colorIndex values are 0-7 (within palette range)
-9. Adjacent clusters (overlapping bounds) get different colorIndex
+9. colorIndex assigned via round-robin (index % 8)
 10. 100 nodes -> completes in < 200ms (performance test)
 11. threshold=0 -> every node unclustered (nothing merges)
 12. threshold=1 -> all nodes in one cluster
@@ -195,7 +195,8 @@ export function computeClusters(
 
 - [ ] File under 100 lines (helper functions extracted if needed)
 - [ ] Imports from existing tfidfScorer/relevanceScorer (no reimplementation)
-- [ ] Pure functions — no side effects, no store access
+- [ ] Pure functions — no side effects, no store access, no position data
+- [ ] colorIndex via round-robin (no dependency on bounding boxes)
 - [ ] Input capped at 500 nodes
 - [ ] No `any` types
 - [ ] Zero lint errors
@@ -322,7 +323,7 @@ A React component that draws translucent colored boundaries behind clustered nod
 
 ### Implementation
 
-**Why a separate `cluster-colors.css`**: `variables.css` is at **292/300 lines**. Adding 12 cluster color variables would overflow. A separate file follows CLAUDE.md's SOLID principle (single responsibility) and is imported by `variables.css` via `@import`.
+**Why a separate `cluster-colors.css`**: `variables.css` is at **287/300 lines**. While 13 lines of headroom could technically fit a single `@import`, adding 12 color variables inline would overflow. A separate file follows CLAUDE.md's SOLID principle (single responsibility) and is imported by `variables.css` via `@import`.
 
 **`cluster-colors.css`**:
 
@@ -345,17 +346,22 @@ A React component that draws translucent colored boundaries behind clustered nod
 }
 ```
 
-**`ClusterBoundaries.tsx`** — renders ALL boundaries in a single component:
+**`ClusterBoundaries.tsx`** — renders ALL boundaries in a single component, **as a sibling of ReactFlow** (not a child):
+
+**Why sibling, not child**: Raw `<div>` elements inside `<ReactFlow>` don't participate in the panning/zooming coordinate system. ReactFlow children are special (panels, backgrounds, controls). Instead, render `ClusterBoundaries` as a sibling (like `SelectionToolbar` and `FocusOverlay` already are) and manually apply the viewport transform from ReactFlow's internal store.
 
 ```typescript
 interface ClusterBoundariesProps {
   readonly clusters: readonly ClusterGroup[];
   readonly nodes: readonly CanvasNode[];
+  readonly variant?: 'committed' | 'preview';
 }
 
 export const ClusterBoundaries = React.memo(function ClusterBoundaries({
-  clusters, nodes,
+  clusters, nodes, variant = 'committed',
 }: ClusterBoundariesProps) {
+  const transform = useStore((s) => s.transform);
+  const [tx, ty, scale] = transform;
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
   const clustersWithBounds = useMemo(() =>
@@ -367,13 +373,17 @@ export const ClusterBoundaries = React.memo(function ClusterBoundaries({
   );
 
   return (
-    <>
+    <div className={styles.layer} style={{
+      transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
+      transformOrigin: '0 0',
+    }}>
       {clustersWithBounds.map((cluster) => (
         <div
           key={cluster.id}
-          className={styles.boundary}
+          className={`${styles.boundary} ${variant === 'preview' ? styles.preview : ''}`}
           style={{
-            transform: `translate(${cluster.bounds.x}px, ${cluster.bounds.y}px)`,
+            left: `${cluster.bounds.x}px`,
+            top: `${cluster.bounds.y}px`,
             width: `${cluster.bounds.width}px`,
             height: `${cluster.bounds.height}px`,
             '--cluster-hue': `var(--cluster-color-${cluster.colorIndex + 1})`,
@@ -384,10 +394,12 @@ export const ClusterBoundaries = React.memo(function ClusterBoundaries({
           <span className={styles.label}>{cluster.label}</span>
         </div>
       ))}
-    </>
+    </div>
   );
 });
 ```
+
+The `useStore` import is from `@xyflow/react` — it provides the current viewport transform `[translateX, translateY, scale]`. The outer `.layer` div mirrors the ReactFlow viewport exactly, so boundary positions match node positions.
 
 **`computeBoundsFromNodes`** — pure helper (~15 lines):
 
@@ -411,22 +423,24 @@ function computeBoundsFromNodes(
 
 Key difference: **Uses `n.width` and `n.height`**, not just position. The original plan only said "node positions + padding" which would produce boundaries that clip the right/bottom edges of nodes.
 
-**CanvasView.tsx** — insert between Background and ZoomControls:
+**CanvasView.tsx** — insert as a **sibling** of ReactFlow (alongside `SelectionToolbar` and `FocusOverlay`):
 
 ```typescript
 const clusterGroups = useCanvasStore((s) => s.clusterGroups);
 
-// Inside ReactFlow:
+// After </ReactFlow>, before <SelectionToolbar />:
 {clusterGroups.length > 0 && (
   <ClusterBoundaries clusters={clusterGroups} nodes={nodes} />
 )}
 ```
 
 **CSS**:
-- `.boundary`: `position: absolute`, `pointer-events: none`, background uses `var(--cluster-hue)` with opacity, rounded corners, dashed border
+- `.layer`: `position: absolute`, `top: 0`, `left: 0`, `pointer-events: none`, `z-index: 0` (below nodes)
+- `.boundary`: `position: absolute`, background uses `var(--cluster-hue)` with opacity, rounded corners, border
+- `.preview`: dashed border variant (used during preview phase before accept/dismiss)
 - `.label`: positioned above boundary top-left, `font-size: var(--font-size-sm)`, `color: var(--color-text-secondary)`
 
-**Performance**: `React.memo` + `useMemo` on `clustersWithBounds`. Boundaries only re-render when `clusters` or `nodes` reference changes. `pointer-events: none` ensures no interference with node interactions.
+**Performance**: `React.memo` + `useMemo` on `clustersWithBounds`. Boundaries only re-render when `clusters`, `nodes`, or viewport `transform` changes. `pointer-events: none` on the layer ensures no interference with node interactions. The viewport transform subscription is lightweight — ReactFlow already batches transform updates.
 
 ### TDD Tests
 
@@ -434,12 +448,15 @@ const clusterGroups = useCanvasStore((s) => s.clusterGroups);
 1. Renders boundary at correct position (accounts for node width/height)
 2. Label text matches cluster.label
 3. Background color uses cluster colorIndex mapped to CSS variable
-4. pointer-events: none (no click interference)
+4. pointer-events: none on layer div (no click interference)
 5. React.memo prevents unnecessary re-renders
 6. aria-label set for accessibility
 7. No boundaries rendered when clusterGroups is empty
 8. Cluster with all deleted nodes -> filtered out (bounds = null)
 9. Boundary padding is 40px on each side
+10. Layer div applies viewport transform (translate + scale)
+11. variant="preview" applies dashed border CSS class
+12. variant="committed" (default) applies solid border CSS class
 ```
 
 ### Tech Debt Checkpoint
@@ -508,7 +525,17 @@ export function useClusterSuggestion(): {
 3. `dismissClusters()`:
    - Clear preview state, return to `'idle'` (no store mutation)
 
-**Preview rendering**: When `phase === 'preview'`, ClusterBoundaries receives the preview groups with a `isPreview` flag that applies dashed borders instead of solid.
+**Preview rendering**: When `phase === 'preview'`, a **second** `<ClusterBoundaries>` instance is rendered with `variant="preview"` and the preview groups from the hook's local state. This is separate from the committed boundaries — both can coexist (though in practice, you'd only see preview OR committed at a time). The `variant="preview"` prop applies dashed borders via the `.preview` CSS class (defined in 4D). The committed `<ClusterBoundaries>` reads from the store; the preview instance reads from the hook's local `useReducer` state.
+
+```typescript
+// In CanvasView or a wrapper:
+{clusterGroups.length > 0 && (
+  <ClusterBoundaries clusters={clusterGroups} nodes={nodes} />
+)}
+{previewGroups && (
+  <ClusterBoundaries clusters={previewGroups} nodes={nodes} variant="preview" />
+)}
+```
 
 **Zustand safety**: All store reads use `getState()` inside callbacks. Preview state is local `useReducer` — completely isolated from canvas store.
 
@@ -576,7 +603,7 @@ Progressive node simplification at low zoom levels using CSS-only visibility swi
 
 The original plan used conditional rendering (`{zoomLevel === 'dot' ? <Dot/> : <Full/>}`). This causes a **performance cliff**: when crossing a zoom threshold, ALL 500+ nodes unmount their TipTap editors and remount dots simultaneously. A single frame spike.
 
-The CSS approach: set a `data-zoom-level` attribute on the canvas container, and use CSS descendant selectors to hide/show content sections. Zero React re-renders. TipTap editors stay mounted but invisible (`display: none`), preserving their state.
+The CSS approach: set a `data-zoom-level` attribute on the `.react-flow` wrapper and use a **global (non-module) CSS file** with descendant selectors targeting `.react-flow__node` (ReactFlow's non-hashed global class). CSS Modules would mangle local class names (`.contentArea` becomes `_contentArea_abc123`), making ancestor-descendant selectors across component boundaries impossible. Zero React re-renders. TipTap editors stay mounted but invisible (`display: none`), preserving their state.
 
 ### Files
 
@@ -584,12 +611,14 @@ The CSS approach: set a `data-zoom-level` attribute on the canvas container, and
 |------|--------|-------------|
 | `src/features/canvas/hooks/useSemanticZoom.ts` | NEW | ~25 |
 | `src/features/canvas/components/CanvasView.tsx` | EDIT | +5 lines |
-| `src/features/canvas/components/nodes/IdeaCard.module.css` | EDIT | +12 lines |
+| `src/styles/semanticZoom.css` | NEW | ~30 |
 | `src/features/canvas/hooks/__tests__/useSemanticZoom.test.ts` | NEW | ~30 |
+
+**Why `semanticZoom.css` (global) instead of editing `IdeaCard.module.css`**: CSS Modules mangle class names (`.contentArea` → `_contentArea_abc123`). The `data-zoom-level` attribute lives on the `.react-flow` wrapper (ancestor), and we need to target descendants like `.contentArea` and `.headingSection` inside nodes. CSS Modules scope prevents ancestor selectors from matching descendant classes across component boundaries. A global CSS file can use ReactFlow's non-hashed `.react-flow__node` class combined with `data-` attribute selectors on node elements.
 
 ### Implementation
 
-**`useSemanticZoom.ts`** — sets a data attribute on the canvas container:
+**`useSemanticZoom.ts`** — sets a data attribute on the `.react-flow` wrapper:
 
 ```typescript
 const HEADING_THRESHOLD = 0.5;
@@ -597,66 +626,97 @@ const DOT_THRESHOLD = 0.25;
 
 export type ZoomLevel = 'full' | 'heading' | 'dot';
 
-export function useSemanticZoom(containerRef: React.RefObject<HTMLElement>): void {
-  // Read zoom from ReactFlow's internal store (sanctioned pattern)
+export function useSemanticZoom(): void {
   const zoom = useStore((s) => s.transform[2]);
 
   const level: ZoomLevel = zoom >= HEADING_THRESHOLD ? 'full'
     : zoom >= DOT_THRESHOLD ? 'heading'
     : 'dot';
 
-  // Set attribute imperatively — does NOT cause React re-renders
   useEffect(() => {
-    containerRef.current?.setAttribute('data-zoom-level', level);
-  }, [level, containerRef]);
+    const rfWrapper = document.querySelector('.react-flow');
+    rfWrapper?.setAttribute('data-zoom-level', level);
+  }, [level]);
 }
 ```
 
 **Key insight**: `useEffect` only fires when `level` changes (3 discrete values), not on every zoom tick. And it sets a DOM attribute, not React state — so zero component re-renders.
 
-**Remount guard**: On workspace switch, the canvas container unmounts and remounts. The `data-zoom-level` attribute would flash `undefined` before the `useEffect` fires. **Fix**: Set the default attribute in JSX: `<div data-zoom-level="full" ref={containerRef}>`. The `useEffect` will overwrite it on the next tick with the actual level, but there's no visible flash since the default matches the most common state.
+**Why `document.querySelector('.react-flow')`**: The `.react-flow` wrapper is a non-hashed global class from ReactFlow. Setting `data-zoom-level` on it lets the global `semanticZoom.css` use descendant selectors like `.react-flow[data-zoom-level="heading"] .react-flow__node`. No ref needed — the query is only called on threshold crossings (max 2 times per zoom gesture).
 
-**`IdeaCard.module.css`** — CSS descendant selectors:
+**Remount guard**: On workspace switch, the `.react-flow` element remounts. The `data-zoom-level` attribute would be absent until the `useEffect` fires. Since the default zoom is typically > 0.5, the initial `level` will be `'full'` and the effect fires immediately on mount. No visible flash.
+
+**`src/styles/semanticZoom.css`** — global CSS (not a CSS module):
+
+The approach uses `data-zoom-level` on `.react-flow` (ancestor) and `data-` attributes on node elements. Since CSS Modules mangle class names, we need to target nodes via **data attributes** that we add to the IdeaCard wrapper. Add `data-node-section` attributes to IdeaCard's sub-components (a one-line JSX change per section).
+
+**IdeaCard.tsx** — add data attributes (3 lines changed, not new files):
+```typescript
+// On IdeaCardContentSection wrapper: data-node-section="content"
+// On IdeaCardTagsSection wrapper: data-node-section="tags"  
+// On NodeUtilsBar wrapper: data-node-section="utils"
+// On IdeaCardHeadingSection wrapper: data-node-section="heading"
+// On .ideaCard div: data-node-section="card"
+```
+
+**`semanticZoom.css`**:
 
 ```css
-/* Semantic zoom: heading-only mode */
-[data-zoom-level="heading"] .contentSection,
-[data-zoom-level="heading"] .nodeUtilsBar,
-[data-zoom-level="heading"] .tagList {
+/* Semantic zoom: heading-only mode — hide content, tags, utils */
+.react-flow[data-zoom-level="heading"] [data-node-section="content"],
+.react-flow[data-zoom-level="heading"] [data-node-section="tags"],
+.react-flow[data-zoom-level="heading"] [data-node-section="utils"] {
   display: none;
 }
 
-[data-zoom-level="heading"] .headingSection {
+.react-flow[data-zoom-level="heading"] [data-node-section="heading"] {
   font-size: var(--font-size-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Semantic zoom: dot mode */
-[data-zoom-level="dot"] .ideaCard {
+/* Semantic zoom: dot mode — collapse to colored dot */
+.react-flow[data-zoom-level="dot"] [data-node-section="card"] {
   width: var(--semantic-zoom-dot-size, 24px);
   height: var(--semantic-zoom-dot-size, 24px);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
 
-[data-zoom-level="dot"] .headingSection,
-[data-zoom-level="dot"] .contentSection,
-[data-zoom-level="dot"] .nodeUtilsBar,
-[data-zoom-level="dot"] .tagList {
+.react-flow[data-zoom-level="dot"] [data-node-section="heading"],
+.react-flow[data-zoom-level="dot"] [data-node-section="content"],
+.react-flow[data-zoom-level="dot"] [data-node-section="tags"],
+.react-flow[data-zoom-level="dot"] [data-node-section="utils"] {
   display: none;
 }
 ```
 
-**CanvasView.tsx** — wire the hook:
+**Why `data-node-section` attributes**: These are stable, non-hashed identifiers that survive CSS Modules mangling. Each sub-component gets a single `data-node-section` attribute added to its outermost wrapper div — a one-line change per component, no structural modifications.
+
+**CanvasView.tsx** — wire the hook (no ref needed):
 
 ```typescript
-const containerRef = useRef<HTMLDivElement>(null);
-useSemanticZoom(containerRef);
+useSemanticZoom(); // Call inside CanvasViewInner — must be inside ReactFlowProvider
 
-// On the wrapper div — data-zoom-level="full" prevents flash on remount:
-<div ref={containerRef} className={getContainerClassName(isSwitching)} data-canvas-container data-zoom-level="full">
+// No changes to the wrapper div — data-zoom-level is set on .react-flow internally
+```
+
+**Import the global CSS** in `CanvasView.tsx`:
+```typescript
+import '@/styles/semanticZoom.css';
+```
+
+**IdeaCard.tsx** — add data attributes to sub-component wrappers:
+```typescript
+// .ideaCard div:
+<div className={...} data-color={nodeColorKey} data-node-section="card">
+
+// IdeaCardHeadingSection, IdeaCardContentSection, IdeaCardTagsSection:
+// Each adds data-node-section="heading" / "content" / "tags" to its root div
+
+// NodeUtilsBar:
+// Adds data-node-section="utils" to its root div
 ```
 
 **Performance**: CSS `display: none` removes elements from layout without unmounting React components. TipTap editors stay alive but invisible. Transitioning between zoom levels is a single DOM attribute change — the browser handles CSS recalculation, not React.
@@ -677,9 +737,11 @@ useSemanticZoom(containerRef);
 
 - [ ] Hook under 30 lines
 - [ ] No React state for zoom level (imperative DOM attribute)
-- [ ] CSS uses variables
-- [ ] No conditional rendering in IdeaCard (zero component changes)
+- [ ] CSS uses variables (global file, not CSS module)
+- [ ] No conditional rendering in IdeaCard (only data-node-section attributes added)
 - [ ] CanvasView stays under 140 lines
+- [ ] IdeaCard.tsx stays under 100 lines (only data attribute additions)
+- [ ] semanticZoom.css uses data-node-section selectors (CSS Modules safe)
 - [ ] Zero lint errors
 
 ---
@@ -725,7 +787,11 @@ useCanvasStore.getState().setClusterGroups(workspace.clusterGroups ?? []);
 useCanvasStore.getState().pruneDeletedNodes(existingNodeIds);
 ```
 
-**Node deletion integration**: When nodes are deleted, clusters should be pruned. Add a call to `pruneDeletedNodes` after `deleteNode` in the relevant handler (or in the save cycle before persisting).
+**Node deletion integration**: When nodes are deleted, clusters should be pruned. The deletion logic lives in `src/features/canvas/stores/canvasStoreActions.ts` → `createNodeMutationActions` factory function. Add a call to `get().pruneDeletedNodes(new Set(get().nodes.map(n => n.id)))` after the node removal `set()` call inside the `deleteNodes` action. This keeps cluster pruning co-located with node deletion — no separate subscription or save-cycle hook needed.
+
+| File | Action | Lines (est.) |
+|------|--------|-------------|
+| `src/features/canvas/stores/canvasStoreActions.ts` | EDIT | +3 lines (prune after delete) |
 
 ### TDD Tests
 
@@ -739,7 +805,8 @@ useCanvasStore.getState().pruneDeletedNodes(existingNodeIds);
 
 ### Tech Debt Checkpoint
 
-- [ ] workspaceService.ts stays under 300 lines
+- [ ] workspaceService.ts stays under 300 lines (currently 287, +8 = 295 — tight but safe)
+- [ ] canvasStoreActions.ts stays under 300 lines (currently 237, +3 = 240)
 - [ ] No new subcollection needed
 - [ ] No new Firestore security rules needed
 - [ ] Prune on load prevents orphan accumulation
@@ -767,6 +834,9 @@ useCanvasStore.getState().pruneDeletedNodes(existingNodeIds);
 6. Cluster color variables defined in cluster-colors.css
 7. No bounding boxes stored in ClusterGroup type (computed at render)
 8. similarityService imports from existing tfidfScorer (no reimplementation)
+9. semanticZoom.css uses data-node-section selectors (not CSS module class names)
+10. IdeaCard sub-components have data-node-section attributes
+11. ClusterBoundaries rendered as sibling of ReactFlow (not child)
 ```
 
 ### Integration Test
@@ -775,7 +845,7 @@ useCanvasStore.getState().pruneDeletedNodes(existingNodeIds);
 1. Full flow: 10 nodes with 2 themes -> computeClusters -> 2 groups -> label -> accept -> boundaries rendered
 2. Accept clusters -> save workspace -> reload -> clusters persisted
 3. Clear clusters -> boundaries removed
-4. Semantic zoom at 0.3 -> data-zoom-level="heading" on container
+4. Semantic zoom at 0.3 -> data-zoom-level="heading" on .react-flow wrapper
 5. Delete node in cluster -> prune on next load -> cluster updated
 6. Cluster with all nodes deleted -> cluster removed entirely
 ```
@@ -812,16 +882,20 @@ find src/features/clustering -name "*.ts*" | xargs wc -l | awk '$1 > 300'  # emp
 |--------|--------|
 | Bounding boxes computed at render, not stored | Eliminates `updateClusterBounds` action, `onNodeDragStop` hook, and stale-bounds bugs. 8 bounding boxes are trivial to compute per frame. |
 | Cluster store as separate slice, not inline in canvasStore | `canvasStore.ts` is a 120-line thin orchestrator (not 282 as originally estimated — already refactored into factory pattern). Separate slice is still correct for SRP, not line-count overflow. |
-| Cluster colors in separate CSS file | `variables.css` is at 292/300 lines. Adding 12 variables would overflow. |
+| Cluster colors in separate CSS file | `variables.css` is at 287/300 lines. Separate file follows SRP even though 13 lines of headroom exist. |
 | `colorIndex: number` instead of `color: string` | Separates data model from CSS implementation. Pure number is easier to test, serialize, and doesn't break if CSS variable names change. |
+| colorIndex via round-robin, not graph-coloring | Graph-coloring requires bounding boxes (computed at render in 4D), creating a circular dependency. Round-robin with 8 colors is sufficient for 3-8 clusters. Keeps similarity service pure (no position data). |
 | Single batched Gemini call for labeling | Original: 1 call per cluster (8 clusters = 8 API calls). Batched: 1 call total. Cheaper, faster, no rate limiting. |
-| CSS-only semantic zoom | Original: conditional rendering swaps TipTap/dot. This causes 500+ simultaneous unmount/mount. CSS `display:none` is zero-cost. |
+| CSS-only semantic zoom via global CSS file | Original: conditional rendering swaps TipTap/dot. This causes 500+ simultaneous unmount/mount. CSS `display:none` is zero-cost. Uses global CSS (not CSS module) with `data-node-section` attributes to avoid class name mangling across component boundaries. |
+| ClusterBoundaries as ReactFlow sibling, not child | Raw `<div>` children of `<ReactFlow>` don't participate in the panning/zooming coordinate system. Rendered as sibling with manual viewport transform via `useStore((s) => s.transform)` — same pattern as `SelectionToolbar` and `FocusOverlay`. |
+| ClusterBoundaries `variant` prop for preview | Preview rendering uses a second `<ClusterBoundaries variant="preview">` instance (dashed borders) alongside committed boundaries, rather than mixing preview state into the store. |
+| Node deletion pruning in canvasStoreActions.ts | Explicit location: `createNodeMutationActions` → `deleteNodes` action calls `pruneDeletedNodes` after node removal. |
 | No auto-arrangement on accept | Auto-arranging 50+ nodes is a major UX feature (undo, animation, overlap). Cut from scope — ship boundaries first. |
 | Persistence as workspace field, not subcollection | Cluster data is ~4KB. Subcollection adds: new Firestore rules, new load/save cycle, new security surface. Not worth it. |
 | Node width/height in bounds calculation | Original only used `position` (top-left corner). Boundaries would clip node right/bottom edges. |
 | Input cap at 500 nodes | Agglomerative clustering is O(n^2 log n). Uncapped at 1000+ nodes = multi-second computation. |
 | Added Sub-phase 4G (Persistence) | Original plan said "serialized alongside nodes/edges" but didn't specify how. Needed explicit implementation. |
-| `workspaceService.ts` listed as affected file | Original plan didn't mention this 289-line file at all, despite it being the persistence layer. |
+| `workspaceService.ts` listed as affected file | Original plan didn't mention this 287-line file at all, despite it being the persistence layer. |
 
 ### Tech Debt Audit
 
@@ -831,18 +905,23 @@ find src/features/clustering -name "*.ts*" | xargs wc -l | awk '$1 > 300'  # emp
 | canvasStore SRP violation | Cluster state in dedicated `clusterSlice.ts` composed via Zustand factory pattern (canvasStore is 120 lines, not at overflow risk — separation is for SRP, not line count) |
 | variables.css overflow | Cluster colors in separate `cluster-colors.css` imported by variables.css |
 | Stale bounding boxes | No stored bounds — computed at render from live node positions |
-| Performance cliff on zoom | CSS-only zoom (DOM attribute + descendant selectors, zero React re-renders) |
+| Performance cliff on zoom | CSS-only zoom via global `semanticZoom.css` (DOM attribute + `data-node-section` selectors, zero React re-renders, CSS Modules safe) |
+| CSS Modules class mangling | Semantic zoom uses `data-node-section` attributes (not class names) for cross-component selectors. ClusterBoundaries uses its own CSS module (no cross-boundary class refs). |
+| ClusterBoundaries viewport sync | Sibling rendering with manual viewport transform from `useStore((s) => s.transform)` — proven pattern used by SelectionToolbar/FocusOverlay |
 | O(n^2) at scale | Input capped at 500 nodes; excess goes to "unclustered" |
 | API cost per cluster | Single batched Gemini call for all labels (not per-cluster) |
-| Orphaned nodeIds | `pruneDeletedNodes` runs on workspace load and node deletion |
+| Orphaned nodeIds | `pruneDeletedNodes` runs on workspace load and node deletion (in `canvasStoreActions.ts`) |
 | Hardcoded colors | 8-color palette as CSS variables in dedicated file |
 | Zustand anti-patterns | All callbacks use getState(); preview state in local useReducer |
 | Firestore complexity | Metadata field (not subcollection) — no new rules, no new load cycle |
+| workspaceService.ts line count | Currently 287 + 8 = 295 lines. Safe but tight — monitor if other features land first |
 
 ### Net Impact
 
-**Net new files**: 16 (9 source + 2 CSS + 5 test)
-**Files modified**: 6 (canvasStore, CanvasView, WorkspaceControls, workspaceService, useWorkspaceLoader, workspace type)
-**Estimated total new lines**: ~1,200 (source + tests)
+**Net new files**: 17 (9 source + 3 CSS + 5 test)
+**Files modified**: 11 (canvasStore, canvasStoreActions, CanvasView, WorkspaceControls, workspaceService, useWorkspaceLoader, workspace type, IdeaCard.tsx, IdeaCardContentSection.tsx, IdeaCardTagsSection.tsx, NodeUtilsBar.tsx — last 4 are single-line `data-node-section` attribute additions)
+**Estimated total new lines**: ~1,250 (source + tests)
 **canvasStore.ts**: stays at ~123 lines (thin orchestrator with factory spreads)
-**variables.css**: stays at 293 lines (under 300)
+**canvasStoreActions.ts**: stays at ~240 lines (pruneDeletedNodes call added)
+**workspaceService.ts**: stays at ~295 lines (tight but under 300)
+**variables.css**: stays at ~288 lines (under 300)

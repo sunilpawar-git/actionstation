@@ -13,6 +13,7 @@ import { useCanvasStore, EMPTY_SELECTED_IDS } from '@/features/canvas/stores/can
 import type { CanvasNode } from '@/features/canvas/types/node';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
 import { loadNodes, loadEdges } from '../services/workspaceService';
+import { useWorkspaceStore } from '../stores/workspaceStore';
 import { workspaceCache } from '../services/workspaceCache';
 import { mergeNodes, mergeEdges } from '../services/mergeNodes';
 import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
@@ -115,6 +116,17 @@ function mergeIfMounted(
     });
 }
 
+/** Load cluster groups from workspace store and prune deleted nodes (mount-guarded) */
+function loadClustersIfMounted(workspaceId: string, getMounted: () => boolean): void {
+    useCanvasStore.getState().clearClusterGroups();
+    const ws = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId);
+    const groups = ws?.clusterGroups;
+    if (!getMounted() || !groups || groups.length === 0) return;
+    useCanvasStore.getState().setClusterGroups(groups);
+    const existingNodeIds = new Set(useCanvasStore.getState().nodes.map((n) => n.id));
+    useCanvasStore.getState().pruneDeletedNodes(existingNodeIds);
+}
+
 /** Load Knowledge Bank entries into store (non-blocking, mount-guarded) */
 async function loadKBIfMounted(
     userId: string,
@@ -192,7 +204,11 @@ export function useWorkspaceLoader(workspaceId: string): UseWorkspaceLoaderResul
             }
         }
 
-        void load();
+        async function loadAll() {
+            await load();
+            loadClustersIfMounted(workspaceId, getMounted);
+        }
+        void loadAll();
         void loadKBIfMounted(userId, workspaceId, getMounted);
 
         return () => { mounted = false; };

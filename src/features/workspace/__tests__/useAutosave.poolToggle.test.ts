@@ -14,7 +14,9 @@ import { useSaveStatusStore } from '@/shared/stores/saveStatusStore';
 import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
 
 vi.mock('@/features/canvas/stores/canvasStore', () => ({
-    useCanvasStore: vi.fn(),
+    useCanvasStore: Object.assign(vi.fn(), {
+        getState: () => ({ nodes: [], edges: [], clearClusterGroups: vi.fn(), setClusterGroups: vi.fn(), pruneDeletedNodes: vi.fn() }),
+    }),
 }));
 
 const mockAuthState: { user: { id: string } | null } = { user: { id: 'user-123' } };

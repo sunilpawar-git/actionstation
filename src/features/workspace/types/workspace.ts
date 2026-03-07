@@ -21,6 +21,8 @@ export interface Workspace {
     nodeCount?: number;
     /** Include ALL nodes in this workspace in the AI Canvas Memory pool */
     includeAllNodesInPool?: boolean;
+    /** Persisted cluster groups (stored as workspace metadata, not subcollection) */
+    clusterGroups?: import('@/features/clustering/types/cluster').ClusterGroup[];
 }
 
 /**

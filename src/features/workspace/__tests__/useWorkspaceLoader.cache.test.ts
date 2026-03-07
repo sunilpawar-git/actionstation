@@ -60,11 +60,17 @@ vi.mock('@/features/canvas/stores/canvasStore', () => ({
     useCanvasStore: Object.assign(
         vi.fn(() => ({})),
         {
-            getState: () => ({ nodes: [], edges: [], editingNodeId: null }),
+            getState: () => ({ nodes: [], edges: [], editingNodeId: null, clearClusterGroups: vi.fn(), setClusterGroups: vi.fn(), pruneDeletedNodes: vi.fn() }),
             setState: (...args: unknown[]) => mockCanvasSetState(...args),
         }
     ),
     EMPTY_SELECTED_IDS: Object.freeze(new Set<string>()),
+}));
+
+vi.mock('../stores/workspaceStore', () => ({
+    useWorkspaceStore: Object.assign(vi.fn(), {
+        getState: () => ({ workspaces: [] }),
+    }),
 }));
 
 describe('useWorkspaceLoader cache-first loading', () => {

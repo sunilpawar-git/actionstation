@@ -54,13 +54,18 @@ export function createNodeMutationActions(set: SetFn, get: GetFn) {
         updateNodeContent: (nodeId: string, content: string) =>
             set((s) => ({ nodes: updateNodeDataField(s.nodes, nodeId, 'content', content) })),
 
-        deleteNode: (nodeId: string) =>
+        deleteNode: (nodeId: string) => {
             set((s) => ({
                 ...deleteNodeFromArrays(s.nodes, s.edges, s.selectedNodeIds, nodeId),
                 ...(s.editingNodeId === nodeId
                     ? { editingNodeId: null, draftContent: null, inputMode: 'note' as const }
                     : {}),
-            })),
+            }));
+            const state = get();
+            if (state.clusterGroups.length > 0) {
+                state.pruneDeletedNodes(new Set(state.nodes.map((n) => n.id)));
+            }
+        },
 
         setNodes: (nodes: CanvasNode[]) => set({ nodes }),
 
@@ -68,6 +73,7 @@ export function createNodeMutationActions(set: SetFn, get: GetFn) {
             nodes: [], edges: [], selectedNodeIds: EMPTY_SELECTED_IDS as Set<string>,
             viewport: { x: 32, y: 32, zoom: 1 },
             editingNodeId: null, draftContent: null, inputMode: 'note',
+            clusterGroups: [],
         }),
     };
 }

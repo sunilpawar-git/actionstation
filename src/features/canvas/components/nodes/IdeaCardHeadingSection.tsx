@@ -24,7 +24,7 @@ export const IdeaCardHeadingSection = React.memo(({
     headingRef, heading, isEditing, onHeadingChange, onEnterKey, onDoubleClick,
     onSlashCommand, onSubmitAI, calendarEvent, onCalendarRetry, isCollapsed,
 }: IdeaCardHeadingSectionProps) => (
-    <div className={styles.headingSection}>
+    <div className={styles.headingSection} data-node-section="heading">
         <NodeHeading ref={headingRef} heading={heading} isEditing={isEditing}
             onHeadingChange={onHeadingChange} onEnterKey={onEnterKey}
             onDoubleClick={onDoubleClick} onSlashCommand={onSlashCommand}

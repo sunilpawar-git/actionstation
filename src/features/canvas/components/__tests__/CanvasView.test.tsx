@@ -19,6 +19,8 @@ vi.mock('@xyflow/react', async (importOriginal) => {
         ZoomControls: () => <div data-testid="mock-zoom-controls" />,
         useNodesState: (initialNodes: unknown[]) => [initialNodes, vi.fn(), vi.fn()],
         useEdgesState: (initialEdges: unknown[]) => [initialEdges, vi.fn(), vi.fn()],
+        useStore: (selector: (s: Record<string, unknown>) => unknown) =>
+            selector({ transform: [0, 0, 1] }),
     };
 });
 

@@ -11,7 +11,7 @@ export interface IdeaCardTagsSectionProps {
 export const IdeaCardTagsSection = React.memo(({ tagIds, onChange, visible }: IdeaCardTagsSectionProps) => {
     if (!visible) return null;
     return (
-        <div className={styles.tagsSection}>
+        <div className={styles.tagsSection} data-node-section="tags">
             <TagInput selectedTagIds={tagIds} onChange={onChange} compact />
         </div>
     );

@@ -77,7 +77,7 @@ export const IdeaCardContentSection = React.memo((props: IdeaCardContentSectionP
 
     return (
         <div className={`${styles.contentArea} ${isEditing ? styles.editingMode : ''} nowheel`}
-            data-testid="content-area" ref={contentRef} tabIndex={selected || isEditing ? 0 : -1}
+            data-testid="content-area" data-node-section="content" ref={contentRef} tabIndex={selected || isEditing ? 0 : -1}
             onKeyDown={selected || isEditing ? onKeyDown : undefined}>
 
             {isGenerating && <GeneratingContent />}

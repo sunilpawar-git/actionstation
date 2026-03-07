@@ -91,6 +91,7 @@ vi.mock('../stores/workspaceStore', () => ({
         },
         {
             getState: () => ({
+                workspaces: [],
                 setNodeCount: mockSetNodeCount,
                 setSwitching: mockSetSwitching,
                 setCurrentWorkspaceId: mockSetCurrentWorkspaceId,
@@ -111,7 +112,7 @@ describe('useWorkspaceSwitcher', () => {
         mockLoadNodes.mockResolvedValue(mockNodes);
         mockLoadEdges.mockResolvedValue(mockEdges);
         mockQueueSave.mockResolvedValue(undefined);
-        mockGetState.mockReturnValue({ nodes: [], edges: [] });
+        mockGetState.mockReturnValue({ nodes: [], edges: [], clearClusterGroups: vi.fn(), setClusterGroups: vi.fn(), pruneDeletedNodes: vi.fn() });
         mockCacheGet.mockReturnValue(null); // Default: cache miss
     });
 

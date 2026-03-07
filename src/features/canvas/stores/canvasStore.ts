@@ -17,6 +17,7 @@ import {
     createEditingActions,
     createLinkPreviewActions,
 } from './canvasStoreActions';
+import { createClusterSlice, type ClusterSlice } from '@/features/clustering/stores/clusterSlice';
 
 import { EMPTY_SELECTED_IDS, getNodeMap } from './canvasStoreUtils';
 
@@ -97,7 +98,7 @@ interface CanvasActions {
     setNodeCalendarEvent: (nodeId: string, event: CalendarEventMetadata | undefined) => void;
 }
 
-export type CanvasStore = CanvasState & CanvasActions;
+export type CanvasStore = CanvasState & CanvasActions & ClusterSlice;
 
 const initialState: CanvasState = {
     nodes: [],
@@ -117,4 +118,5 @@ export const useCanvasStore = create<CanvasStore>()((set, get) => ({
     ...createSelectionActions(set, get),
     ...createEditingActions(set, get),
     ...createLinkPreviewActions(set),
+    ...createClusterSlice(set),
 }));

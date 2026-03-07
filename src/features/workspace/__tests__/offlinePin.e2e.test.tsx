@@ -80,10 +80,31 @@ vi.mock('@/features/auth/stores/authStore', () => ({
 
 const mockSetNodes = vi.fn();
 const mockSetEdges = vi.fn();
+const mockCanvasStoreState = {
+    nodes: [], edges: [],
+    viewport: { x: 32, y: 32, zoom: 1 },
+    editingNodeId: null,
+    setNodes: mockSetNodes,
+    setEdges: mockSetEdges,
+    clearClusterGroups: vi.fn(),
+    setClusterGroups: vi.fn(),
+    pruneDeletedNodes: vi.fn(),
+};
 vi.mock('@/features/canvas/stores/canvasStore', () => ({
-    useCanvasStore: () => ({
-        setNodes: mockSetNodes,
-        setEdges: mockSetEdges,
+    useCanvasStore: Object.assign(
+        (selector?: (s: typeof mockCanvasStoreState) => unknown) =>
+            typeof selector === 'function' ? selector(mockCanvasStoreState) : mockCanvasStoreState,
+        {
+            getState: () => mockCanvasStoreState,
+            setState: vi.fn(),
+        }
+    ),
+    EMPTY_SELECTED_IDS: Object.freeze(new Set<string>()),
+}));
+
+vi.mock('../stores/workspaceStore', () => ({
+    useWorkspaceStore: Object.assign(vi.fn(), {
+        getState: () => ({ workspaces: [] }),
     }),
 }));
 

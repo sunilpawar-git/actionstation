@@ -30,7 +30,7 @@ export const NodeUtilsBar = React.memo(forwardRef<HTMLDivElement, NodeUtilsBarPr
         }, [bar.containerRef, ref]);
 
         return (
-            <div ref={mergedRef} className={styles.barWrapper}>
+            <div ref={mergedRef} className={styles.barWrapper} data-node-section="utils">
                 <div
                     className={styles.deckOne}
                     role="toolbar"

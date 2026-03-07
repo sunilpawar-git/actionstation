@@ -52,7 +52,7 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
             <Handle type="target" position={Position.Top} id={`${id}-target`}
                 isConnectable className={`${handleStyles.handle} ${handleStyles.handleTop}`} />
             <div className={`${styles.ideaCard} ${colorStyles.colorContainer} ${isCollapsed ? styles.collapsed : ''}`}
-                data-color={nodeColorKey}>
+                data-color={nodeColorKey} data-node-section="card">
                 {resolvedData.includeInAIPool && (
                     <span className={styles.poolBadge} aria-label={strings.nodePool.inPool}>
                         <MemoryChipIcon size={10} filled />
