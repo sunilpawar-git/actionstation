@@ -7,9 +7,11 @@ import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
+import Link from '@tiptap/extension-link';
 import type { Extension } from '@tiptap/core';
 import { NodeImage } from '../extensions/imageExtension';
 import { markdownToHtml, htmlToMarkdown } from '../services/markdownConverter';
+import { sanitizePastedHtml } from '../services/sanitizePastedHtml';
 
 interface UseTipTapEditorOptions {
     initialContent: string;
@@ -59,6 +61,11 @@ export function useTipTapEditor(options: UseTipTapEditorOptions): UseTipTapEdito
             TableRow,
             TableCell,
             TableHeader,
+            Link.configure({
+                openOnClick: false,
+                HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
+                protocols: ['https', 'http', 'mailto'],
+            }),
             NodeImage,
             ...extraExtensions,
         ],
@@ -70,6 +77,9 @@ export function useTipTapEditor(options: UseTipTapEditorOptions): UseTipTapEdito
         editorProps: {
             transformPastedText(text: string): string {
                 return markdownToHtml(text);
+            },
+            transformPastedHTML(html: string): string {
+                return sanitizePastedHtml(html);
             },
         },
         onBlur: ({ editor: e }) => { onBlur?.(htmlToMarkdown(e.getHTML())); },

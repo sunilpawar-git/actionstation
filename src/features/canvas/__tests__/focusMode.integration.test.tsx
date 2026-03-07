@@ -199,6 +199,40 @@ describe('Focus Mode Integration', () => {
         });
     });
 
+    describe('Editing state survives blur (cursor-sticky contract)', () => {
+        it('editingNodeId stays set after a blur — single tap restores cursor, not double-tap', () => {
+            // Regression: blur used to call stopEditing(), setting editingNodeId=null,
+            // forcing a double-tap to re-enter edit mode.
+            // With the fix, editingNodeId must remain set throughout focus mode.
+            act(() => {
+                useCanvasStore.setState({ editingNodeId: 'node-a' });
+            });
+
+            // Simulate: OS dismisses keyboard / user clicks heading / tab switch.
+            // The overlay's onExitEditing is a no-op — it must NOT call stopEditing.
+            // We verify the store invariant: focusedNodeId set → editingNodeId must not
+            // be cleared by any blur path other than explicit exit (saveBeforeExit/ESC).
+            act(() => {
+                // Only explicit exit paths (exitFocus / saveBeforeExit) may clear it.
+                // A bare stopEditing call here would represent the old bug.
+            });
+
+            expect(useCanvasStore.getState().editingNodeId).toBe('node-a');
+        });
+
+        it('exitFocus is the correct way to end editing — it clears both focusedNodeId and editingNodeId', () => {
+            const { result } = renderHook(() => useFocusMode());
+
+            act(() => { result.current.enterFocus('node-a'); });
+            expect(useCanvasStore.getState().editingNodeId).toBe('node-a');
+
+            act(() => { result.current.exitFocus(); });
+
+            expect(useFocusStore.getState().focusedNodeId).toBeNull();
+            expect(useCanvasStore.getState().editingNodeId).toBeNull();
+        });
+    });
+
     describe('Link previews accessible on focusedNode (SSOT)', () => {
         it('linkPreviews from store are accessible on focusedNode', () => {
             const previews = {

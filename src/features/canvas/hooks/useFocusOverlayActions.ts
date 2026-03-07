@@ -47,7 +47,9 @@ export function useFocusOverlayActions({ nodeId, output, isEditing, onExit }: Us
         getEditableContent,
         placeholder: strings.ideaCard.inputPlaceholder,
         saveContent,
-        onExitEditing: useCallback(() => { useCanvasStore.getState().stopEditing(); }, []),
+        // In focus mode, blur saves content but does NOT exit editing.
+        // Editing stays alive until explicit exit (close button / backdrop / ESC).
+        onExitEditing: useCallback(() => { /* no-op — kept alive by focus mode */ }, []),
     });
 
     const saveBeforeExit = useCallback(() => {

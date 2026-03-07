@@ -94,6 +94,52 @@ describe('htmlToMarkdown start attribute', () => {
     });
 });
 
+describe('htmlToMarkdown strikethrough', () => {
+    it('converts <s> to ~~text~~', () => {
+        expect(htmlToMarkdown('<p><s>removed</s></p>')).toBe('~~removed~~');
+    });
+
+    it('converts <del> to ~~text~~', () => {
+        expect(htmlToMarkdown('<p><del>deleted</del></p>')).toBe('~~deleted~~');
+    });
+
+    it('converts strikethrough mixed with other inline marks', () => {
+        expect(htmlToMarkdown('<p><strong><s>bold deleted</s></strong></p>'))
+            .toBe('**~~bold deleted~~**');
+    });
+});
+
+describe('htmlToMarkdown links', () => {
+    it('converts <a> to [text](url)', () => {
+        expect(htmlToMarkdown('<p><a href="https://example.com">click</a></p>'))
+            .toBe('[click](https://example.com)');
+    });
+
+    it('converts <a> with only text content (no href) to plain text', () => {
+        expect(htmlToMarkdown('<p><a>plain</a></p>')).toBe('plain');
+    });
+
+    it('strips javascript: protocol links (XSS prevention)', () => {
+        expect(htmlToMarkdown('<p><a href="javascript:alert(1)">xss</a></p>'))
+            .toBe('xss');
+    });
+
+    it('strips data: protocol links (security)', () => {
+        expect(htmlToMarkdown('<p><a href="data:text/html,<script>alert(1)</script>">xss</a></p>'))
+            .toBe('xss');
+    });
+
+    it('allows mailto: links', () => {
+        expect(htmlToMarkdown('<p><a href="mailto:hi@example.com">email</a></p>'))
+            .toBe('[email](mailto:hi@example.com)');
+    });
+
+    it('allows http: links', () => {
+        expect(htmlToMarkdown('<p><a href="http://example.com">site</a></p>'))
+            .toBe('[site](http://example.com)');
+    });
+});
+
 describe('htmlToMarkdown tables', () => {
     it('converts table with thead/tbody to GFM markdown', () => {
         const html = '<table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></table>';

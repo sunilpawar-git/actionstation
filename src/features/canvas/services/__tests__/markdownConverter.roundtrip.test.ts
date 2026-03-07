@@ -55,6 +55,24 @@ describe('round-trip', () => {
         expect(result).toContain('2. Second');
         expect(result).toContain('3. Third');
     });
+    it('preserves strikethrough text', () => {
+        const md = '~~deleted text~~';
+        expect(htmlToMarkdown(markdownToHtml(md))).toBe(md);
+    });
+
+    it('preserves strikethrough inside a sentence', () => {
+        const md = 'This has ~~removed~~ content';
+        expect(htmlToMarkdown(markdownToHtml(md))).toBe(md);
+    });
+    it('preserves link text and URL', () => {
+        const md = '[example](https://example.com)';
+        expect(htmlToMarkdown(markdownToHtml(md))).toBe(md);
+    });
+
+    it('preserves link inside a sentence', () => {
+        const md = 'Visit [our site](https://example.com) today';
+        expect(htmlToMarkdown(markdownToHtml(md))).toBe(md);
+    });
 });
 
 describe('round-trip tables (GFM)', () => {

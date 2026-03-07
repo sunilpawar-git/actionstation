@@ -15,12 +15,15 @@ function createMockEditor(overrides: Record<string, boolean> = {}) {
         toggleItalic: vi.fn(() => chain),
         toggleStrike: vi.fn(() => chain),
         toggleCode: vi.fn(() => chain),
+        setLink: vi.fn(() => chain),
+        unsetLink: vi.fn(() => chain),
         run: runFn,
     };
 
     return {
         chain: vi.fn(() => chain),
         isActive: vi.fn((format: string) => overrides[format] ?? false),
+        getAttributes: vi.fn(() => ({ href: '' })),
         _chain: chain,
         _run: runFn,
     };
@@ -42,7 +45,7 @@ describe('EditorBubbleMenu', () => {
         expect(container.innerHTML).toBe('');
     });
 
-    it('renders four formatting buttons with correct aria-labels', () => {
+    it('renders five formatting buttons with correct aria-labels', () => {
         const editor = createMockEditor();
         render(<EditorBubbleMenu editor={editor as never} />);
 
@@ -50,6 +53,7 @@ describe('EditorBubbleMenu', () => {
         expect(screen.getByLabelText(strings.formatting.italic)).toBeInTheDocument();
         expect(screen.getByLabelText(strings.formatting.strikethrough)).toBeInTheDocument();
         expect(screen.getByLabelText(strings.formatting.code)).toBeInTheDocument();
+        expect(screen.getByLabelText(strings.formatting.link)).toBeInTheDocument();
     });
 
     it('calls toggleBold on Bold button mouseDown', () => {
@@ -123,5 +127,86 @@ describe('EditorBubbleMenu', () => {
 
         const boldButton = screen.getByLabelText(strings.formatting.bold);
         expect(boldButton.className).not.toContain('active');
+    });
+});
+
+describe('EditorBubbleMenu link button', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.restoreAllMocks();
+    });
+
+    it('sets link when user enters a URL via prompt', () => {
+        vi.spyOn(window, 'prompt').mockReturnValue('https://example.com');
+        const editor = createMockEditor();
+        render(<EditorBubbleMenu editor={editor as never} />);
+
+        fireEvent.mouseDown(screen.getByLabelText(strings.formatting.link));
+        expect(window.prompt).toHaveBeenCalled();
+        expect(editor._chain.setLink).toHaveBeenCalledWith({ href: 'https://example.com' });
+        expect(editor._run).toHaveBeenCalled();
+    });
+
+    it('does nothing when user cancels the prompt', () => {
+        vi.spyOn(window, 'prompt').mockReturnValue(null);
+        const editor = createMockEditor();
+        render(<EditorBubbleMenu editor={editor as never} />);
+
+        fireEvent.mouseDown(screen.getByLabelText(strings.formatting.link));
+        expect(editor._chain.setLink).not.toHaveBeenCalled();
+        expect(editor._chain.unsetLink).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when user enters empty string', () => {
+        vi.spyOn(window, 'prompt').mockReturnValue('');
+        const editor = createMockEditor();
+        render(<EditorBubbleMenu editor={editor as never} />);
+
+        fireEvent.mouseDown(screen.getByLabelText(strings.formatting.link));
+        expect(editor._chain.setLink).not.toHaveBeenCalled();
+    });
+
+    it('unsets link when link is already active', () => {
+        const promptSpy = vi.spyOn(window, 'prompt');
+        const editor = createMockEditor({ link: true });
+        render(<EditorBubbleMenu editor={editor as never} />);
+
+        fireEvent.mouseDown(screen.getByLabelText(strings.formatting.link));
+        expect(promptSpy).not.toHaveBeenCalled();
+        expect(editor._chain.unsetLink).toHaveBeenCalled();
+        expect(editor._run).toHaveBeenCalled();
+    });
+
+    it('rejects javascript: URLs for XSS prevention', () => {
+        vi.spyOn(window, 'prompt').mockReturnValue('javascript:alert(1)');
+        const editor = createMockEditor();
+        render(<EditorBubbleMenu editor={editor as never} />);
+
+        fireEvent.mouseDown(screen.getByLabelText(strings.formatting.link));
+        expect(editor._chain.setLink).not.toHaveBeenCalled();
+    });
+
+    it('applies active class when link is active', () => {
+        const editor = createMockEditor({ link: true });
+        render(<EditorBubbleMenu editor={editor as never} />);
+
+        const linkButton = screen.getByLabelText(strings.formatting.link);
+        expect(linkButton.className).toContain('active');
+    });
+
+    it('pre-fills prompt with existing href when link is active', () => {
+        const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue(null);
+        const editor = createMockEditor({ link: true });
+        editor.getAttributes.mockReturnValue({ href: 'https://existing.com' });
+        // Override isActive: return true for 'link' but still call unsetLink path
+        // For this test, we need the link NOT active so the prompt path runs
+        editor.isActive.mockImplementation((f: string) => f !== 'link');
+        render(<EditorBubbleMenu editor={editor as never} />);
+
+        fireEvent.mouseDown(screen.getByLabelText(strings.formatting.link));
+        expect(promptSpy).toHaveBeenCalledWith(
+            strings.formatting.linkPrompt,
+            'https://existing.com',
+        );
     });
 });

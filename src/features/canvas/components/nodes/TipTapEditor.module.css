@@ -53,6 +53,25 @@
     margin: var(--space-xs) 0;
 }
 
+.tiptapEditor :global(.ProseMirror h4) {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    margin: var(--space-xs) 0;
+}
+
+.tiptapEditor :global(.ProseMirror h5) {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    margin: var(--space-xs) 0;
+}
+
+.tiptapEditor :global(.ProseMirror h6) {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    margin: var(--space-xs) 0;
+}
+
 /* List styles */
 .tiptapEditor :global(.ProseMirror ul),
 .tiptapEditor :global(.ProseMirror ol) {
@@ -102,6 +121,24 @@
     background: none;
     padding: 0;
     border-radius: 0;
+}
+
+/* Links */
+.tiptapEditor :global(.ProseMirror a) {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.tiptapEditor :global(.ProseMirror a:hover) {
+    color: var(--color-primary-hover);
+}
+
+/* Strikethrough */
+.tiptapEditor :global(.ProseMirror s) {
+    text-decoration: line-through;
+    opacity: 0.65;
 }
 
 /* View mode: images scale proportionally even if TipTap committed inline height.
