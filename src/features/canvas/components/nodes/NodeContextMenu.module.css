@@ -63,6 +63,26 @@
 
 .expandableContent {
     padding-left: var(--space-md);
+    max-height: 280px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.expandableContent::-webkit-scrollbar {
+    width: 6px;
+}
+
+.expandableContent::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.expandableContent::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+}
+
+.expandableContent::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
 }
 
 .expandToggle {

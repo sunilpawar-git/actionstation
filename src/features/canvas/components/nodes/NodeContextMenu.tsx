@@ -113,9 +113,22 @@ function useContextMenuPosition(
         const el = menuRef.current;
         if (!el) return;
         const rect = el.getBoundingClientRect();
-        const x = Math.min(position.x, window.innerWidth - rect.width - VIEWPORT_PADDING_PX);
-        const y = Math.min(position.y, window.innerHeight - rect.height - VIEWPORT_PADDING_PX);
-        setClamped({ x: Math.max(VIEWPORT_PADDING_PX, x), y: Math.max(VIEWPORT_PADDING_PX, y) });
+        
+        let x = position.x;
+        let y = position.y;
+        
+        if (x + rect.width > window.innerWidth - VIEWPORT_PADDING_PX) {
+            x = window.innerWidth - rect.width - VIEWPORT_PADDING_PX;
+        }
+        
+        if (y + rect.height > window.innerHeight - VIEWPORT_PADDING_PX) {
+            y = window.innerHeight - rect.height - VIEWPORT_PADDING_PX;
+        }
+        
+        setClamped({
+            x: Math.max(VIEWPORT_PADDING_PX, x),
+            y: Math.max(VIEWPORT_PADDING_PX, y),
+        });
     }, [menuRef, position, setClamped]);
 }
 
