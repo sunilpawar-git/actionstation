@@ -9,6 +9,7 @@ import { settingsStrings } from './settingsStrings';
 import { documentAgentStrings } from '@/features/documentAgent/strings/documentAgentStrings';
 import { synthesisStrings } from '@/features/synthesis/strings/synthesisStrings';
 import { exportStrings } from '@/features/export/strings/exportStrings';
+import { contextMenuStrings } from './contextMenuStrings';
 
 export const strings = {
     app: {
@@ -108,8 +109,6 @@ export const strings = {
         delete: 'Delete',
         deleteShortcut: '⌫',
         duplicate: 'Duplicate',
-        expandDeck: 'Show more actions',
-        expandDeckIcon: '\u203A',
         duplicateError: 'Failed to duplicate node',
         duplicateSuccess: 'Node duplicated',
         exitFocus: 'Exit focus',
@@ -288,6 +287,7 @@ export const strings = {
     documentAgent: documentAgentStrings,
     synthesis: synthesisStrings,
     export: exportStrings,
+    contextMenu: contextMenuStrings,
 } as const;
 
 export type StringKeys = typeof strings;

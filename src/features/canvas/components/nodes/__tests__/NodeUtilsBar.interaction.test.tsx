@@ -1,17 +1,11 @@
 /**
- * NodeUtilsBar Interaction Tests — Cross-deck hover, chevron tooltip, stability.
+ * NodeUtilsBar Interaction Tests — Flat bar stability, proximity, data-bar-active.
  * Split from NodeUtilsBar.test.tsx to meet 300-line file limit.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { strings } from '@/shared/localization/strings';
 import { NodeUtilsBar } from '../NodeUtilsBar';
-
-vi.mock('../../../../hooks/useUtilsBarLayout', () => ({
-    useUtilsBarLayout: () => ({
-        deckOneActions: ['ai', 'connect', 'copy', 'pin', 'delete'],
-        deckTwoActions: ['tags', 'image', 'duplicate', 'focus', 'collapse', 'color', 'share'],
-    }),
-}));
 
 describe('NodeUtilsBar interaction', () => {
     beforeEach(() => {
@@ -21,103 +15,38 @@ describe('NodeUtilsBar interaction', () => {
     afterEach(() => {
         vi.useRealTimers();
     });
+
     const defaultProps = {
-        onTagClick: vi.fn(),
         onAIClick: vi.fn(),
         onConnectClick: vi.fn(),
         onDelete: vi.fn(),
+        onMoreClick: vi.fn(),
         disabled: false,
     };
 
-    describe('chevron tooltip removal', () => {
-        it('chevron button does not show tooltip on hover', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            const chevron = screen.getByLabelText('Show more actions');
-            fireEvent.mouseEnter(chevron);
-            expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
-        });
-
-        it('chevron retains aria-label for screen reader accessibility', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            expect(screen.getByLabelText('Show more actions')).toBeInTheDocument();
-        });
-    });
-
-    describe('cross-deck hover persistence', () => {
-        it('mouse leaving deck 1 toward deck 2 does not close deck 2', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            const toolbars = screen.getAllByRole('toolbar');
-            const deck1 = toolbars[0] as HTMLElement;
-            const deck2 = toolbars[1] as HTMLElement;
-
-            fireEvent.click(screen.getByLabelText('Show more actions'));
-            expect(deck2.className).toContain('deckTwoOpen');
-
-            fireEvent.mouseLeave(deck1, { relatedTarget: deck2 });
-            expect(deck2.className).toContain('deckTwoOpen');
-        });
-
-        it('mouse leaving deck 1 away from bar DOES NOT close deck 2 (manual mode)', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            const toolbars = screen.getAllByRole('toolbar');
-            const deck1 = toolbars[0] as HTMLElement;
-            const deck2 = toolbars[1] as HTMLElement;
-
-            fireEvent.click(screen.getByLabelText('Show more actions'));
-            expect(deck2.className).toContain('deckTwoOpen');
-
-            fireEvent.mouseLeave(deck1, { relatedTarget: document.body });
-            act(() => {
-                vi.advanceTimersByTime(300);
-            });
-            expect(deck2.className).toContain('deckTwoOpen');
-        });
-
-        it('mouse leaving deck 2 toward deck 1 does not close deck 2', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            const toolbars = screen.getAllByRole('toolbar');
-            const deck1 = toolbars[0] as HTMLElement;
-            const deck2 = toolbars[1] as HTMLElement;
-
-            fireEvent.click(screen.getByLabelText('Show more actions'));
-            expect(deck2.className).toContain('deckTwoOpen');
-
-            fireEvent.mouseLeave(deck2, { relatedTarget: deck1 });
-            act(() => {
-                vi.advanceTimersByTime(300);
-            });
-            expect(deck2.className).toContain('deckTwoOpen');
-        });
-    });
-
     describe('interaction stability regression', () => {
         it('handles rapid interactions without update-depth errors', () => {
-            const onColorChange = vi.fn();
             const onTransform = vi.fn();
             render(
                 <NodeUtilsBar
                     {...defaultProps}
                     hasContent={true}
                     onTransform={onTransform}
-                    onColorChange={onColorChange}
                 />
             );
 
             for (let i = 0; i < 5; i += 1) {
-                fireEvent.click(screen.getByLabelText('Color'));
-                fireEvent.click(screen.getByText('Red (Attention)'));
-                fireEvent.click(screen.getByLabelText('Transform'));
-                fireEvent.click(screen.getByText('Refine'));
+                fireEvent.click(screen.getByLabelText(strings.ideaCard.transform));
+                fireEvent.click(screen.getByText(strings.transformations.refine));
                 fireEvent.mouseDown(document.body);
             }
 
-            expect(onColorChange).toHaveBeenCalled();
             expect(onTransform).toHaveBeenCalled();
         });
     });
 
-    describe('proximity lost — deck 2 cascade-in bug fix', () => {
-        it('registerProximityLostFn provides a callback that closes deck 2 even in manual mode', () => {
+    describe('proximity lost — flat bar', () => {
+        it('registerProximityLostFn provides a callback', () => {
             let proximityLostFn: (() => void) | null = null;
             render(
                 <NodeUtilsBar
@@ -125,44 +54,58 @@ describe('NodeUtilsBar interaction', () => {
                     registerProximityLostFn={(fn) => { proximityLostFn = fn; }}
                 />
             );
-
-            fireEvent.click(screen.getByLabelText('Show more actions'));
-            const deck2 = screen.getAllByRole('toolbar')[1] as HTMLElement;
-            expect(deck2.className).toContain('deckTwoOpen');
 
             expect(proximityLostFn).not.toBeNull();
-            act(() => { proximityLostFn?.(); });
-            expect(deck2.className).not.toContain('deckTwoOpen');
         });
 
-        it('isPinnedOpen=true prevents proximityLost from closing deck 2', () => {
+        it('proximityLost closes open transform submenu', () => {
             let proximityLostFn: (() => void) | null = null;
             render(
                 <NodeUtilsBar
                     {...defaultProps}
-                    isPinnedOpen
+                    hasContent={true}
+                    onTransform={vi.fn()}
                     registerProximityLostFn={(fn) => { proximityLostFn = fn; }}
                 />
             );
 
-            const deck2 = screen.getAllByRole('toolbar')[1] as HTMLElement;
+            fireEvent.click(screen.getByLabelText(strings.ideaCard.transform));
+
             act(() => { proximityLostFn?.(); });
-            expect(deck2.className).not.toContain('deckTwoOpen');
+
+            const container = screen.getByRole('toolbar').parentElement;
+            expect(container?.getAttribute('data-bar-active')).toBeNull();
         });
     });
 
-    describe('CSS z-index protection via data attributes', () => {
-        it('sets data-bar-active on the container when deck 2 is opened', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            const toolbars = screen.getAllByRole('toolbar');
-            const container = toolbars[0]?.parentElement;
+    describe('CSS data-bar-active attribute', () => {
+        it('sets data-bar-active when transform submenu is opened', () => {
+            render(
+                <NodeUtilsBar {...defaultProps} hasContent onTransform={vi.fn()} />
+            );
+            const container = screen.getByRole('toolbar').parentElement;
             expect(container).not.toBeNull();
 
             expect(container!.getAttribute('data-bar-active')).toBeNull();
 
-            fireEvent.click(screen.getByLabelText('Show more actions'));
+            fireEvent.click(screen.getByLabelText(strings.ideaCard.transform));
 
             expect(container!.getAttribute('data-bar-active')).toBe('true');
+        });
+
+        it('removes data-bar-active when submenu is closed via outside click', () => {
+            render(
+                <NodeUtilsBar {...defaultProps} hasContent onTransform={vi.fn()} />
+            );
+            const container = screen.getByRole('toolbar').parentElement!;
+
+            fireEvent.click(screen.getByLabelText(strings.ideaCard.transform));
+            expect(container.getAttribute('data-bar-active')).toBe('true');
+
+            fireEvent.mouseDown(document.body);
+            act(() => { vi.advanceTimersByTime(0); });
+
+            expect(container.getAttribute('data-bar-active')).toBeNull();
         });
     });
 });

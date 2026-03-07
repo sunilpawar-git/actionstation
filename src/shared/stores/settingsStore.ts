@@ -4,9 +4,6 @@
  */
 import { create } from 'zustand';
 import { getStorageItem, getValidatedStorageItem, setStorageItem } from '@/shared/utils/storage';
-import { DEFAULT_UTILS_BAR_LAYOUT } from '@/features/canvas/types/utilsBarLayout';
-import type { UtilsBarActionId, UtilsBarDeck, UtilsBarLayout } from '@/features/canvas/types/utilsBarLayout';
-import { loadUtilsBarLayout, computeNextLayout, computeReorder, persistUtilsBarLayout } from './utilsBarLayoutSlice';
 import { trackSettingsChanged } from '@/shared/services/analyticsService';
 
 export type ThemeOption = 'light' | 'dark' | 'system' | 'sepia' | 'grey' | 'darkBlack';
@@ -17,13 +14,13 @@ const DIRECT_THEMES: ReadonlySet<string> = new Set(['light', 'dark', 'sepia', 'g
 
 export type CanvasScrollMode = 'zoom' | 'navigate';
 export type ConnectorStyle = 'solid' | 'subtle' | 'thick' | 'dashed' | 'dotted';
-export type SettingsTabId = 'appearance' | 'canvas' | 'toolbar' | 'account' | 'keyboard' | 'about';
+export type SettingsTabId = 'appearance' | 'canvas' | 'account' | 'keyboard' | 'about';
 
 /** Allow-lists for validated storage reads (defense-in-depth) */
 const VALID_THEMES: readonly ThemeOption[] = ['light', 'dark', 'system', 'sepia', 'grey', 'darkBlack'];
 const VALID_SCROLL_MODES: readonly CanvasScrollMode[] = ['zoom', 'navigate'];
 const VALID_CONNECTOR_STYLES: readonly ConnectorStyle[] = ['solid', 'subtle', 'thick', 'dashed', 'dotted'];
-const VALID_SETTINGS_TABS: readonly SettingsTabId[] = ['appearance', 'canvas', 'toolbar', 'account', 'keyboard', 'about'];
+const VALID_SETTINGS_TABS: readonly SettingsTabId[] = ['appearance', 'canvas', 'account', 'keyboard', 'about'];
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -57,7 +54,6 @@ interface SettingsState {
     canvasFreeFlow: boolean;
     autoAnalyzeDocuments: boolean;
     lastSettingsTab: SettingsTabId;
-    utilsBarLayout: UtilsBarLayout;
     setTheme: (theme: ThemeOption) => void;
     toggleCanvasGrid: () => void;
     setAutoSave: (enabled: boolean) => void;
@@ -69,9 +65,6 @@ interface SettingsState {
     toggleCanvasFreeFlow: () => void;
     toggleAutoAnalyzeDocuments: () => void;
     setLastSettingsTab: (tab: SettingsTabId) => void;
-    setUtilsBarActionDeck: (actionId: UtilsBarActionId, deck: UtilsBarDeck) => void;
-    reorderUtilsBarAction: (actionId: UtilsBarActionId, targetDeck: UtilsBarDeck, targetIndex: number) => void;
-    resetUtilsBarLayout: () => void;
     getResolvedTheme: () => ResolvedTheme;
     loadFromStorage: () => void;
 }
@@ -96,7 +89,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     canvasFreeFlow: getStorageItem<boolean>(STORAGE_KEYS.canvasFreeFlow, false),
     autoAnalyzeDocuments: getStorageItem<boolean>(STORAGE_KEYS.autoAnalyzeDocuments, true),
     lastSettingsTab: getValidatedStorageItem(STORAGE_KEYS.lastSettingsTab, 'appearance', VALID_SETTINGS_TABS),
-    utilsBarLayout: loadUtilsBarLayout(),
     setTheme: (theme: ThemeOption) => { set({ theme }); setStorageItem(STORAGE_KEYS.theme, theme); trackSettingsChanged('theme', theme); },
     toggleCanvasGrid: () => {
         const v = !get().canvasGrid; set({ canvasGrid: v }); setStorageItem(STORAGE_KEYS.canvasGrid, v); trackSettingsChanged('canvasGrid', v);
@@ -121,19 +113,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         const v = !get().autoAnalyzeDocuments; set({ autoAnalyzeDocuments: v }); setStorageItem(STORAGE_KEYS.autoAnalyzeDocuments, v); trackSettingsChanged('autoAnalyzeDocuments', v);
     },
     setLastSettingsTab: (tab: SettingsTabId) => { set({ lastSettingsTab: tab }); setStorageItem(STORAGE_KEYS.lastSettingsTab, tab); },
-    setUtilsBarActionDeck: (actionId: UtilsBarActionId, deck: UtilsBarDeck) => {
-        const next = computeNextLayout(get().utilsBarLayout, actionId, deck);
-        if (!next) return;
-        set({ utilsBarLayout: next }); persistUtilsBarLayout(next);
-    },
-    reorderUtilsBarAction: (actionId: UtilsBarActionId, targetDeck: UtilsBarDeck, targetIndex: number) => {
-        const next = computeReorder(get().utilsBarLayout, actionId, targetDeck, targetIndex);
-        if (!next) return;
-        set({ utilsBarLayout: next }); persistUtilsBarLayout(next);
-    },
-    resetUtilsBarLayout: () => {
-        set({ utilsBarLayout: DEFAULT_UTILS_BAR_LAYOUT }); persistUtilsBarLayout(DEFAULT_UTILS_BAR_LAYOUT);
-    },
     getResolvedTheme: (): ResolvedTheme => {
         const { theme } = get();
         if (DIRECT_THEMES.has(theme)) return theme as ResolvedTheme;
@@ -155,7 +134,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
             canvasFreeFlow: getStorageItem<boolean>(STORAGE_KEYS.canvasFreeFlow, false),
             autoAnalyzeDocuments: getStorageItem<boolean>(STORAGE_KEYS.autoAnalyzeDocuments, true),
             lastSettingsTab: getValidatedStorageItem(STORAGE_KEYS.lastSettingsTab, 'appearance', VALID_SETTINGS_TABS),
-            utilsBarLayout: loadUtilsBarLayout(),
         });
     },
 }));

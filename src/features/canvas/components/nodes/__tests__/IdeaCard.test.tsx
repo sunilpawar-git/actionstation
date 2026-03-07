@@ -142,7 +142,7 @@ describe('IdeaCard', () => {
             };
             render(<IdeaCard {...noteCard} />);
             expect(screen.getByRole('button', { name: /transform/i })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /show more actions/i })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
         });
 
@@ -152,12 +152,11 @@ describe('IdeaCard', () => {
                 data: { ...defaultData, prompt: 'AI prompt', output: 'AI response' },
             };
             render(<IdeaCard {...aiCard} />);
-            // Primary buttons always in bar
             expect(screen.getByRole('button', { name: /transform/i })).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /connect/i })).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /copy/i })).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /show more actions/i })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
         });
 
         // Copy-specific tests are in IdeaCard.copy.test.tsx

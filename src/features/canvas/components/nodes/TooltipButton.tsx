@@ -33,6 +33,8 @@ export interface TooltipButtonProps {
     onMouseLeave?: () => void;
     /** aria-expanded for toggle buttons */
     'aria-expanded'?: boolean;
+    /** aria-haspopup for menu trigger buttons */
+    'aria-haspopup'?: boolean | 'true' | 'false' | 'menu' | 'listbox' | 'tree' | 'grid' | 'dialog';
 }
 
 export const TooltipButton = React.memo(function TooltipButton({
@@ -47,6 +49,7 @@ export const TooltipButton = React.memo(function TooltipButton({
     onMouseEnter: onMouseEnterProp,
     onMouseLeave: onMouseLeaveProp,
     'aria-expanded': ariaExpanded,
+    'aria-haspopup': ariaHasPopup,
 }: TooltipButtonProps) {
     const [hovered, setHovered] = useState(false);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -70,6 +73,7 @@ export const TooltipButton = React.memo(function TooltipButton({
                 aria-label={label}
                 aria-describedby={tooltipText && isTooltipVisible ? tooltipId : undefined}
                 aria-expanded={ariaExpanded}
+                aria-haspopup={ariaHasPopup}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
             >

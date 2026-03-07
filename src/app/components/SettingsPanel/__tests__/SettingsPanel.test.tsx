@@ -42,7 +42,6 @@ describe('SettingsPanel', () => {
         render(<SettingsPanel isOpen={true} onClose={vi.fn()} />);
         expect(screen.getByText(strings.settings.appearance)).toBeInTheDocument();
         expect(screen.getByText(strings.settings.canvas)).toBeInTheDocument();
-        expect(screen.getByText(strings.settings.toolbar)).toBeInTheDocument();
         expect(screen.getByText(strings.settings.account)).toBeInTheDocument();
         expect(screen.getByText(strings.settings.keyboard)).toBeInTheDocument();
         expect(screen.getByText(strings.settings.about)).toBeInTheDocument();

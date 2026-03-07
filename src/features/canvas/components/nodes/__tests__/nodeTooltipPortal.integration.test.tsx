@@ -21,21 +21,10 @@ vi.mock('@/shared/components/PortalTooltip', () => ({
     ),
 }));
 
-vi.mock('../../../../hooks/useUtilsBarLayout', () => ({
-    useUtilsBarLayout: () => ({
-        deckOneActions: ['ai', 'connect', 'copy', 'pin', 'delete'],
-        deckTwoActions: ['tags', 'image', 'duplicate', 'focus', 'collapse', 'color', 'share'],
-    }),
-}));
-
 vi.mock('../NodeUtilsBar.module.css', () => ({
     default: {
         barWrapper: 'barWrapper',
-        deckBase: 'deckBase',
         deckOne: 'deckOne',
-        deckTwo: 'deckTwo',
-        deckOnePinned: 'deckOnePinned',
-        deckTwoPinned: 'deckTwoPinned',
         peekIndicator: 'peekIndicator',
     },
 }));
@@ -50,10 +39,10 @@ vi.mock('../TooltipButton.module.css', () => ({
 
 describe('Tooltip Portal Integration', () => {
     const defaultProps = {
-        onTagClick: vi.fn(),
         onAIClick: vi.fn(),
         onConnectClick: vi.fn(),
         onDelete: vi.fn(),
+        onMoreClick: vi.fn(),
         disabled: false,
     };
 

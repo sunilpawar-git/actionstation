@@ -1,273 +1,119 @@
 /**
- * NodeUtilsBar Tests — TDD
- * Tests for the floating node utilities action bar with dual-deck layout.
- * Deck 1: primary actions. Deck 2: secondary actions rendered as direct buttons.
- * All sub-menus (ColorMenu, ShareMenu) render inline in their deck — no overflow.
+ * NodeUtilsBar Tests — TDD for flat 5-action bar.
+ * Primary: AI/Transform | Connect | Copy | Delete | More
+ * All labels from string resources. React.memo applied.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { strings } from '@/shared/localization/strings';
 import { NodeUtilsBar } from '../NodeUtilsBar';
-
-const mockDeckOneActions: string[] = ['ai', 'connect', 'copy', 'pin', 'delete'];
-const mockDeckTwoActions: string[] = ['tags', 'image', 'duplicate', 'focus', 'collapse', 'color', 'share'];
-
-vi.mock('../../../../hooks/useUtilsBarLayout', () => ({
-    useUtilsBarLayout: () => ({
-        deckOneActions: mockDeckOneActions,
-        deckTwoActions: mockDeckTwoActions,
-    }),
-}));
 
 describe('NodeUtilsBar', () => {
     const defaultProps = {
-        onTagClick: vi.fn(),
         onAIClick: vi.fn(),
         onConnectClick: vi.fn(),
+        onCopyClick: vi.fn(),
         onDelete: vi.fn(),
+        onMoreClick: vi.fn(),
+        hasContent: true,
         disabled: false,
     };
 
-    describe('primary buttons (deck 1)', () => {
-        it('renders AI Actions button directly in bar', () => {
+    describe('renders 5 buttons', () => {
+        it('renders Connect button', () => {
             render(<NodeUtilsBar {...defaultProps} />);
-            expect(screen.getByLabelText('AI Actions')).toBeInTheDocument();
+            expect(screen.getByLabelText(strings.nodeUtils.connect)).toBeInTheDocument();
         });
 
-        it('renders Connect button directly in bar', () => {
+        it('renders Copy button', () => {
             render(<NodeUtilsBar {...defaultProps} />);
-            expect(screen.getByLabelText('Connect')).toBeInTheDocument();
+            expect(screen.getByLabelText(strings.nodeUtils.copy)).toBeInTheDocument();
         });
 
-        it('renders Delete button directly in bar', () => {
+        it('renders Delete button', () => {
             render(<NodeUtilsBar {...defaultProps} />);
-            expect(screen.getByLabelText('Delete')).toBeInTheDocument();
+            expect(screen.getByLabelText(strings.nodeUtils.delete)).toBeInTheDocument();
         });
 
-        it('calls onAIClick when AI Actions button is clicked', () => {
+        it('renders More button', () => {
             render(<NodeUtilsBar {...defaultProps} />);
-            fireEvent.click(screen.getByLabelText('AI Actions'));
-            expect(defaultProps.onAIClick).toHaveBeenCalledTimes(1);
+            expect(screen.getByLabelText(strings.nodeUtils.more)).toBeInTheDocument();
+        });
+    });
+
+    describe('button callbacks', () => {
+        it('calls onConnectClick when Connect is clicked', () => {
+            render(<NodeUtilsBar {...defaultProps} />);
+            fireEvent.click(screen.getByLabelText(strings.nodeUtils.connect));
+            expect(defaultProps.onConnectClick).toHaveBeenCalledOnce();
         });
 
-        it('calls onConnectClick when Connect button is clicked', () => {
+        it('calls onCopyClick when Copy is clicked', () => {
             render(<NodeUtilsBar {...defaultProps} />);
-            fireEvent.click(screen.getByLabelText('Connect'));
-            expect(defaultProps.onConnectClick).toHaveBeenCalledTimes(1);
+            fireEvent.click(screen.getByLabelText(strings.nodeUtils.copy));
+            expect(defaultProps.onCopyClick).toHaveBeenCalledOnce();
         });
 
-        it('calls onDelete when Delete button is clicked', () => {
+        it('calls onDelete when Delete is clicked', () => {
             render(<NodeUtilsBar {...defaultProps} />);
-            fireEvent.click(screen.getByLabelText('Delete'));
-            expect(defaultProps.onDelete).toHaveBeenCalledTimes(1);
+            fireEvent.click(screen.getByLabelText(strings.nodeUtils.delete));
+            expect(defaultProps.onDelete).toHaveBeenCalledOnce();
         });
 
-        it('disables primary buttons when disabled prop is true', () => {
+        it('calls onMoreClick when More is clicked', () => {
+            render(<NodeUtilsBar {...defaultProps} />);
+            fireEvent.click(screen.getByLabelText(strings.nodeUtils.more));
+            expect(defaultProps.onMoreClick).toHaveBeenCalledOnce();
+        });
+    });
+
+    describe('Copy button state', () => {
+        it('disables Copy when hasContent is false', () => {
+            render(<NodeUtilsBar {...defaultProps} hasContent={false} />);
+            expect(screen.getByLabelText(strings.nodeUtils.copy)).toBeDisabled();
+        });
+
+        it('enables Copy when hasContent is true', () => {
+            render(<NodeUtilsBar {...defaultProps} hasContent={true} />);
+            expect(screen.getByLabelText(strings.nodeUtils.copy)).toBeEnabled();
+        });
+    });
+
+    describe('disabled state', () => {
+        it('disables all buttons when disabled prop is true', () => {
             render(<NodeUtilsBar {...defaultProps} disabled={true} />);
-            expect(screen.getByLabelText('AI Actions')).toBeDisabled();
-            expect(screen.getByLabelText('Connect')).toBeDisabled();
-            expect(screen.getByLabelText('Delete')).toBeDisabled();
+            expect(screen.getByLabelText(strings.nodeUtils.connect)).toBeDisabled();
+            expect(screen.getByLabelText(strings.nodeUtils.delete)).toBeDisabled();
+            expect(screen.getByLabelText(strings.nodeUtils.more)).toBeDisabled();
         });
     });
 
-    describe('Copy button (primary, conditional)', () => {
-        it('renders copy button when onCopyClick is provided', () => {
-            const onCopyClick = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onCopyClick={onCopyClick} />);
-            expect(screen.getByLabelText('Copy')).toBeInTheDocument();
-        });
-
-        it('does not render copy button when onCopyClick is not provided', () => {
+    describe('a11y', () => {
+        it('has role="toolbar" and aria-label', () => {
             render(<NodeUtilsBar {...defaultProps} />);
-            expect(screen.queryByLabelText('Copy')).not.toBeInTheDocument();
+            const toolbar = screen.getByRole('toolbar');
+            expect(toolbar).toHaveAttribute('aria-label', strings.canvas.nodeActionsLabel);
         });
 
-        it('calls onCopyClick when Copy button is clicked', () => {
-            const onCopyClick = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onCopyClick={onCopyClick} hasContent={true} />);
-            fireEvent.click(screen.getByLabelText('Copy'));
-            expect(onCopyClick).toHaveBeenCalledTimes(1);
-        });
-
-        it('disables copy button when disabled prop is true', () => {
-            const onCopyClick = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onCopyClick={onCopyClick} disabled={true} />);
-            expect(screen.getByLabelText('Copy')).toBeDisabled();
-        });
-
-        it('disables copy button when hasContent is false', () => {
-            const onCopyClick = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onCopyClick={onCopyClick} hasContent={false} />);
-            expect(screen.getByLabelText('Copy')).toBeDisabled();
-        });
-
-        it('enables copy button when hasContent is true', () => {
-            const onCopyClick = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onCopyClick={onCopyClick} hasContent={true} />);
-            expect(screen.getByLabelText('Copy')).toBeEnabled();
+        it('More button has aria-haspopup="true"', () => {
+            render(<NodeUtilsBar {...defaultProps} />);
+            expect(screen.getByLabelText(strings.nodeUtils.more)).toHaveAttribute('aria-haspopup', 'true');
         });
     });
 
-    describe('deck 2 buttons (direct, not in overflow)', () => {
-        it('Tags button is rendered directly when onTagClick is provided', () => {
+    describe('all labels from string resources', () => {
+        it('labels are from strings.nodeUtils', () => {
             render(<NodeUtilsBar {...defaultProps} />);
-            expect(screen.getByLabelText('Tags')).toBeInTheDocument();
-        });
-
-        it('calls onTagClick when Tags button is clicked', () => {
-            const onTagClick = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onTagClick={onTagClick} />);
-            fireEvent.click(screen.getByLabelText('Tags'));
-            expect(onTagClick).toHaveBeenCalledTimes(1);
-        });
-
-        it('renders Focus directly when onFocusClick is provided', () => {
-            const onFocusClick = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onFocusClick={onFocusClick} />);
-            expect(screen.getByLabelText('Focus')).toBeInTheDocument();
-        });
-
-        it('does not render Focus when onFocusClick is not provided', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            expect(screen.queryByLabelText('Focus')).not.toBeInTheDocument();
-        });
-
-        it('renders Duplicate directly when onDuplicateClick is provided', () => {
-            const onDuplicateClick = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onDuplicateClick={onDuplicateClick} />);
-            expect(screen.getByLabelText('Duplicate')).toBeInTheDocument();
-        });
-
-        it('renders Image directly when onImageClick is provided', () => {
-            const onImageClick = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onImageClick={onImageClick} />);
-            expect(screen.getByLabelText('Image')).toBeInTheDocument();
-        });
-
-        it('renders Collapse directly when onCollapseToggle is provided', () => {
-            const onCollapseToggle = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onCollapseToggle={onCollapseToggle} />);
-            expect(screen.getByLabelText('Collapse')).toBeInTheDocument();
-        });
-
-        it('renders Expand (not Collapse) when isCollapsed is true', () => {
-            const onCollapseToggle = vi.fn();
-            render(
-                <NodeUtilsBar
-                    {...defaultProps}
-                    onCollapseToggle={onCollapseToggle}
-                    isCollapsed={true}
-                />,
-            );
-            expect(screen.getByLabelText('Expand')).toBeInTheDocument();
-            expect(screen.queryByLabelText('Collapse')).not.toBeInTheDocument();
-        });
-
-        it('renders Color directly when onColorChange is provided', () => {
-            const onColorChange = vi.fn();
-            render(<NodeUtilsBar {...defaultProps} onColorChange={onColorChange} />);
-            expect(screen.getByLabelText('Color')).toBeInTheDocument();
-        });
-
-        it('renders Share directly when onShareClick is provided', () => {
-            const onShareClick = vi.fn().mockResolvedValue(undefined);
-            render(<NodeUtilsBar {...defaultProps} onShareClick={onShareClick} />);
-            expect(screen.getByLabelText('Share')).toBeInTheDocument();
+            expect(screen.getByLabelText(strings.nodeUtils.connect)).toBeInTheDocument();
+            expect(screen.getByLabelText(strings.nodeUtils.copy)).toBeInTheDocument();
+            expect(screen.getByLabelText(strings.nodeUtils.delete)).toBeInTheDocument();
+            expect(screen.getByLabelText(strings.nodeUtils.more)).toBeInTheDocument();
         });
     });
 
-    describe('no overflow menu (sub-menus render inline)', () => {
-        it('does NOT show ••• button even when onShareClick is provided', () => {
-            const onShareClick = vi.fn().mockResolvedValue(undefined);
-            render(<NodeUtilsBar {...defaultProps} onShareClick={onShareClick} />);
-            expect(screen.queryByLabelText('More actions')).not.toBeInTheDocument();
-        });
-
-        it('does not show ••• button when onShareClick is not provided', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            expect(screen.queryByLabelText('More actions')).not.toBeInTheDocument();
-        });
-
-        it('clicking Share opens ShareMenu portal directly', () => {
-            const onShareClick = vi.fn().mockResolvedValue(undefined);
-            render(<NodeUtilsBar {...defaultProps} onShareClick={onShareClick} />);
-            fireEvent.click(screen.getByLabelText('Share'));
-            expect(screen.getByTestId('share-menu-portal')).toBeInTheDocument();
+    describe('React.memo applied', () => {
+        it('NodeUtilsBar is memoized', () => {
+            expect(NodeUtilsBar.$$typeof).toBe(Symbol.for('react.memo'));
         });
     });
-
-    describe('Pin button (primary, conditional)', () => {
-        it('renders Pin button directly in bar when onPinToggle is provided', () => {
-            render(<NodeUtilsBar {...defaultProps} onPinToggle={vi.fn()} />);
-            expect(screen.getByLabelText('Pin')).toBeInTheDocument();
-        });
-
-        it('renders Unpin when isPinned is true', () => {
-            render(<NodeUtilsBar {...defaultProps} onPinToggle={vi.fn()} isPinned={true} />);
-            expect(screen.getByLabelText('Unpin')).toBeInTheDocument();
-        });
-
-        it('does not render Pin button when onPinToggle is not provided', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            expect(screen.queryByLabelText('Pin')).not.toBeInTheDocument();
-        });
-    });
-
-    describe('deck 2 isolation (data-bar-focused must NOT open deck 2)', () => {
-        it('clicking a deck 1 button does not add deckTwoOpen class to deck 2', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            fireEvent.click(screen.getByLabelText('Connect'));
-            const toolbars = screen.getAllByRole('toolbar');
-            const deck2 = toolbars[1] as HTMLElement;
-            expect(deck2.className).not.toContain('deckTwoOpen');
-        });
-
-        it('deck 2 toolbar does not gain deckTwoOpen when Delete is clicked', () => {
-            render(<NodeUtilsBar {...defaultProps} />);
-            fireEvent.click(screen.getByLabelText('Delete'));
-            const toolbars = screen.getAllByRole('toolbar');
-            const deck2 = toolbars[1] as HTMLElement;
-            expect(deck2.className).not.toContain('deckTwoOpen');
-        });
-    });
-
-    describe('user-configured action order', () => {
-        it('deck 1 renders AI Actions first when order is [ai, connect, copy, pin, delete]', () => {
-            render(<NodeUtilsBar {...defaultProps} onPinToggle={vi.fn()} onCopyClick={vi.fn()} />);
-            const toolbars = screen.getAllByRole('toolbar');
-            const deck1 = toolbars[0] as HTMLElement;
-            const buttons = Array.from(deck1.querySelectorAll('button[aria-label]'));
-            // First button in DOM order must be AI Actions
-            expect(buttons[0]).toHaveAttribute('aria-label', 'AI Actions');
-        });
-
-        it('deck 1 renders Connect second when order is [ai, connect, copy, pin, delete]', () => {
-            render(<NodeUtilsBar {...defaultProps} onPinToggle={vi.fn()} onCopyClick={vi.fn()} />);
-            const toolbars = screen.getAllByRole('toolbar');
-            const deck1 = toolbars[0] as HTMLElement;
-            const buttons = Array.from(deck1.querySelectorAll('button[aria-label]'));
-            expect(buttons[1]).toHaveAttribute('aria-label', 'Connect');
-        });
-
-        it('deck 1 renders Delete last when order is [ai, connect, copy, pin, delete]', () => {
-            render(<NodeUtilsBar {...defaultProps} onPinToggle={vi.fn()} onCopyClick={vi.fn()} />);
-            const toolbars = screen.getAllByRole('toolbar');
-            const deck1 = toolbars[0] as HTMLElement;
-            // Exclude the expand-deck button ('Show more actions')
-            const actionButtons = Array.from(
-                deck1.querySelectorAll('button[aria-label]')
-            ).filter((b) => b.getAttribute('aria-label') !== 'Show more actions');
-            expect(actionButtons[actionButtons.length - 1]).toHaveAttribute('aria-label', 'Delete');
-        });
-
-        it('NodeUtilsBarDeckButtons maps actions array in order (contract test)', () => {
-            // Verify that mock order [ai, connect, copy, pin, delete] is reflected in DOM
-            render(<NodeUtilsBar {...defaultProps} onPinToggle={vi.fn()} onCopyClick={vi.fn()} />);
-            const aiButton = screen.getByLabelText('AI Actions');
-            const connectButton = screen.getByLabelText('Connect');
-            // compareDocumentPosition: DOCUMENT_POSITION_FOLLOWING = 4 means aiButton comes before connectButton
-            const position = aiButton.compareDocumentPosition(connectButton);
-            expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        });
-    });
-
 });

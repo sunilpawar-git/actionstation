@@ -3,7 +3,6 @@
  * SSOT: single place to update when SettingsState interface changes
  */
 import { vi } from 'vitest';
-import { DEFAULT_UTILS_BAR_LAYOUT } from '@/features/canvas/types/utilsBarLayout';
 import type {
     ThemeOption,
     ConnectorStyle,
@@ -23,7 +22,6 @@ export interface MockSettingsOverrides {
     isCanvasLocked?: boolean;
     canvasFreeFlow?: boolean;
     lastSettingsTab?: SettingsTabId;
-    utilsBarLayout?: typeof DEFAULT_UTILS_BAR_LAYOUT;
     setTheme?: ReturnType<typeof vi.fn>;
     toggleCanvasGrid?: ReturnType<typeof vi.fn>;
     setAutoSave?: ReturnType<typeof vi.fn>;
@@ -33,9 +31,6 @@ export interface MockSettingsOverrides {
     setConnectorStyle?: ReturnType<typeof vi.fn>;
     toggleCanvasLocked?: ReturnType<typeof vi.fn>;
     toggleCanvasFreeFlow?: ReturnType<typeof vi.fn>;
-    setUtilsBarActionDeck?: ReturnType<typeof vi.fn>;
-    reorderUtilsBarAction?: ReturnType<typeof vi.fn>;
-    resetUtilsBarLayout?: ReturnType<typeof vi.fn>;
     setLastSettingsTab?: ReturnType<typeof vi.fn>;
     getResolvedTheme?: () => 'light' | 'dark' | 'sepia' | 'grey' | 'darkBlack';
     loadFromStorage?: ReturnType<typeof vi.fn>;
@@ -56,7 +51,6 @@ export function createMockSettingsState(overrides: MockSettingsOverrides = {}) {
         isCanvasLocked: false,
         canvasFreeFlow: false,
         lastSettingsTab: 'appearance' as SettingsTabId,
-        utilsBarLayout: DEFAULT_UTILS_BAR_LAYOUT,
         setTheme: vi.fn(),
         toggleCanvasGrid: vi.fn(),
         setAutoSave: vi.fn(),
@@ -66,9 +60,6 @@ export function createMockSettingsState(overrides: MockSettingsOverrides = {}) {
         setConnectorStyle: vi.fn(),
         toggleCanvasLocked: vi.fn(),
         toggleCanvasFreeFlow: vi.fn(),
-        setUtilsBarActionDeck: vi.fn(),
-        reorderUtilsBarAction: vi.fn(),
-        resetUtilsBarLayout: vi.fn(),
         setLastSettingsTab: vi.fn(),
         getResolvedTheme: () => 'light' as const,
         loadFromStorage: vi.fn(),

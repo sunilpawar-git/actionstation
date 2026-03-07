@@ -7,7 +7,6 @@ import { useIdeaCardState } from './useIdeaCardState';
 import { useIdeaCardHandlers } from './useIdeaCardHandlers';
 import { useLinkPreviewRetry } from './useLinkPreviewRetry';
 import { useProximityBar } from './useProximityBar';
-import { useBarPinOpen } from './useBarPinOpen';
 import { useNodeGeneration } from '@/features/ai/hooks/useNodeGeneration';
 import { useNodeImageUpload } from './useNodeImageUpload';
 import { useIdeaCardCalendar } from '@/features/calendar/hooks/useIdeaCardCalendar';
@@ -29,15 +28,12 @@ export function useIdeaCard({ id, rfData, selected }: UseIdeaCardParams) {
     const promptSource = (heading?.trim() ?? prompt) || '';
     const isAICard = Boolean(promptSource && output && promptSource !== output);
     const [showTagInput, setShowTagInput] = useState(false);
-    const contentRef = useRef<HTMLDivElement>(null);
-    const cardWrapperRef = useRef<HTMLDivElement>(null);
-    const barContainerRef = useRef<HTMLDivElement>(null);
-    const headingRef = useRef<NodeHeadingHandle>(null);
+    const contentRef = useRef<HTMLDivElement>(null), cardWrapperRef = useRef<HTMLDivElement>(null);
+    const barContainerRef = useRef<HTMLDivElement>(null), headingRef = useRef<NodeHeadingHandle>(null);
     const proximityLostFnRef = useRef<(() => void) | undefined>(undefined);
     const registerProximityLostFn = useCallback((fn: () => void) => { proximityLostFnRef.current = fn; }, []);
-    useProximityBar(cardWrapperRef, barContainerRef, () => { proximityLostFnRef.current?.(); });
-    const { isPinnedOpen, handlers: pinOpenHandlers } = useBarPinOpen();
-
+    const handleProximityLost = useCallback(() => { proximityLostFnRef.current?.(); }, []);
+    useProximityBar(cardWrapperRef, barContainerRef, handleProximityLost);
     const { generateFromPrompt, branchFromNode } = useNodeGeneration();
     const { getEditableContent, saveContent, placeholder, onSubmitAI } = useIdeaCardState({
         nodeId: id, prompt, output, isAICard,
@@ -46,13 +42,9 @@ export function useIdeaCard({ id, rfData, selected }: UseIdeaCardParams) {
     const calendar = useIdeaCardCalendar({ nodeId: id, calendarEvent });
     const focusedNodeId = useFocusStore((s) => s.focusedNodeId);
     const editingNodeId = useCanvasStore((s) => s.editingNodeId);
-    const isFocusTarget = focusedNodeId === id;
-    const isEditing = editingNodeId === id && !isFocusTarget;
+    const isEditing = editingNodeId === id && focusedNodeId !== id;
     const imageUploadFn = useNodeImageUpload(id);
-
-    // Ref populated synchronously after useIdeaCardHandlers runs — always set before user interaction.
     const documentInsertFnRef = useRef<DocumentInsertFn | null>(null);
-
     const onExitEditing = useCallback((): void => {
         if (useFocusStore.getState().focusedNodeId) return;
         useCanvasStore.getState().stopEditing();
@@ -71,16 +63,11 @@ export function useIdeaCard({ id, rfData, selected }: UseIdeaCardParams) {
         generateFromPrompt, branchFromNode, calendar, resolvedData, isEditing, onSubmitAI,
     });
 
-    // Populate the document insert ref so FileHandlerExtension can route drag-drop/paste.
-    // This is safe to do synchronously in render (sets mutable ref, not state).
     documentInsertFnRef.current = handlers.documentInsertFn;
-
     useLinkPreviewRetry(id, linkPreviews);
-    const hasContent = Boolean(output);
-
     return {
         resolvedData, heading, prompt, output, isGenerating, isPinned, isCollapsed, tagIds, linkPreviews, calendarEvent,
         isAICard, showTagInput, contentRef, cardWrapperRef, barContainerRef, headingRef,
-        pinOpenHandlers, editor, hasContent, isEditing, isPinnedOpen, calendar, registerProximityLostFn, ...handlers,
+        editor, hasContent: Boolean(output), isEditing, calendar, registerProximityLostFn, ...handlers,
     };
 }

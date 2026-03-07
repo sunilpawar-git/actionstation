@@ -87,17 +87,6 @@ vi.mock('../../../hooks/useLinkPreviewRetry', () => ({
     useLinkPreviewRetry: vi.fn(),
 }));
 
-vi.mock('../../../hooks/useBarPinOpen', () => ({
-    useBarPinOpen: () => ({
-        isPinnedOpen: false,
-        handlers: {
-            onContextMenu: vi.fn(),
-            onTouchStart: vi.fn(),
-            onTouchEnd: vi.fn(),
-        },
-    }),
-}));
-
 vi.mock('@/features/ai/hooks/useNodeGeneration', () => ({
     useNodeGeneration: () => ({
         generateFromPrompt: vi.fn(),

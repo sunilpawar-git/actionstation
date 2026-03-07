@@ -1,9 +1,7 @@
 /**
- * NodeUtilsBar Styles — Dual-deck card cascade.
- * Two vertical bars slide out from node edge like cards from a deck.
+ * NodeUtilsBar Styles — Single flat bar cascade.
  * barWrapper is anchored to the card edge and extends outward.
- * Deck 1 visibility: data-bar-proximity / data-bar-focused (set by useProximityBar).
- * Deck 2 visibility: .deckTwoOpen / .deckTwoPinned only (set by useNodeUtilsController).
+ * Visibility: data-bar-proximity / data-bar-focused (set by useProximityBar).
  */
 
 .barWrapper {
@@ -23,7 +21,7 @@
     flex-direction: row-reverse;
 }
 
-/* Shared deck base — hidden, tucked behind the card edge */
+/* Deck base — hidden, tucked behind the card edge */
 .deckBase {
     display: flex;
     flex-direction: column;
@@ -47,7 +45,7 @@
     transform: translateX(calc(100% - var(--node-utils-bar-peek))) rotate(calc(-1 * var(--node-utils-deck-rotation)));
 }
 
-/* Deck One — cascades out when proximity is near */
+/* Single bar — cascades out when proximity is near */
 .deckOne {
     composes: deckBase;
     z-index: var(--z-dropdown);
@@ -69,68 +67,6 @@
 :global([data-bar-placement="left"][data-bar-proximity="near"]) .deckOne,
 :global([data-bar-placement="left"][data-bar-focused="true"]) .deckOne {
     transform: translateX(0) rotate(0deg);
-}
-
-/* Deck Two — cascades out when toggled via chevron button */
-.deckTwo {
-    composes: deckBase;
-    z-index: var(--node-utils-deck-two-z);
-    transform: translateX(calc(-100% + var(--node-utils-bar-peek))) rotate(calc(-1 * var(--node-utils-deck-rotation))) scale(0.97);
-}
-
-.deckTwo::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: calc(-1 * var(--node-utils-deck-gap, 8px));
-    width: var(--node-utils-deck-gap, 8px);
-}
-
-:global([data-bar-placement="left"]) .deckTwo {
-    transform: translateX(calc(100% - var(--node-utils-bar-peek))) rotate(var(--node-utils-deck-rotation)) scale(0.97);
-}
-
-:global([data-bar-placement="left"]) .deckTwo::before {
-    left: auto;
-    right: calc(-1 * var(--node-utils-deck-gap, 8px));
-}
-
-.deckTwoOpen {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transform: translateX(0) rotate(0deg) scale(1);
-    box-shadow: var(--card-shadow-hover);
-    transition:
-        opacity var(--node-utils-transition-duration) cubic-bezier(0.4, 0, 0.2, 1) calc(var(--node-utils-hover-delay-in) + var(--node-utils-deck-stagger-delay)),
-        transform var(--node-utils-spring-duration) cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--node-utils-hover-delay-in) + var(--node-utils-deck-stagger-delay)),
-        visibility 0s linear 0s;
-}
-
-:global([data-bar-placement="left"]) .deckTwoOpen {
-    transform: translateX(0) rotate(0deg) scale(1);
-}
-
-/* Pinned-open state: both decks visible, no transition */
-.deckOnePinned {
-    composes: deckOne;
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transform: translateX(0) rotate(0deg);
-    box-shadow: var(--card-shadow-hover);
-    transition: none;
-}
-
-.deckTwoPinned {
-    composes: deckTwo;
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transform: translateX(0) rotate(0deg) scale(1);
-    box-shadow: var(--card-shadow-hover);
-    transition: none;
 }
 
 /* Peek indicator — subtle colored sliver on node's right edge */

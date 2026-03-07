@@ -104,11 +104,11 @@ describe('SettingsStore lastSettingsTab', () => {
 
     it('should load lastSettingsTab from storage', () => {
         localStorageMock.getItem.mockImplementation((key: string) => {
-            if (key === 'settings-lastSettingsTab') return 'toolbar';
+            if (key === 'settings-lastSettingsTab') return 'canvas';
             return null;
         });
         useSettingsStore.getState().loadFromStorage();
-        expect(useSettingsStore.getState().lastSettingsTab).toBe('toolbar');
+        expect(useSettingsStore.getState().lastSettingsTab).toBe('canvas');
     });
 
     it('should reject invalid lastSettingsTab value from storage', () => {

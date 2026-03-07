@@ -9,10 +9,10 @@ export const ESCAPE_PRIORITY = {
     CLEAR_SELECTION: 10,
     /** Close hover sidebar — low-priority ambient UI */
     SIDEBAR_HOVER: 20,
-    /** Dismiss pinned NodeUtilsBar */
-    BAR_PIN: 30,
     /** Close NodeUtilsBar submenu/deck */
     BAR_OVERFLOW: 40,
+    /** Dismiss node context menu */
+    CONTEXT_MENU: 45,
     /** Exit focus mode (when editor is not active) */
     FOCUS_MODE: 50,
     /** Close Knowledge Bank panel */

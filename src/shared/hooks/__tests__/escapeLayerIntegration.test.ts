@@ -90,17 +90,12 @@ describe('Escape Layer Integration', () => {
             const handlers = {
                 clearSelection: vi.fn(),
                 sidebar: vi.fn(),
-                barPin: vi.fn(),
                 barOverflow: vi.fn(),
                 focus: vi.fn(),
             };
 
             renderHook(() => useEscapeLayer(ESCAPE_PRIORITY.CLEAR_SELECTION, true, handlers.clearSelection));
             renderHook(() => useEscapeLayer(ESCAPE_PRIORITY.SIDEBAR_HOVER, true, handlers.sidebar));
-            const { rerender: rBarPin } = renderHook(
-                ({ active }) => useEscapeLayer(ESCAPE_PRIORITY.BAR_PIN, active, handlers.barPin),
-                { initialProps: { active: true } },
-            );
             const { rerender: rBarOvf } = renderHook(
                 ({ active }) => useEscapeLayer(ESCAPE_PRIORITY.BAR_OVERFLOW, active, handlers.barOverflow),
                 { initialProps: { active: true } },
@@ -110,7 +105,7 @@ describe('Escape Layer Integration', () => {
                 { initialProps: { active: true } },
             );
 
-            expect(_getActiveEntryCount()).toBe(5);
+            expect(_getActiveEntryCount()).toBe(4);
 
             pressEscape();
             expect(handlers.focus).toHaveBeenCalledOnce();
@@ -120,10 +115,6 @@ describe('Escape Layer Integration', () => {
             expect(handlers.barOverflow).toHaveBeenCalledOnce();
 
             rBarOvf({ active: false });
-            pressEscape();
-            expect(handlers.barPin).toHaveBeenCalledOnce();
-
-            rBarPin({ active: false });
             pressEscape();
             expect(handlers.sidebar).toHaveBeenCalledOnce();
         });
@@ -170,7 +161,7 @@ describe('Escape Layer Integration', () => {
             expect(clearSelection).toHaveBeenCalledOnce();
         });
 
-        it('Escape closes deck 2 first, then deselects node on second press', () => {
+        it('Escape closes bar overflow first, then deselects node on second press', () => {
             const clearSelection = vi.fn();
             const closeDeck = vi.fn();
 
@@ -187,6 +178,25 @@ describe('Escape Layer Integration', () => {
             rDeck({ active: false });
             pressEscape();
             expect(clearSelection).toHaveBeenCalledOnce();
+        });
+
+        it('context menu Escape closes menu before bar overflow', () => {
+            const closeOverflow = vi.fn();
+            const closeContextMenu = vi.fn();
+
+            renderHook(() => useEscapeLayer(ESCAPE_PRIORITY.BAR_OVERFLOW, true, closeOverflow));
+            const { rerender: rCtx } = renderHook(
+                ({ active }) => useEscapeLayer(ESCAPE_PRIORITY.CONTEXT_MENU, active, closeContextMenu),
+                { initialProps: { active: true } },
+            );
+
+            pressEscape();
+            expect(closeContextMenu).toHaveBeenCalledOnce();
+            expect(closeOverflow).not.toHaveBeenCalled();
+
+            rCtx({ active: false });
+            pressEscape();
+            expect(closeOverflow).toHaveBeenCalledOnce();
         });
 
         it('Focus mode Escape exits focus, then next Escape deselects', () => {
