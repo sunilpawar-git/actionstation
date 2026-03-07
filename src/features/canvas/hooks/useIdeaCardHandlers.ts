@@ -18,7 +18,7 @@ export function useIdeaCardHandlers(params: UseIdeaCardHandlersParams) {
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- legacy field, heading is SSOT
     const { prompt = '', output, isGenerating } = resolvedData;
 
-    const { slashHandler, handleImageClick, handleAttachmentClick, documentInsertFn } = useIdeaCardImageHandlers({ id, editor, getMarkdown, imageUploadFn });
+    const { slashHandler, handleImageClick, handleAttachmentClick, documentInsertFn, handleAfterImageInsert } = useIdeaCardImageHandlers({ id, editor, getMarkdown, imageUploadFn });
 
     const { handleDelete: rawDelete, handleRegenerate, handleConnectClick, handleTransform,
         handleHeadingChange, handleCopy, handleTagsChange, isTransforming } = useIdeaCardActions({
@@ -63,7 +63,7 @@ export function useIdeaCardHandlers(params: UseIdeaCardHandlersParams) {
     const onKeyDownReact = useCallback((e: React.KeyboardEvent) => handleKeyDown(e.nativeEvent), [handleKeyDown]);
 
     return {
-        slashHandler, handleImageClick, handleAttachmentClick, documentInsertFn, handleDelete, handleRegenerate,
+        slashHandler, handleImageClick, handleAttachmentClick, documentInsertFn, handleAfterImageInsert, handleDelete, handleRegenerate,
         handleConnectClick, handleTransform, handleHeadingChange, handleCopy, handleDuplicate,
         handleShare, isSharing, isTransforming, handlePinToggle, handleCollapseToggle,
         handlePoolToggle, handleColorChange, handleTagOpen, handleFocusClick, handleDoubleClick,

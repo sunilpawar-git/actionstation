@@ -8,6 +8,7 @@ import type { FileParser, ParseResult } from './types';
 import { compressImage } from '../utils/imageCompressor';
 import { describeImageWithAI } from '../services/imageDescriptionService';
 import { titleFromFilename } from './parserUtils';
+import { sanitizeFilename } from '@/shared/utils/sanitize';
 
 const SUPPORTED_MIME_TYPES = ['image/png', 'image/jpeg'] as const;
 const SUPPORTED_EXTENSIONS = ['.png', '.jpg', '.jpeg'] as const;
@@ -24,7 +25,7 @@ export class ImageFileParser implements FileParser {
 
     async parse(file: File): Promise<ParseResult> {
         const compressed = await compressImage(file);
-        const description = await describeImageWithAI(compressed, file.name);
+        const description = await describeImageWithAI(compressed, sanitizeFilename(file.name));
 
         return {
             title: titleFromFilename(file.name),

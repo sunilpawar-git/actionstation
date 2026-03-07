@@ -7,6 +7,7 @@ import { strings } from '@/shared/localization/strings';
 import { toast } from '@/shared/stores/toastStore';
 import { isSafeImageSrc } from '../extensions/imageExtension';
 import { sanitizeFilename } from '@/shared/utils/sanitize';
+import { captureError } from '@/shared/services/sentryService';
 
 export type ImageUploadFn = (file: File) => Promise<string>;
 
@@ -77,7 +78,7 @@ export async function insertImageIntoEditor(
             return;
         }
         replaceImageSrc(editor, dataUrl, permanentUrl);
-        try { onAfterInsert?.(file, permanentUrl); } catch { /* callback error must not trigger upload-failure path */ }
+        try { onAfterInsert?.(file, permanentUrl); } catch (e: unknown) { captureError(e instanceof Error ? e : new Error(String(e))); }
     } catch (error: unknown) {
         removeImageBySrc(editor, dataUrl);
         toast.error(getUploadErrorMessage(error));

@@ -21,7 +21,8 @@ describe('Image Analysis structural safety', () => {
 
     it('ALLOWED_IMAGE_MIMES derived from IMAGE_ACCEPTED_MIME_TYPES (SSOT)', () => {
         const src = readSrc('features/knowledgeBank/services/imageDescriptionService.ts');
-        expect(src).toContain("import { IMAGE_ACCEPTED_MIME_TYPES } from '@/features/canvas/types/image'");
+        expect(src).toContain("from '@/features/canvas/types/image'");
+        expect(src).toContain('IMAGE_ACCEPTED_MIME_TYPES');
         expect(src).toContain('new Set(IMAGE_ACCEPTED_MIME_TYPES)');
     });
 
@@ -51,6 +52,12 @@ describe('Image Analysis structural safety', () => {
         expect(autoIdx).toBeGreaterThan(-1);
         expect(describeIdx).toBeGreaterThan(-1);
         expect(autoIdx).toBeLessThan(describeIdx);
+    });
+
+    it('fileHandlerExtension passes onAfterImageInsert to insertImageIntoEditor', () => {
+        const src = readSrc('features/canvas/extensions/fileHandlerExtension.ts');
+        expect(src).toContain('onAfterImageInsert?: AfterImageInsertFn');
+        expect(src).toContain('imageUploadFn, onAfterImageInsert');
     });
 
     it('all modified production files under 300 lines', () => {

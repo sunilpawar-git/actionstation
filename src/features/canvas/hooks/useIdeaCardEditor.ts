@@ -10,7 +10,7 @@ import { useTipTapEditor } from './useTipTapEditor';
 import { SubmitKeymap, type SubmitKeymapHandler } from '../extensions/submitKeymap';
 import { createFileHandlerExtension } from '../extensions/fileHandlerExtension';
 import { AttachmentExtension } from '../extensions/attachmentExtension';
-import type { ImageUploadFn } from '../services/imageInsertService';
+import type { ImageUploadFn, AfterImageInsertFn } from '../services/imageInsertService';
 import type { DocumentInsertFn } from '../extensions/fileHandlerExtension';
 
 interface UseIdeaCardEditorOptions {
@@ -29,6 +29,7 @@ interface UseIdeaCardEditorOptions {
      * The ref is always populated before any user interaction can trigger it.
      */
     documentInsertFnRef?: React.RefObject<DocumentInsertFn | null>;
+    onAfterImageInsertRef?: React.RefObject<AfterImageInsertFn | null>;
 }
 
 interface UseIdeaCardEditorReturn {
@@ -42,7 +43,7 @@ interface UseIdeaCardEditorReturn {
 export function useIdeaCardEditor(options: UseIdeaCardEditorOptions): UseIdeaCardEditorReturn {
     const {
         isEditing, output, getEditableContent, placeholder,
-        saveContent, onExitEditing, imageUploadFn, documentInsertFnRef,
+        saveContent, onExitEditing, imageUploadFn, documentInsertFnRef, onAfterImageInsertRef,
     } = options;
     const submitHandlerRef = useRef<SubmitKeymapHandler | null>(null);
 
@@ -53,16 +54,21 @@ export function useIdeaCardEditor(options: UseIdeaCardEditorOptions): UseIdeaCar
         [documentInsertFnRef],
     );
 
+    const stableAfterImageInsert = useCallback<AfterImageInsertFn>(
+        (file, url) => onAfterImageInsertRef?.current?.(file, url),
+        [onAfterImageInsertRef],
+    );
+
     const editorExtensions: Extension[] = useMemo(() => {
         const exts: Extension[] = [
             SubmitKeymap.configure({ handlerRef: submitHandlerRef }) as Extension,
             AttachmentExtension as unknown as Extension,
         ];
         if (imageUploadFn) {
-            exts.push(createFileHandlerExtension(imageUploadFn, stableDocumentInsertFn) as Extension);
+            exts.push(createFileHandlerExtension(imageUploadFn, stableDocumentInsertFn, stableAfterImageInsert) as Extension);
         }
         return exts;
-    }, [imageUploadFn, stableDocumentInsertFn]);
+    }, [imageUploadFn, stableDocumentInsertFn, stableAfterImageInsert]);
 
     const blurRef = useRef<(md: string) => void>(() => undefined);
     const displayContent = isEditing ? getEditableContent() : (output ?? '');

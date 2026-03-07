@@ -3,7 +3,7 @@
  * End-to-end: image upload -> describe -> analyze -> insight node
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 
 const mockUpdateNodeOutput = vi.fn();
 const mockAnalyzeAndSpawn = vi.fn().mockResolvedValue(undefined);
@@ -158,10 +158,9 @@ describe('Image Analysis Pipeline — end to end', () => {
         const file = new File(['img'], 'skip.png', { type: 'image/png' });
         act(() => trigger(file, 'https://cdn.example.com/skip.png'));
 
-        await new Promise((r) => setTimeout(r, 50));
+        await waitFor(() => expect(mockUpdateNodeOutput).toHaveBeenCalledWith('parent-1', '# Image note'));
         expect(mockDescribeImageWithAI).not.toHaveBeenCalled();
         expect(mockAnalyzeAndSpawn).not.toHaveBeenCalled();
-        expect(mockUpdateNodeOutput).toHaveBeenCalledWith('parent-1', '# Image note');
     });
 
     it('Gemini Vision unavailable -> fallback description -> still analyzes', async () => {

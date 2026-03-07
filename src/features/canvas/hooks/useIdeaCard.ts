@@ -12,6 +12,7 @@ import { useNodeImageUpload } from './useNodeImageUpload';
 import { useIdeaCardCalendar } from '@/features/calendar/hooks/useIdeaCardCalendar';
 import type { IdeaNodeData } from '../types/node';
 import type { NodeHeadingHandle } from '../components/nodes/NodeHeading';
+import type { AfterImageInsertFn } from '../services/imageInsertService';
 import type { DocumentInsertFn } from '../extensions/fileHandlerExtension';
 
 interface UseIdeaCardParams {
@@ -45,6 +46,7 @@ export function useIdeaCard({ id, rfData, selected }: UseIdeaCardParams) {
     const isEditing = editingNodeId === id && focusedNodeId !== id;
     const imageUploadFn = useNodeImageUpload(id);
     const documentInsertFnRef = useRef<DocumentInsertFn | null>(null);
+    const onAfterImageInsertRef = useRef<AfterImageInsertFn | null>(null);
     const onExitEditing = useCallback((): void => {
         if (useFocusStore.getState().focusedNodeId) return;
         useCanvasStore.getState().stopEditing();
@@ -55,6 +57,7 @@ export function useIdeaCard({ id, rfData, selected }: UseIdeaCardParams) {
         onExitEditing,
         imageUploadFn,
         documentInsertFnRef,
+        onAfterImageInsertRef,
     });
 
     const handlers = useIdeaCardHandlers({
@@ -64,6 +67,7 @@ export function useIdeaCard({ id, rfData, selected }: UseIdeaCardParams) {
     });
 
     documentInsertFnRef.current = handlers.documentInsertFn;
+    onAfterImageInsertRef.current = handlers.handleAfterImageInsert;
     useLinkPreviewRetry(id, linkPreviews);
     return {
         resolvedData, heading, prompt, output, isGenerating, isPinned, isCollapsed, tagIds, linkPreviews, calendarEvent,

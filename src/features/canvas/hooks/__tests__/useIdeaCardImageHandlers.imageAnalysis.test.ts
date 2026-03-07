@@ -3,7 +3,7 @@
  * Verifies: describeImageWithAI + analyzeAndSpawn wiring, early-exit gates
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 
 const mockUpdateNodeOutput = vi.fn();
 const mockAnalyzeAndSpawn = vi.fn().mockResolvedValue(undefined);
@@ -177,7 +177,7 @@ describe('useIdeaCardImageHandlers — image analysis', () => {
         const file = new File(['img'], 'skip.png', { type: 'image/png' });
         act(() => triggerAfterInsert(file, 'https://cdn.example.com/skip.png'));
 
-        await new Promise((r) => setTimeout(r, 50));
+        await waitFor(() => expect(mockUpdateNodeOutput).toHaveBeenCalled());
         expect(mockDescribeImageWithAI).not.toHaveBeenCalled();
         expect(mockAnalyzeAndSpawn).not.toHaveBeenCalled();
     });
@@ -219,6 +219,19 @@ describe('useIdeaCardImageHandlers — image analysis', () => {
         });
     });
 
+    it('captures error when describeImageWithAI throws', async () => {
+        const error = new Error('vision API crashed');
+        mockDescribeImageWithAI.mockRejectedValueOnce(error);
+        const { triggerAfterInsert } = renderHandler();
+        const file = new File(['img'], 'crash.png', { type: 'image/png' });
+        act(() => triggerAfterInsert(file, 'https://cdn.example.com/crash.png'));
+
+        await vi.waitFor(() => {
+            expect(mockCaptureError).toHaveBeenCalledWith(error);
+        });
+        expect(mockAnalyzeAndSpawn).not.toHaveBeenCalled();
+    });
+
     it('skips analysis when no workspaceId', async () => {
         mockWorkspaceGetState.mockReturnValue({ currentWorkspaceId: null });
 
@@ -226,7 +239,7 @@ describe('useIdeaCardImageHandlers — image analysis', () => {
         const file = new File(['img'], 'orphan.png', { type: 'image/png' });
         act(() => triggerAfterInsert(file, 'https://cdn.example.com/orphan.png'));
 
-        await new Promise((r) => setTimeout(r, 50));
+        await waitFor(() => expect(mockUpdateNodeOutput).toHaveBeenCalled());
         expect(mockDescribeImageWithAI).not.toHaveBeenCalled();
     });
 });

@@ -36,10 +36,10 @@ function safeAsync(fn: () => Promise<void>): void {
 interface AnalyzeContext {
     nodeId: string;
     analyzeFn: AnalyzeFn;
-    enqueue: (item: { nodeId: string; parsedText: string; filename: string; workspaceId: string }) => boolean;
+    enqueue?: (item: { nodeId: string; parsedText: string; filename: string; workspaceId: string }) => boolean;
 }
 
-function triggerImageAnalysis(file: File, ctx: AnalyzeContext): void {
+function triggerImageAnalysis(file: File, ctx: Pick<AnalyzeContext, 'nodeId' | 'analyzeFn'>): void {
     const autoAnalyze = useSettingsStore.getState().autoAnalyzeDocuments;
     if (!autoAnalyze) return;
 
@@ -53,7 +53,7 @@ function triggerImageAnalysis(file: File, ctx: AnalyzeContext): void {
     });
 }
 
-function runAnalyzeCommand(ctx: AnalyzeContext): void {
+function runAnalyzeCommand(ctx: Required<AnalyzeContext>): void {
     safeAsync(async () => {
         const { nodes } = useCanvasStore.getState();
         const node = getNodeMap(nodes).get(ctx.nodeId);
@@ -83,7 +83,7 @@ export function useIdeaCardImageHandlers({ id, editor, getMarkdown, imageUploadF
     const handleAfterImageInsert: AfterImageInsertFn = useCallback((file, _permanentUrl) => {
         const md = getMarkdown();
         if (md) useCanvasStore.getState().updateNodeOutput(id, md);
-        triggerImageAnalysis(file, { nodeId: id, analyzeFn: analyzeAndSpawn, enqueue: () => true });
+        triggerImageAnalysis(file, { nodeId: id, analyzeFn: analyzeAndSpawn });
     }, [id, getMarkdown, analyzeAndSpawn]);
 
     const { triggerFilePicker: triggerImagePicker } = useImageInsert(editor, imageUploadFn, handleAfterImageInsert);
@@ -134,5 +134,5 @@ export function useIdeaCardImageHandlers({ id, editor, getMarkdown, imageUploadF
         triggerDocumentPicker();
     }, [id, editor, triggerDocumentPicker]);
 
-    return { slashHandler, handleImageClick, handleAttachmentClick, documentInsertFn };
+    return { slashHandler, handleImageClick, handleAttachmentClick, documentInsertFn, handleAfterImageInsert };
 }

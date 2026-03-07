@@ -3,7 +3,11 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock geminiClient (SSOT for all Gemini calls)
+const mockCaptureError = vi.fn();
+vi.mock('@/shared/services/sentryService', () => ({
+    captureError: (...args: unknown[]) => mockCaptureError(...args),
+}));
+
 vi.mock('../../services/geminiClient', () => ({
     isGeminiAvailable: vi.fn().mockReturnValue(true),
     callGemini: vi.fn().mockResolvedValue({ ok: true, status: 200, data: { candidates: [] } }),
@@ -36,6 +40,21 @@ describe('imageDescriptionService', () => {
             expect(typeof base64).toBe('string');
             expect(base64.length).toBeGreaterThan(0);
             expect(base64).not.toContain('data:');
+        });
+
+        it('rejects when FileReader fires onerror', async () => {
+            const OriginalFileReader = globalThis.FileReader;
+            globalThis.FileReader = class MockFileReader {
+                onload: (() => void) | null = null;
+                onerror: (() => void) | null = null;
+                result: string | null = null;
+                readAsDataURL() { setTimeout(() => this.onerror?.(), 0); }
+            } as unknown as typeof FileReader;
+
+            const blob = new Blob(['bad'], { type: 'image/png' });
+            await expect(blobToBase64(blob)).rejects.toThrow('Failed to read image file.');
+
+            globalThis.FileReader = OriginalFileReader;
         });
     });
 
@@ -108,6 +127,14 @@ describe('imageDescriptionService', () => {
             expect(desc).toContain('doc.pdf');
         });
 
+        it('returns fallback for blob exceeding IMAGE_MAX_FILE_SIZE', async () => {
+            const oversized = new Blob([new ArrayBuffer(6 * 1024 * 1024)], { type: 'image/png' });
+            const desc = await describeImageWithAI(oversized, 'huge.png');
+
+            expect(callGemini).not.toHaveBeenCalled();
+            expect(desc).toContain('huge.png');
+        });
+
         it('ALLOWED_IMAGE_MIMES is derived from IMAGE_ACCEPTED_MIME_TYPES (SSOT)', () => {
             for (const mime of IMAGE_ACCEPTED_MIME_TYPES) {
                 expect(ALLOWED_IMAGE_MIMES.has(mime)).toBe(true);
@@ -163,8 +190,7 @@ describe('imageDescriptionService', () => {
             const blob = new Blob(['image-data'], { type: 'image/jpeg' });
             const description = await describeImageWithAI(blob, 'photo.jpg');
 
-            expect(typeof description).toBe('string');
-            expect(description.length).toBeGreaterThan(0);
+            expect(description).toContain('photo.jpg');
             expect(callGemini).not.toHaveBeenCalled();
         });
 
@@ -174,18 +200,18 @@ describe('imageDescriptionService', () => {
             const blob = new Blob(['image-data'], { type: 'image/jpeg' });
             const description = await describeImageWithAI(blob, 'broken.jpg');
 
-            expect(typeof description).toBe('string');
-            expect(description.length).toBeGreaterThan(0);
+            expect(description).toContain('broken.jpg');
         });
 
-        it('returns fallback on network failure', async () => {
-            vi.mocked(callGemini).mockRejectedValue(new Error('Network error'));
+        it('returns fallback on network failure and logs via captureError', async () => {
+            const networkErr = new Error('Network error');
+            vi.mocked(callGemini).mockRejectedValue(networkErr);
 
             const blob = new Blob(['image-data'], { type: 'image/jpeg' });
             const description = await describeImageWithAI(blob, 'offline.jpg');
 
-            expect(typeof description).toBe('string');
-            expect(description.length).toBeGreaterThan(0);
+            expect(description).toContain('offline.jpg');
+            expect(mockCaptureError).toHaveBeenCalledWith(networkErr);
         });
 
         it('returns fallback when extractGeminiText returns null', async () => {
@@ -195,8 +221,7 @@ describe('imageDescriptionService', () => {
             const blob = new Blob(['image-data'], { type: 'image/jpeg' });
             const description = await describeImageWithAI(blob, 'empty.jpg');
 
-            expect(typeof description).toBe('string');
-            expect(description.length).toBeGreaterThan(0);
+            expect(description).toContain('empty.jpg');
         });
     });
 });

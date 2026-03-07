@@ -4,8 +4,9 @@
  * Single responsibility: Blob → AI-generated text description
  */
 import { strings } from '@/shared/localization/strings';
+import { captureError } from '@/shared/services/sentryService';
 import { callGemini, isGeminiAvailable, extractGeminiText } from './geminiClient';
-import { IMAGE_ACCEPTED_MIME_TYPES } from '@/features/canvas/types/image';
+import { IMAGE_ACCEPTED_MIME_TYPES, IMAGE_MAX_FILE_SIZE } from '@/features/canvas/types/image';
 
 /** SSOT-derived whitelist — no duplicate MIME arrays */
 export const ALLOWED_IMAGE_MIMES: ReadonlySet<string> = new Set(IMAGE_ACCEPTED_MIME_TYPES);
@@ -37,6 +38,7 @@ export async function describeImageWithAI(
     const fallback = `${strings.knowledgeBank.imageDescriptionFallback}: ${filename}`;
 
     if (!blob.type || !ALLOWED_IMAGE_MIMES.has(blob.type)) return fallback;
+    if (blob.size > IMAGE_MAX_FILE_SIZE) return fallback;
     if (!isGeminiAvailable()) return fallback;
 
     try {
@@ -48,7 +50,8 @@ export async function describeImageWithAI(
         if (!result.ok) return fallback;
 
         return extractGeminiText(result.data) ?? fallback;
-    } catch {
+    } catch (e: unknown) {
+        captureError(e instanceof Error ? e : new Error(String(e)));
         return fallback;
     }
 }
