@@ -3,7 +3,7 @@
  * TDD: Validates link preview card rendering, proxied images, interactions, accessibility
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { LinkPreviewCard, LinkPreviewList } from '../LinkPreviewCard';
 import type { LinkPreviewMetadata } from '../../../types/node';
 import { strings } from '@/shared/localization/strings';
@@ -188,6 +188,30 @@ describe('LinkPreviewCard', () => {
             render(<LinkPreviewCard preview={fullPreview} />);
             expect(screen.queryByLabelText(strings.linkPreview.removePreview))
                 .not.toBeInTheDocument();
+        });
+    });
+
+    describe('imageError resets when proxiedImage URL changes (auth token timing fix)', () => {
+        it('shows image after error when proxied URL changes to a valid URL', async () => {
+            // Simulate: initial render with failing image → imageError=true
+            // Then proxied URL changes (e.g. token loads) → imageError must reset
+            const { rerender } = render(<LinkPreviewCard preview={fullPreview} />);
+            const image = screen.getByAltText('Example Article Title');
+
+            // Simulate the proxy returning 401 (no token yet) → image error
+            fireEvent.error(image);
+            expect(screen.queryByAltText('Example Article Title')).not.toBeInTheDocument();
+
+            // Now rerender with a different preview (different image URL) — simulates
+            // token becoming available and buildProxiedImageUrl returning a new URL
+            const updatedPreview = {
+                ...fullPreview,
+                image: 'https://example.com/og-image-v2.jpg',
+            };
+            await act(async () => { rerender(<LinkPreviewCard preview={updatedPreview} />); });
+
+            // imageError should have reset — image element should be visible again
+            expect(screen.getByAltText('Example Article Title')).toBeInTheDocument();
         });
     });
 
