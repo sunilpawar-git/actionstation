@@ -18,6 +18,9 @@ A lightweight command history stack in the canvas store that captures reversible
 - **Not persisted**: History resets on workspace switch and page reload. This is intentional — undo is a session tool, not a time machine.
 - **Scope**: Only structural mutations are undoable (add/delete/move node, add/delete edge, color change). Text editing undo stays in TipTap.
 - **ID generation**: N/A — undo restores existing IDs, doesn't create new ones.
+- **Atomic Operations & Coalescing**: Commands are grouped to support multi-selection (batch deletion/moves). Rapid, identical actions (like scrubbing through colors) are coalesced into a single history entry to prevent stack pollution.
+- **Z-Index Conservation**: Nodes are restored to their original array index to perfectly maintain rendering order.
+- **Orphan Guarding**: Restored edges defensively check for existing source/target nodes to prevent ReactFlow crashes.
 - **Analytics**: Add `'canvas_undo'` to `SettingKey` union in `analyticsService.ts`.
 
 ---
@@ -47,6 +50,7 @@ export const MAX_HISTORY_DEPTH = 50;
 export interface CanvasCommand {
   readonly type: CanvasCommandType;
   readonly timestamp: number;
+  readonly entityId?: string; // Optional ID for coalescing rapid sequential actions (e.g. scrubbing color picker)
   readonly undo: () => void;
   readonly redo: () => void;
 }
@@ -92,8 +96,24 @@ export function createHistoryActions(set: SetFn, get: GetFn): HistorySlice {
 
     pushCommand: (cmd: CanvasCommand) => {
       set((s) => {
-        const newStack = [...s.undoStack, cmd];
-        if (newStack.length > MAX_HISTORY_DEPTH) newStack.shift();
+        let newStack = [...s.undoStack];
+        const lastCmd = newStack[newStack.length - 1];
+        
+        // Coalesce fast, identical sequential mutations (e.g. rapid color picking or nudging)
+        const isCoalescable =
+          lastCmd && cmd.entityId &&
+          lastCmd.entityId === cmd.entityId &&
+          lastCmd.type === cmd.type &&
+          (cmd.timestamp - lastCmd.timestamp < 1000);
+
+        if (isCoalescable) {
+          // Update the redo of the previous command, keep the original undo closure
+          newStack[newStack.length - 1] = { ...lastCmd, redo: cmd.redo, timestamp: cmd.timestamp };
+        } else {
+          newStack.push(cmd);
+          if (newStack.length > MAX_HISTORY_DEPTH) newStack.shift();
+        }
+
         return {
           undoStack: newStack,
           redoStack: [], // new action clears redo
@@ -184,15 +204,20 @@ Wrap existing canvas actions (deleteNode, addNode, addEdge, deleteEdge, updateNo
 export function useUndoableActions() {
   const pushCommand = () => useCanvasStore.getState().pushCommand;
 
-  const deleteNodeWithUndo = useCallback((nodeId: string) => {
+  const deleteElementsWithUndo = useCallback((nodeIds: string[], edgeIds: string[] = []) => {
     const state = useCanvasStore.getState();
-    const node = getNodeMap(state.nodes).get(nodeId);
-    if (!node) return;
-    // Capture connected edges for full restore
-    const connectedEdges = state.edges.filter(
-      (e) => e.source === nodeId || e.target === nodeId
+    
+    // 1. Capture nodes with their original Z-Index (array position)
+    const frozenNodes = nodeIds.map(id => {
+      const node = getNodeMap(state.nodes).get(id);
+      const index = state.nodes.findIndex(n => n.id === id);
+      return { node: node ? structuredClone(node) : null, index };
+    }).filter(n => n.node !== null) as { node: CanvasNode, index: number }[];
+
+    // 2. Capture explicitly selected edges + edges connected to deleted nodes
+    const connectedEdges = state.edges.filter(e => 
+      edgeIds.includes(e.id) || nodeIds.includes(e.source) || nodeIds.includes(e.target)
     );
-    const frozenNode = structuredClone(node);
     const frozenEdges = structuredClone(connectedEdges);
 
     useCanvasStore.getState().pushCommand({
@@ -200,13 +225,26 @@ export function useUndoableActions() {
       timestamp: Date.now(),
       undo: () => {
         const s = useCanvasStore.getState();
-        s.addNode(frozenNode);
-        frozenEdges.forEach((e) => s.addEdge(e));
+        // Insert nodes back at original z-index order
+        frozenNodes.forEach(({ node, index }) => s.insertNodeAtIndex(node, index));
+        // Defensive Edge Guard: Only restore edges if BOTH source and target exist
+        const currentNodes = new Set(s.nodes.map(n => n.id));
+        frozenEdges.forEach(e => {
+           if (currentNodes.has(e.source) && currentNodes.has(e.target)) {
+             s.addEdge(e);
+           }
+        });
       },
-      redo: () => useCanvasStore.getState().deleteNode(nodeId),
+      redo: () => {
+        const s = useCanvasStore.getState();
+        nodeIds.forEach(id => s.deleteNode(id));
+        frozenEdges.forEach(e => s.deleteEdge(e.id));
+      },
     });
 
-    state.deleteNode(nodeId);
+    // Execute the actual deletions immediately
+    nodeIds.forEach(id => state.deleteNode(id));
+    frozenEdges.forEach(e => state.deleteEdge(e.id));
   }, []);
 
   // Similar wrappers for addNode, addEdge, deleteEdge, changeColor...
@@ -262,7 +300,7 @@ Wire `Ctrl+Z` / `Ctrl+Shift+Z` globally, and batch drag operations so continuous
 **Keyboard**: In the existing canvas keyboard handler, add:
 - `Ctrl+Z` → `useCanvasStore.getState().undo()`
 - `Ctrl+Shift+Z` / `Ctrl+Y` → `useCanvasStore.getState().redo()`
-- Guard: only fire when no TipTap editor is focused (TipTap has its own undo)
+- **Defensive Guard**: DOM focus management. Only fire if `document.activeElement` is `document.body` or the `.react-flow__pane`. Ignore the shortcut if the user is currently focused inside a `<textarea>`, `<input>`, or an element with `contenteditable="true"` (like TipTap), so they don't accidentally undo canvas geometry when typing.
 
 **Drag batching**: `useDragBatch` captures node position on `onNodeDragStart` and pushes a single `moveNode` command on `onNodeDragStop` with the start→end delta.
 

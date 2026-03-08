@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { handleProxyImage } from '../proxyImage.js';
 import { clearRateLimitStore } from '../utils/rateLimiter.js';
+import { MAX_IMAGE_SIZE_BYTES } from '../utils/securityConstants.js';
 import * as urlValidator from '../utils/urlValidator.js';
 
 // Mock firebase-admin/auth
@@ -196,6 +197,38 @@ describe('proxyImage', () => {
             expect(result.type).toBe('error');
             if (result.type === 'error') {
                 expect(result.status).toBe(502);
+            }
+        });
+
+        it('returns 400 for oversized image streamed with no content-length (OOM guard)', async () => {
+            vi.spyOn(urlValidator, 'validateUrlFormat')
+                .mockReturnValue({ valid: true });
+            vi.spyOn(urlValidator, 'validateUrlWithDns')
+                .mockResolvedValue({ valid: true });
+
+            // Simulate adversarial server: no Content-Length, streams > limit
+            const oversizedData = new Uint8Array(MAX_IMAGE_SIZE_BYTES + 1024);
+            const body = new ReadableStream<Uint8Array>({
+                start(controller) {
+                    controller.enqueue(oversizedData);
+                    controller.close();
+                },
+            });
+
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+                ok: true,
+                headers: new Headers({ 'content-type': 'image/png' }), // no content-length
+                body,
+            }));
+
+            const result = await handleProxyImage(
+                'https://example.com/oom.png',
+                'user-1',
+            );
+            expect(result.type).toBe('error');
+            if (result.type === 'error') {
+                expect(result.status).toBe(400);
+                expect(result.message).toContain('size limit');
             }
         });
 

@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { handleFetchLinkMeta } from '../fetchLinkMeta.js';
 import { verifyAuthToken } from '../utils/authVerifier.js';
 import { clearRateLimitStore } from '../utils/rateLimiter.js';
+import { MAX_HTML_SIZE_BYTES } from '../utils/securityConstants.js';
 import * as urlValidator from '../utils/urlValidator.js';
 
 vi.mock('../utils/securityConstants.js', async (importOriginal) => {
@@ -167,6 +168,33 @@ describe('fetchLinkMeta', () => {
 
             const result = await handleFetchLinkMeta(
                 { url: 'https://example.com/404' },
+                'user-1',
+            );
+            expect(result.status).toBe(200);
+            expect(result.data.error).toBe(true);
+        });
+
+        it('returns error metadata for oversized HTML streamed with no content-length (OOM guard)', async () => {
+            vi.spyOn(urlValidator, 'validateUrlWithDns')
+                .mockResolvedValue({ valid: true });
+
+            // Simulate adversarial server: no Content-Length, streams > limit
+            const oversizedData = new Uint8Array(MAX_HTML_SIZE_BYTES + 1024);
+            const body = new ReadableStream<Uint8Array>({
+                start(controller) {
+                    controller.enqueue(oversizedData);
+                    controller.close();
+                },
+            });
+
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+                ok: true,
+                headers: new Headers(), // no content-length
+                body,
+            }));
+
+            const result = await handleFetchLinkMeta(
+                { url: 'https://example.com/oom' },
                 'user-1',
             );
             expect(result.status).toBe(200);

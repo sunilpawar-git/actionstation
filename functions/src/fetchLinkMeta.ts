@@ -10,6 +10,7 @@ import { parseMetaTags, extractDomain } from './utils/metaParser.js';
 import { checkRateLimit } from './utils/rateLimiter.js';
 import { ALLOWED_ORIGINS } from './utils/corsConfig.js';
 import { createSignedParams } from './utils/urlSigner.js';
+import { readTextWithLimit } from './utils/streamReader.js';
 import {
     errorMessages,
     META_RATE_LIMIT,
@@ -62,6 +63,8 @@ export async function handleFetchLinkMeta(
                 'User-Agent': 'EdenLinkPreviewBot/1.0',
                 'Accept': 'text/html,application/xhtml+xml',
             },
+            // Node's fetch follows up to 20 redirects by default; FETCH_TIMEOUT_MS
+            // is the hard backstop against redirect chains consuming function time.
             redirect: 'follow',
         });
 
@@ -71,14 +74,18 @@ export async function handleFetchLinkMeta(
             return { status: 200, data: buildErrorMetadata(url) };
         }
 
-        // Enforce response size limit
+        // Fast-path: reject if Content-Length header declares an oversized body.
+        // Content-Length is advisory; servers may omit or lie. The streaming read
+        // below enforces the hard limit mid-transfer regardless.
         const contentLength = response.headers.get('content-length');
         if (contentLength && parseInt(contentLength, 10) > MAX_HTML_SIZE_BYTES) {
             return { status: 200, data: buildErrorMetadata(url) };
         }
 
-        const html = await response.text();
-        if (html.length > MAX_HTML_SIZE_BYTES) {
+        // Stream HTML with a byte limit to prevent OOM from adversarial servers
+        // that omit Content-Length and stream arbitrarily large bodies.
+        const html = await readTextWithLimit(response, MAX_HTML_SIZE_BYTES);
+        if (!html) {
             return { status: 200, data: buildErrorMetadata(url) };
         }
 

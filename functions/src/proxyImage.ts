@@ -9,6 +9,7 @@ import { validateImageResponse } from './utils/imageValidator.js';
 import { checkRateLimit } from './utils/rateLimiter.js';
 import { ALLOWED_ORIGINS } from './utils/corsConfig.js';
 import { resolveProxyAuth } from './utils/authResolver.js';
+import { readBytesWithLimit } from './utils/streamReader.js';
 import {
     errorMessages,
     IMAGE_RATE_LIMIT,
@@ -77,8 +78,11 @@ export async function handleProxyImage(
             };
         }
 
-        // Read the image body with size enforcement
-        const buffer = await readResponseWithLimit(response, MAX_IMAGE_SIZE_BYTES);
+        // Read the image body with streaming size enforcement.
+        // Content-Length pre-check above is advisory; servers may omit or lie.
+        // readBytesWithLimit cancels the stream mid-transfer if the limit is exceeded,
+        // preventing OOM from adversarial servers that stream arbitrarily large bodies.
+        const buffer = await readBytesWithLimit(response, MAX_IMAGE_SIZE_BYTES);
         if (!buffer) {
             return { type: 'error', status: 400, message: errorMessages.responseTooLarge };
         }
@@ -100,18 +104,6 @@ export type ProxyImageResult =
     | { type: 'error'; status: number; message: string }
     | { type: 'image'; status: number; contentType: string; buffer: Buffer; cacheMaxAge: number };
 
-/**
- * Read response body enforcing a maximum byte limit.
- * Returns null if the body exceeds the limit.
- */
-async function readResponseWithLimit(
-    response: Response,
-    maxBytes: number,
-): Promise<Buffer | null> {
-    const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength > maxBytes) return null;
-    return Buffer.from(arrayBuffer);
-}
 
 /**
  * Cloud Function entry point.

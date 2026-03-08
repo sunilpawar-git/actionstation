@@ -11,6 +11,9 @@ import { captureError } from '@/shared/services/sentryService';
 /** Debounce delay before fetching (ms) */
 const DEBOUNCE_MS = 500;
 
+/** Max simultaneous Cloud Function calls per URL batch */
+const CONCURRENCY_LIMIT = 3;
+
 /**
  * Hook that fetches link previews for detected URLs in a node's content.
  * - Checks store first (already rendered), then cache, then network
@@ -83,24 +86,28 @@ async function processUrls(
     const toFetch = urls.filter((url) => !existing[url] || existing[url].error);
     if (toFetch.length === 0) return;
 
-    const tasks = toFetch.map(async (url) => {
+    // Process URLs in bounded batches to prevent spiking the Cloud Function
+    // with O(n) simultaneous requests when a node contains many URLs.
+    for (let i = 0; i < toFetch.length; i += CONCURRENCY_LIMIT) {
         if (signal.aborted) return;
+        const batch = toFetch.slice(i, i + CONCURRENCY_LIMIT);
+        await Promise.allSettled(batch.map(async (url) => {
+            if (signal.aborted) return;
 
-        // Check cache first (skip cached errors — allow re-fetch)
-        const cached = getFromCache(url);
-        if (cached && !cached.error) {
-            useCanvasStore.getState().addLinkPreview(nodeId, url, cached);
-            return;
-        }
+            // Check cache first (skip cached errors — allow re-fetch)
+            const cached = getFromCache(url);
+            if (cached && !cached.error) {
+                useCanvasStore.getState().addLinkPreview(nodeId, url, cached);
+                return;
+            }
 
-        // Fetch from network
-        const metadata = await fetchLinkPreview(url, signal);
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (signal.aborted) return;
+            // Fetch from network
+            const metadata = await fetchLinkPreview(url, signal);
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (signal.aborted) return;
 
-        setInCache(url, metadata);
-        useCanvasStore.getState().addLinkPreview(nodeId, url, metadata);
-    });
-
-    await Promise.allSettled(tasks);
+            setInCache(url, metadata);
+            useCanvasStore.getState().addLinkPreview(nodeId, url, metadata);
+        }));
+    }
 }
