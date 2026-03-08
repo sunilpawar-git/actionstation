@@ -56,8 +56,8 @@
     border: none;
     background: transparent;
     color: var(--color-text-muted);
-    /* explicit medium size for better visibility and tap target */
-    font-size: var(--font-size-md);
+    /* increase to large so gear icon visually matches magnifier glyph */
+    font-size: var(--font-size-lg);
     cursor: pointer;
     padding: var(--space-xxs);
     border-radius: var(--radius-sm);
