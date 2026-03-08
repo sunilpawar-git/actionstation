@@ -12,8 +12,8 @@ vi.mock('@xyflow/react', async () => {
     return {
         ...actual,
         getBezierPath: () => ['M0,0 L10,10', 5, 5],
-        BaseEdge: ({ children }: any) => <>{children}</>,
-        EdgeLabelRenderer: ({ children }: any) => <>{children}</>,
+        BaseEdge: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+        EdgeLabelRenderer: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     };
 });
 

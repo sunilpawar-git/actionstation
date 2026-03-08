@@ -26,8 +26,8 @@ describe('useIdeaCardActions — stable action references', () => {
     it('must use getState() for store actions inside callbacks (or call undoable helpers)', () => {
         // deletion now happens via deleteNodeWithUndo so either pattern is fine
         expect(
-            /useCanvasStore\.getState\(\)\.deleteNode/.test(src) ||
-            /deleteNodeWithUndo/.test(src)
+            src.includes('useCanvasStore.getState().deleteNode') ||
+            src.includes('deleteNodeWithUndo')
         ).toBe(true);
         expect(src).toMatch(/useCanvasStore\.getState\(\)\.updateNodeHeading/);
         expect(src).toMatch(/useCanvasStore\.getState\(\)\.updateNodeTags/);
