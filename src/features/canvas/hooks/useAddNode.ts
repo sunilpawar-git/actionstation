@@ -15,7 +15,6 @@ import { trackNodeCreated } from '@/shared/services/analyticsService';
 import { useUndoableActions } from './useUndoableActions';
 
 export function useAddNode() {
-    const nodes = useCanvasStore((s) => s.nodes);
     const { currentWorkspaceId } = useWorkspaceContext();
     const canvasFreeFlow = useSettingsStore((s) => s.canvasFreeFlow);
     const focusedNodeId = useFocusStore((s) => s.focusedNodeId);
@@ -25,12 +24,16 @@ export function useAddNode() {
     const handleAddNode = useCallback(() => {
         if (!currentWorkspaceId) return;
 
+        // Read nodes at call time via getState() — not via subscription.
+        // Subscribing to nodes caused callback recreation on every node change,
+        // cascading re-renders through KeyboardShortcutsProvider.
+        const nodes = useCanvasStore.getState().nodes;
         const position = canvasFreeFlow
             ? calculateSmartPlacement(nodes, focusedNodeId ?? undefined)
             : calculateNextNodePosition(nodes);
 
         const newNode = createIdeaNode(
-            `idea-${Date.now()}`,
+            `idea-${crypto.randomUUID()}`,
             currentWorkspaceId,
             position
         );
@@ -38,7 +41,7 @@ export function useAddNode() {
         addNodeWithUndo(newNode);
         trackNodeCreated('idea');
         panToPosition(position.x, position.y);
-    }, [nodes, currentWorkspaceId, canvasFreeFlow, focusedNodeId, panToPosition, addNodeWithUndo]);
+    }, [currentWorkspaceId, canvasFreeFlow, focusedNodeId, panToPosition, addNodeWithUndo]);
 
     return handleAddNode;
 }

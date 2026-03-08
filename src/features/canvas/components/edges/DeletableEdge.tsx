@@ -10,6 +10,7 @@ import {
     type EdgeProps,
 } from '@xyflow/react';
 import { useCanvasStore } from '../../stores/canvasStore';
+import { useHistoryStore } from '../../stores/historyStore';
 import { useSettingsStore, type ConnectorStyle } from '@/shared/stores/settingsStore';
 import { strings } from '@/shared/localization/strings';
 import styles from './DeletableEdge.module.css';
@@ -57,7 +58,37 @@ export const DeletableEdge = React.memo(function DeletableEdge({
     });
 
     const handleDelete = useCallback(() => {
-        useCanvasStore.getState().deleteEdge(id);
+        // mirror logic from useCanvasEdgeHandlers.onEdgesChange (remove case)
+        const state = useCanvasStore.getState();
+        const edge = state.edges.find((e) => e.id === id);
+        if (!edge) return;
+        const frozenEdge = structuredClone(edge);
+
+        // perform the deletion
+        state.deleteEdge(id);
+
+        // push undo command
+        useHistoryStore.getState().dispatch({
+            type: 'PUSH',
+            command: {
+                type: 'deleteEdge',
+                timestamp: Date.now(),
+                undo: () => {
+                    const currentNodeIds = new Set(
+                        useCanvasStore.getState().nodes.map((n) => n.id)
+                    );
+                    if (
+                        currentNodeIds.has(frozenEdge.sourceNodeId) &&
+                        currentNodeIds.has(frozenEdge.targetNodeId)
+                    ) {
+                        useCanvasStore.getState().addEdge(frozenEdge);
+                    }
+                },
+                redo: () => {
+                    useCanvasStore.getState().deleteEdge(id);
+                },
+            },
+        });
     }, [id]);
 
     const handleMouseEnter = useCallback(() => setIsHovered(true), []);

@@ -52,14 +52,19 @@ describe('useIdeaCardDuplicateAction', () => {
         expect(toast.error).toHaveBeenCalledWith('Failed to duplicate node');
     });
 
-    it('pans to the new node position after successful duplicate', () => {
+    it('pans to the new node position after successful duplicate (deferred via rAF)', () => {
+        vi.useFakeTimers();
         useCanvasStore.setState({ nodes: [makeNode()] });
         const { result } = renderHook(() => useIdeaCardDuplicateAction('idea-1'));
         act(() => result.current.handleDuplicate());
+        // Pan is deferred to next frame to avoid viewport mutation during React batch
+        expect(mockPanToPosition).not.toHaveBeenCalled();
+        act(() => { vi.advanceTimersByTime(16); }); // one rAF tick
         expect(mockPanToPosition).toHaveBeenCalledOnce();
         const [x, y] = mockPanToPosition.mock.calls[0] as [number, number];
         expect(typeof x).toBe('number');
         expect(typeof y).toBe('number');
+        vi.useRealTimers();
     });
 
     it('does not pan when node is not found', () => {

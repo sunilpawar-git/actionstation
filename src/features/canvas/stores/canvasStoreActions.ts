@@ -29,9 +29,22 @@ import {
 import { duplicateNode as cloneNode } from '../services/nodeDuplicationService';
 import { EMPTY_SELECTED_IDS, getNodeMap } from './canvasStoreUtils';
 import type { CanvasStore } from './canvasStore';
+import type { ClusterGroup } from '@/features/clustering/types/cluster';
 
 type SetFn = (partial: Partial<CanvasStore> | ((s: CanvasStore) => Partial<CanvasStore>)) => void;
 type GetFn = () => CanvasStore;
+
+/** Pure helper: prune cluster groups in same set() as node deletion (prevents nested set() cascade) */
+function pruneClusterGroups(
+    groups: readonly ClusterGroup[],
+    existingNodeIds: ReadonlySet<string>,
+): { clusterGroups: ClusterGroup[] } {
+    return {
+        clusterGroups: groups
+            .map((g) => ({ ...g, nodeIds: g.nodeIds.filter((id) => existingNodeIds.has(id)) }))
+            .filter((g) => g.nodeIds.length >= 2),
+    };
+}
 
 // ---------------------------------------------------------------------------
 // Node mutation actions (structural: add, duplicate, delete, bulk)
@@ -57,16 +70,17 @@ export function createNodeMutationActions(set: SetFn, get: GetFn) {
             set((s) => ({ nodes: updateNodeDataField(s.nodes, nodeId, 'content', content) })),
 
         deleteNode: (nodeId: string) => {
-            set((s) => ({
-                ...deleteNodeFromArrays(s.nodes, s.edges, s.selectedNodeIds, nodeId),
-                ...(s.editingNodeId === nodeId
+            set((s) => {
+                const deletion = deleteNodeFromArrays(s.nodes, s.edges, s.selectedNodeIds, nodeId);
+                const editingClear = s.editingNodeId === nodeId
                     ? { editingNodeId: null, draftContent: null, inputMode: 'note' as const }
-                    : {}),
-            }));
-            const state = get();
-            if (state.clusterGroups.length > 0) {
-                state.pruneDeletedNodes(new Set(state.nodes.map((n) => n.id)));
-            }
+                    : {};
+                // Batch cluster pruning in same set() — prevents nested set() cascade
+                const clusterPrune = s.clusterGroups.length > 0
+                    ? pruneClusterGroups(s.clusterGroups, new Set(deletion.nodes.map((n) => n.id)))
+                    : {};
+                return { ...deletion, ...editingClear, ...clusterPrune };
+            });
         },
 
         setNodes: (nodes: CanvasNode[]) => set({ nodes }),
@@ -77,16 +91,17 @@ export function createNodeMutationActions(set: SetFn, get: GetFn) {
         /** Bulk delete — single set() call, O(1) Zustand notification vs O(N) */
         deleteNodes: (nodeIds: string[]) => {
             const idSet = new Set(nodeIds);
-            set((s) => ({
-                ...deleteNodesFromArrays(s.nodes, s.edges, s.selectedNodeIds, idSet),
-                ...(s.editingNodeId && idSet.has(s.editingNodeId)
+            set((s) => {
+                const deletion = deleteNodesFromArrays(s.nodes, s.edges, s.selectedNodeIds, idSet);
+                const editingClear = s.editingNodeId && idSet.has(s.editingNodeId)
                     ? { editingNodeId: null, draftContent: null, inputMode: 'note' as const }
-                    : {}),
-            }));
-            const state = get();
-            if (state.clusterGroups.length > 0) {
-                state.pruneDeletedNodes(new Set(state.nodes.map((n) => n.id)));
-            }
+                    : {};
+                // Batch cluster pruning in same set() — prevents nested set() cascade
+                const clusterPrune = s.clusterGroups.length > 0
+                    ? pruneClusterGroups(s.clusterGroups, new Set(deletion.nodes.map((n) => n.id)))
+                    : {};
+                return { ...deletion, ...editingClear, ...clusterPrune };
+            });
         },
 
         clearCanvas: () => set({

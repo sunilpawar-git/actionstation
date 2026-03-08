@@ -23,8 +23,12 @@ describe('useIdeaCardActions — stable action references', () => {
         expect(src).not.toMatch(/useCanvasStore\(\s*\(s\)\s*=>\s*s\.updateNodeTags\s*\)/);
     });
 
-    it('must use getState() for store actions inside callbacks', () => {
-        expect(src).toMatch(/useCanvasStore\.getState\(\)\.deleteNode/);
+    it('must use getState() for store actions inside callbacks (or call undoable helpers)', () => {
+        // deletion now happens via deleteNodeWithUndo so either pattern is fine
+        expect(
+            /useCanvasStore\.getState\(\)\.deleteNode/.test(src) ||
+            /deleteNodeWithUndo/.test(src)
+        ).toBe(true);
         expect(src).toMatch(/useCanvasStore\.getState\(\)\.updateNodeHeading/);
         expect(src).toMatch(/useCanvasStore\.getState\(\)\.updateNodeTags/);
     });

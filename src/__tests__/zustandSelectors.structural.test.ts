@@ -257,6 +257,20 @@ describe('Zustand selector enforcement', () => {
         );
     });
 
+    it('canvasStoreActions must not have nested set() calls (prevents cascading re-renders)', () => {
+        const actionsFile = readFileSync(
+            join(SRC_DIR, 'features/canvas/stores/canvasStoreActions.ts'),
+            'utf-8',
+        );
+        // After a set() call, calling get() followed by another set/pruneDeletedNodes is the nested pattern.
+        // The fix: batch all mutations in a single set() updater function.
+        const nestedSetPattern = /set\(\s*\([\s\S]*?\)\s*\);\s*\n\s*const\s+\w+\s*=\s*get\(\)/;
+        expect(
+            nestedSetPattern.test(actionsFile),
+            'canvasStoreActions has nested set() calls — batch mutations in single set() to prevent cascade',
+        ).toBe(false);
+    });
+
     it('provides documentation on correct patterns', () => {
         const correctPatterns = [
             '// ✅ CORRECT: Selector pattern - only re-renders when value changes',

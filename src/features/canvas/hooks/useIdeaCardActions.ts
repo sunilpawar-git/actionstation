@@ -6,6 +6,7 @@ import { useCallback, useEffect } from 'react';
 import { strings } from '@/shared/localization/strings';
 import { toast } from '@/shared/stores/toastStore';
 import { useCanvasStore } from '../stores/canvasStore';
+import { useUndoableActions } from './useUndoableActions';
 import { useNodeTransformation, type TransformationType } from '@/features/ai/hooks/useNodeTransformation';
 import { FOCUS_NODE_EVENT, type FocusNodeEvent } from './useQuickCapture';
 
@@ -22,9 +23,15 @@ export function useIdeaCardActions(options: UseIdeaCardActionsOptions) {
     const { nodeId, getEditableContent, contentRef, generateFromPrompt, branchFromNode } = options;
     const { transformNodeContent, isTransforming } = useNodeTransformation();
 
+    // NOTE: we previously deleted nodes directly from the canvas store here.
+    // That bypassed the new undo/redo infrastructure, so keyboard or button
+    // deletes would not be recoverable.  Use the undoable wrapper instead.
+    const { deleteNodeWithUndo } = useUndoableActions();
     const handleDelete = useCallback(() => {
-        useCanvasStore.getState().deleteNode(nodeId);
-    }, [nodeId]);
+        // deleteNodeWithUndo accepts an array of ids; most callers only
+        // delete a single node but we keep the signature for consistency.
+        deleteNodeWithUndo([nodeId]);
+    }, [nodeId, deleteNodeWithUndo]);
     const handleRegenerate = useCallback(() => { void generateFromPrompt(nodeId); }, [nodeId, generateFromPrompt]);
     const handleConnectClick = useCallback(() => { void branchFromNode(nodeId); }, [nodeId, branchFromNode]);
     const handleTransform = useCallback((type: TransformationType) => {

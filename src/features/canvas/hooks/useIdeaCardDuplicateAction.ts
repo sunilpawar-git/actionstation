@@ -16,8 +16,12 @@ export function useIdeaCardDuplicateAction(nodeId: string) {
         const newId = useCanvasStore.getState().duplicateNode(nodeId);
         if (newId) {
             toast.success(strings.nodeUtils.duplicateSuccess);
-            const newNode = getNodeMap(useCanvasStore.getState().nodes).get(newId);
-            if (newNode) panToPosition(newNode.position.x, newNode.position.y);
+            // Defer pan to next frame — prevents viewport mutation during the same
+            // React batch as set({nodes}), which can cascade through useSyncExternalStore.
+            requestAnimationFrame(() => {
+                const newNode = getNodeMap(useCanvasStore.getState().nodes).get(newId);
+                if (newNode) panToPosition(newNode.position.x, newNode.position.y);
+            });
         } else {
             toast.error(strings.nodeUtils.duplicateError);
         }
