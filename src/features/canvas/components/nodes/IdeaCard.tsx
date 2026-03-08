@@ -5,6 +5,9 @@ import { useIdeaCard } from '../../hooks/useIdeaCard';
 import { useNodeContextMenu } from './useNodeContextMenu';
 import { NodeUtilsBar } from './NodeUtilsBar';
 import { IdeaCardContextMenuSection } from './IdeaCardContextMenuSection';
+import { IdeaCardSimilarResultsSection } from './IdeaCardSimilarResultsSection';
+import { useFindSimilar } from '@/features/search/hooks/useFindSimilar';
+import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import { NodeResizeButtons } from './NodeResizeButtons';
 import { IdeaCardHeadingSection } from './IdeaCardHeadingSection';
 import { IdeaCardContentSection } from './IdeaCardContentSection';
@@ -35,10 +38,18 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
     const isSynthesisNode = nodeColorKey === 'synthesis';
     const contextMenu = useNodeContextMenu();
     const { openAtElement } = contextMenu;
+    const { results: similarResults, isActive: isFindSimilarActive, isComputing: isFindSimilarComputing, findSimilar, clearSimilar } = useFindSimilar();
 
     const handleMoreClick = React.useCallback(() => {
         if (barContainerRef.current) openAtElement(barContainerRef.current);
     }, [barContainerRef, openAtElement]);
+
+    const handleFindSimilar = React.useCallback(() => findSimilar(id), [findSimilar, id]);
+    const handleSimilarNodeClick = React.useCallback((nodeId: string) => {
+        useCanvasStore.getState().clearSelection();
+        useCanvasStore.getState().selectNode(nodeId);
+        clearSimilar();
+    }, [clearSimilar]);
 
     return (
         <div ref={cardWrapperRef}
@@ -87,7 +98,16 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
                     isSharing={isSharing} onPinToggle={handlePinToggle} onCollapseToggle={handleCollapseToggle}
                     onPoolToggle={handlePoolToggle} onColorChange={handleColorChange} nodeColorKey={nodeColorKey}
                     isPinned={isPinned ?? false} isCollapsed={isCollapsed ?? false}
-                    isInPool={resolvedData.includeInAIPool ?? false} />
+                    isInPool={resolvedData.includeInAIPool ?? false}
+                    onFindSimilar={handleFindSimilar} />
+            )}
+            {isFindSimilarActive && (
+                <IdeaCardSimilarResultsSection
+                    results={similarResults}
+                    isComputing={isFindSimilarComputing}
+                    onClose={clearSimilar}
+                    onNodeClick={handleSimilarNodeClick}
+                />
             )}
             <Handle type="source" position={Position.Bottom} id={`${id}-source`}
                 isConnectable className={`${handleStyles.handle} ${handleStyles.handleBottom}`} />

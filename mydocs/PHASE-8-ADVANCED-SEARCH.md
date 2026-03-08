@@ -16,6 +16,25 @@
 
 ---
 
+## Additional Gaps Identified in Codebase Review
+
+Found by auditing actual source files (`useKeyboardShortcuts.ts`, `SearchBar.tsx`, `useSearch.ts`, `tfidfScorer.ts`) after the original plan was written:
+
+| # | Gap | Severity | Fix |
+|---|-----|----------|-----|
+| G1 | **No ⌘+K global search hotkey** — `useKeyboardShortcuts.ts` has zero search binding. Users must click the topbar input. Fatal UX gap for a keyboard-first BASB app. | CRITICAL | New sub-phase **8A.0**: register `⌘+K` (Mac) / `Ctrl+K` (Win) in `useKeyboardShortcuts.ts`, auto-focus search input via `useImperativeHandle`. ~10 lines. |
+| G2 | **No keyboard navigation of results** — `SearchBar.tsx` has zero arrow-key support. Users must reach for the mouse after typing. | HIGH | Add `SET_ACTIVE_INDEX` action to reducer; `ArrowDown/Up` navigates results; `Enter` selects. Covered in 8C + 8D. |
+| G3 | **Main search path has no debounce** — `useMemo` recomputes on every `SET_QUERY` dispatch (every keystroke). Fuzzy match is O(n·m) per node. | HIGH | Use React 18's `useDeferredValue` on the query before the `useMemo` — keeps input responsive, defers expensive computation. Zero external deps. Covered in 8C. |
+| G4 | **Fuzzy scoring ignores field weight in composite** — plan describes heading > output priority but the score formula doesn't multiply `fuzzyScore × fieldWeight`. Static fallback to 0.8 not enough for fuzzy path. | MEDIUM | Composite scoring: `finalScore = fuzzyScore × fieldWeight × recencyBoost`. Covered in 8C. |
+| G5 | **`findSimilarNodes` rebuilds IDF every call** — tokenizes all N nodes + computes full IDF each invocation. No caching. Repeated calls are O(n²). | HIGH | Accept optional pre-computed `idfCache` param; `useFindSimilar` memoizes corpus+IDF keyed on `nodes`. Covered in 8E. |
+| G6 | **No result pagination** — filter-only mode with broad content-type filters can surface hundreds of results in a flat list. | MEDIUM | Cap visible results at 20 in `useMemo`, add "Show N more" in `SearchBar`. Covered in 8C + 8D. |
+| G7 | **`splitByRanges` assumes sorted, non-overlapping input** — if `fuzzyMatch` ever returns overlapping ranges (a bug), output is garbled. No defensive guard. | LOW | Sort + merge ranges at entry before processing. Covered in 8B. |
+| G8 | **No result snippets** — matches buried deep in `output` field show the full string, not a windowed context excerpt. | MEDIUM | Add `extractSnippet(text, ranges, contextChars=40)` utility to `fuzzyMatch.ts`. Covered in 8B. |
+| G9 | **No `isComputing` state in `useFindSimilar`** — TF-IDF over 500 nodes can take 100ms+. No loading state means a frozen UI with no feedback. | MEDIUM | Derive `isComputing` from `useDeferredValue` (no `setState` side-effect anti-pattern). Covered in 8E. |
+| G10 | **Test count wrong in backward-compat claim** — plan says "existing 11 tests" but actual count is **12** unit + 2 interface + 2 null-safety + 3 integration = **19 total**. | LOW | Fix to "existing 12 unit tests" throughout. Covered in 8C. |
+
+---
+
 ## Problem Statement
 
 Current search (`useSearch.ts`, 105 lines) does case-insensitive substring matching on `heading` and `output` fields only. As users accumulate hundreds of nodes, this breaks down:
@@ -68,6 +87,58 @@ No `useStore()` destructuring. No closure variables in selectors.
 - TF-IDF vectors: add `buildTFIDFVector()` to `tfidfScorer.ts` (SSOT for TF-IDF math)
 - Cosine similarity: pure function in `findSimilar.ts` (search-specific)
 - Strings: new `searchStrings.ts` file imported into `strings.ts` (follows feature-first pattern)
+
+---
+
+## Sub-phase 8A.0: ⌘+K Global Search Hotkey
+
+### What We Build
+
+Register a global keyboard shortcut to invoke search — the single highest-leverage UX improvement for a keyboard-first BASB app. Currently `useKeyboardShortcuts.ts` has no search binding at all.
+
+### Files
+
+| File | Action | Lines (est.) |
+|------|--------|-------------|
+| `src/app/hooks/useKeyboardShortcuts.ts` | EDIT | +10 lines |
+| `src/features/search/components/SearchBar.tsx` | EDIT | Add `useImperativeHandle` focus ref |
+
+### Implementation
+
+```typescript
+// In useKeyboardShortcuts.ts — alongside existing ⌘+N handler:
+useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            // Don't fire when user is already typing in a node editor
+            if (e.target instanceof HTMLElement && e.target.closest('[data-node-editor]')) return;
+            e.preventDefault();
+            searchInputRef.current?.focus();
+            searchInputRef.current?.select();
+        }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+}, [searchInputRef]);
+```
+
+`SearchBar` exposes its `<input>` focus via `useImperativeHandle` and a `SearchInputRefContext` created at the app level — no prop drilling, no store mutation.
+
+### TDD Tests
+
+```
+1. ⌘+K focuses the search input (ref.focus() called)
+2. Ctrl+K focuses the search input (Windows compat)
+3. ⌘+K is suppressed when focus is inside a node editor ([data-node-editor])
+4. ⌘+K selects existing text in the search input (ref.select() called)
+```
+
+### Tech Debt Checkpoint
+
+- [ ] Shortcut registered alongside existing `⌘+N` handler pattern
+- [ ] `SearchBar` exposes `focus()` + `select()` via `useImperativeHandle` (no prop drilling)
+- [ ] Shortcut suppressed when a node text-editor is active (conflict prevention)
+- [ ] Zero lint errors
 
 ---
 
@@ -216,8 +287,8 @@ Fuzzy matcher + highlight segmenter in **one file** (eliminates premature `highl
 
 | File | Action | Lines (est.) |
 |------|--------|-------------|
-| `src/features/search/services/fuzzyMatch.ts` | NEW | ~60 |
-| `src/features/search/services/__tests__/fuzzyMatch.test.ts` | NEW | ~100 |
+| `src/features/search/services/fuzzyMatch.ts` | NEW | ~80 |
+| `src/features/search/services/__tests__/fuzzyMatch.test.ts` | NEW | ~125 |
 
 ### Implementation
 
@@ -281,14 +352,25 @@ export function fuzzyMatch(query: string, text: string): FuzzyResult {
     };
 }
 
-/** Split text into highlighted/non-highlighted segments for safe React rendering */
+/**
+ * Split text into highlighted/non-highlighted segments for safe React rendering.
+ * Defensively sorts and merges overlapping ranges before processing.
+ */
 export function splitByRanges(
     text: string, ranges: ReadonlyArray<{ start: number; end: number }>
 ): TextSegment[] {
     if (ranges.length === 0) return [{ text, highlighted: false }];
+    // Defensive: sort and merge overlapping ranges (guards against upstream bugs)
+    const sorted = [...ranges].sort((a, b) => a.start - b.start);
+    const merged: Array<{ start: number; end: number }> = [];
+    for (const r of sorted) {
+        const prev = merged[merged.length - 1];
+        if (prev && r.start <= prev.end) { prev.end = Math.max(prev.end, r.end); }
+        else merged.push({ ...r });
+    }
     const segments: TextSegment[] = [];
     let cursor = 0;
-    for (const { start, end } of ranges) {
+    for (const { start, end } of merged) {
         if (start > cursor) segments.push({ text: text.slice(cursor, start), highlighted: false });
         segments.push({ text: text.slice(start, end), highlighted: true });
         cursor = end;
@@ -296,9 +378,26 @@ export function splitByRanges(
     if (cursor < text.length) segments.push({ text: text.slice(cursor), highlighted: false });
     return segments;
 }
+
+const SNIPPET_CONTEXT_CHARS = 40;
+
+/** Extract a windowed snippet around the first match range for compact result display. */
+export function extractSnippet(
+    text: string,
+    ranges: ReadonlyArray<{ start: number; end: number }>,
+    contextChars = SNIPPET_CONTEXT_CHARS
+): string {
+    if (ranges.length === 0 || text.length <= contextChars * 2) return text;
+    const first = ranges[0]!;
+    const windowStart = Math.max(0, first.start - contextChars);
+    const windowEnd = Math.min(text.length, first.end + contextChars);
+    const prefix = windowStart > 0 ? '…' : '';
+    const suffix = windowEnd < text.length ? '…' : '';
+    return prefix + text.slice(windowStart, windowEnd) + suffix;
+}
 ```
 
-### TDD Tests (~100 lines)
+### TDD Tests (~125 lines)
 
 ```
 1. Exact match returns score 1.0
@@ -315,16 +414,24 @@ export function splitByRanges(
 12. splitByRanges handles adjacent ranges
 13. splitByRanges handles range at start of text
 14. splitByRanges handles range at end of text
+15. splitByRanges defensively sorts unsorted input ranges
+16. splitByRanges merges overlapping ranges into one highlight
+17. extractSnippet returns windowed context around first match (±40 chars)
+18. extractSnippet prefixes/suffixes '…' when text is truncated
+19. extractSnippet returns full text when shorter than 2×contextChars
+20. extractSnippet handles match at start (no leading '…')
+21. extractSnippet handles match at end (no trailing '…')
 ```
 
 ### Tech Debt Checkpoint
 
-- [ ] `fuzzyMatch.ts` under 65 lines (two exports, no separate file for highlight)
+- [ ] `fuzzyMatch.ts` under 85 lines (three exports: `fuzzyMatch`, `splitByRanges`, `extractSnippet`)
+- [ ] `splitByRanges` defensively sorts and merges overlapping input ranges
 - [ ] Pure functions, zero dependencies
 - [ ] MAX_QUERY_LENGTH enforced (security)
 - [ ] Score capped at 0.99 for fuzzy (1.0 reserved for exact match)
 - [ ] Zero lint errors
-- [ ] All 14 tests pass
+- [ ] All 21 tests pass
 
 ---
 
@@ -338,15 +445,15 @@ A pure `searchReducer` function and an upgraded `useSearch` hook that composes 8
 
 | File | Action | Lines (est.) |
 |------|--------|-------------|
-| `src/features/search/hooks/searchReducer.ts` | NEW | ~35 |
-| `src/features/search/hooks/__tests__/searchReducer.test.ts` | NEW | ~45 |
-| `src/features/search/hooks/useSearch.ts` | REWRITE | ~75 |
-| `src/features/search/__tests__/useSearch.test.ts` | EXTEND | ~300 (from 256) |
+| `src/features/search/hooks/searchReducer.ts` | NEW | ~55 |
+| `src/features/search/hooks/__tests__/searchReducer.test.ts` | NEW | ~65 |
+| `src/features/search/hooks/useSearch.ts` | REWRITE | ~90 |
+| `src/features/search/__tests__/useSearch.test.ts` | EXTEND | ~320 (from 256) |
 | `src/features/search/__tests__/useSearch.integration.test.ts` | NEW | ~60 |
 
 ### Implementation
 
-**`searchReducer.ts`** (~35 lines) — pure function, completely isolated:
+**`searchReducer.ts`** (~55 lines) — pure function, completely isolated:
 
 ```typescript
 import type { SearchFilters } from '../types/search';
@@ -354,25 +461,36 @@ import type { SearchFilters } from '../types/search';
 export interface SearchState {
     query: string;
     filters: SearchFilters;
+    activeIndex: number;        // Keyboard navigation: -1 = none selected
+    isFilterBarOpen: boolean;   // Filter panel toggle state
 }
 
 export type SearchAction =
     | { type: 'SET_QUERY'; query: string }
     | { type: 'SET_FILTER'; filter: Partial<SearchFilters> }
+    | { type: 'SET_ACTIVE_INDEX'; index: number }
+    | { type: 'TOGGLE_FILTER_BAR' }
     | { type: 'CLEAR_FILTERS' }
     | { type: 'CLEAR_ALL' };
 
 export const INITIAL_SEARCH_STATE: SearchState = {
     query: '',
     filters: {},
+    activeIndex: -1,
+    isFilterBarOpen: false,
 };
 
 export function searchReducer(state: SearchState, action: SearchAction): SearchState {
     switch (action.type) {
         case 'SET_QUERY':
-            return { ...state, query: action.query.slice(0, 200) }; // Security: length cap
+            // Reset activeIndex so stale keyboard selection doesn't persist
+            return { ...state, query: action.query.slice(0, 200), activeIndex: -1 };
         case 'SET_FILTER':
             return { ...state, filters: { ...state.filters, ...action.filter } };
+        case 'SET_ACTIVE_INDEX':
+            return { ...state, activeIndex: action.index };
+        case 'TOGGLE_FILTER_BAR':
+            return { ...state, isFilterBarOpen: !state.isFilterBarOpen };
         case 'CLEAR_FILTERS':
             return { ...state, filters: {} };
         case 'CLEAR_ALL':
@@ -381,9 +499,22 @@ export function searchReducer(state: SearchState, action: SearchAction): SearchS
 }
 ```
 
-**Upgraded `useSearch.ts`** (~75 lines):
+**Upgraded `useSearch.ts`** (~90 lines):
 
 ```typescript
+// Field weights for composite scoring: heading > prompt (legacy) > output > tag
+const FIELD_WEIGHTS = { heading: 1.0, prompt: 1.0, output: 0.8, tag: 0.6 } as const;
+
+// Mild recency boost: rewards recently updated nodes without overwhelming relevance
+function recencyBoost(node: CanvasNode): number {
+    const ts = node.updatedAt ?? node.createdAt;
+    if (!ts) return 0.90;
+    const age = Date.now() - new Date(ts).getTime();
+    if (age < 7 * 86_400_000)  return 1.00; // last 7 days
+    if (age < 30 * 86_400_000) return 0.95; // last 30 days
+    return 0.90;
+}
+
 export function useSearch(): UseSearchReturn {
     const [state, dispatch] = useReducer(searchReducer, INITIAL_SEARCH_STATE);
 
@@ -391,6 +522,10 @@ export function useSearch(): UseSearchReturn {
     const nodes = useCanvasStore((s) => s.nodes);
     const edges = useCanvasStore((s) => s.edges);
     const workspaces = useWorkspaceStore((s) => s.workspaces);
+
+    // useDeferredValue defers the expensive O(n·m) fuzzy computation while keeping
+    // the input field responsive on every keystroke (React 18, zero external deps).
+    const deferredQuery = useDeferredValue(state.query);
 
     const workspaceMap = useMemo(() => {
         const map = new Map<string, string>();
@@ -401,7 +536,8 @@ export function useSearch(): UseSearchReturn {
     }, [workspaces]);
 
     const results = useMemo((): SearchResult[] => {
-        const { query, filters } = state;
+        const { filters } = state;
+        const query = deferredQuery; // deferred — input stays snappy
         const filtered = applyFilters(nodes, edges, filters);
 
         if (!query.trim()) {
@@ -416,21 +552,33 @@ export function useSearch(): UseSearchReturn {
             return [];
         }
 
-        // Fuzzy match: heading > prompt (legacy) > output > tags
+        // Composite scoring: fuzzyScore × fieldWeight × recencyBoost
+        // Priority: heading > prompt (legacy, backward compat) > output > tags
         const searchResults: SearchResult[] = [];
         for (const node of filtered) {
-            // ... heading match, prompt fallback, output match, tag match
-            // Each uses fuzzyMatch() and pushes to searchResults
+            const boost = recencyBoost(node);
+            // heading match (fieldWeight=1.0), prompt fallback (fieldWeight=1.0),
+            // output match (fieldWeight=0.8), tag match (fieldWeight=0.6)
+            // Each: finalRelevance = fuzzyResult.score * FIELD_WEIGHTS[field] * boost
+            // matchedContent = extractSnippet(fieldText, fuzzyResult.ranges)
         }
-        return searchResults.sort((a, b) => b.relevance - a.relevance);
-    }, [state, nodes, edges, workspaceMap]);
+        return searchResults
+            .sort((a, b) => b.relevance - a.relevance)
+            .slice(0, 20); // Pagination: cap at 20; SearchBar renders "Show N more"
+    }, [state.filters, deferredQuery, nodes, edges, workspaceMap]);
 
     const search = useCallback((q: string) => dispatch({ type: 'SET_QUERY', query: q }), []);
     const setFilters = useCallback((f: Partial<SearchFilters>) => dispatch({ type: 'SET_FILTER', filter: f }), []);
     const clearFilters = useCallback(() => dispatch({ type: 'CLEAR_FILTERS' }), []);
     const clear = useCallback(() => dispatch({ type: 'CLEAR_ALL' }), []);
+    const toggleFilterBar = useCallback(() => dispatch({ type: 'TOGGLE_FILTER_BAR' }), []);
+    const setActiveIndex = useCallback((i: number) => dispatch({ type: 'SET_ACTIVE_INDEX', index: i }), []);
 
-    return { query: state.query, filters: state.filters, results, search, setFilters, clearFilters, clear };
+    return {
+        query: state.query, filters: state.filters,
+        activeIndex: state.activeIndex, isFilterBarOpen: state.isFilterBarOpen,
+        results, search, setFilters, clearFilters, clear, toggleFilterBar, setActiveIndex,
+    };
 }
 ```
 
@@ -442,20 +590,24 @@ export function useSearch(): UseSearchReturn {
 
 ### TDD Tests
 
-**Reducer unit tests** (`searchReducer.test.ts`, ~45 lines):
+**Reducer unit tests** (`searchReducer.test.ts`, ~65 lines):
 ```
 1. SET_QUERY updates query
 2. SET_QUERY caps at 200 chars (security)
-3. SET_FILTER merges partial filter
-4. SET_FILTER preserves existing filters
-5. CLEAR_FILTERS resets filters but keeps query
-6. CLEAR_ALL resets to initial state
-7. Reducer returns same state for unknown action type
+3. SET_QUERY resets activeIndex to -1 (stale selection cleared)
+4. SET_FILTER merges partial filter
+5. SET_FILTER preserves existing filters
+6. SET_ACTIVE_INDEX sets activeIndex
+7. TOGGLE_FILTER_BAR flips isFilterBarOpen
+8. TOGGLE_FILTER_BAR called twice returns to false
+9. CLEAR_FILTERS resets filters but keeps query, activeIndex, isFilterBarOpen
+10. CLEAR_ALL resets to INITIAL_SEARCH_STATE
+11. Reducer returns same reference for unknown action type
 ```
 
-**Extended useSearch tests** (add to existing, ~300 lines total):
+**Extended useSearch tests** (add to existing, ~320 lines total):
 ```
-Existing 11 tests: PRESERVED (backward compatibility)
+Existing 12 unit tests: PRESERVED (backward compatibility)
 12. Empty query + tag filter = all nodes with that tag
 13. Query matches heading with fuzzy matching ("brainstrom" → "brainstorm")
 14. Query matches tags
@@ -479,12 +631,17 @@ Existing 11 tests: PRESERVED (backward compatibility)
 
 ### Tech Debt Checkpoint
 
-- [ ] `searchReducer.ts` under 40 lines, pure function
-- [ ] `useSearch.ts` under 75 lines (hook limit)
+- [ ] `searchReducer.ts` under 60 lines, pure function
+- [ ] `useSearch.ts` under 95 lines
+- [ ] `useDeferredValue` wraps query before `useMemo` — input stays responsive
+- [ ] `useMemo` dependency array uses `deferredQuery`, not `state.query` directly
+- [ ] Composite scoring: `fuzzyScore × fieldWeight × recencyBoost` applied per field
+- [ ] Results capped at 20 in `useMemo` (pagination foundation)
+- [ ] `useSearch` return type includes `activeIndex`, `isFilterBarOpen`, `toggleFilterBar`, `setActiveIndex`
 - [ ] Zero `useEffect` in `useSearch` — all derived via `useMemo`
 - [ ] No Zustand anti-patterns (selectors only, no destructuring)
 - [ ] No closure variables in selectors
-- [ ] Existing 11 tests still pass (backward compat)
+- [ ] Existing 12 unit tests still pass (backward compat)
 - [ ] Zero lint errors
 
 ---
@@ -499,14 +656,16 @@ Filter bar component, search string resources, and SearchBar enhancement with hi
 
 | File | Action | Lines (est.) |
 |------|--------|-------------|
-| `src/features/search/strings/searchStrings.ts` | NEW | ~30 |
+| `src/features/search/strings/searchStrings.ts` | NEW | ~45 |
 | `src/shared/localization/strings.ts` | EDIT | Import searchStrings, replace inline search object |
-| `src/features/search/components/SearchFilterBar.tsx` | NEW | ~85 |
-| `src/features/search/components/SearchFilterBar.module.css` | NEW | ~55 |
-| `src/features/search/components/SearchBar.tsx` | EDIT | Integrate filter bar + highlight rendering |
-| `src/features/search/components/SearchBar.module.css` | EDIT | Add highlight + filter styles |
-| `src/features/search/components/__tests__/SearchFilterBar.test.tsx` | NEW | ~75 |
-| `src/features/search/__tests__/searchUI.integration.test.tsx` | NEW | ~60 |
+| `src/features/search/components/TagFilterChips.tsx` | NEW | ~40 |
+| `src/features/search/components/SearchFilterBar.tsx` | NEW | ~65 |
+| `src/features/search/components/SearchFilterBar.module.css` | NEW | ~75 |
+| `src/features/search/components/SearchBar.tsx` | EDIT | Keyboard nav + filter bar + highlight rendering |
+| `src/features/search/components/SearchBar.module.css` | EDIT | Add highlight + filter + active-result styles |
+| `src/features/search/components/__tests__/TagFilterChips.test.tsx` | NEW | ~40 |
+| `src/features/search/components/__tests__/SearchFilterBar.test.tsx` | NEW | ~65 |
+| `src/features/search/__tests__/searchUI.integration.test.tsx` | NEW | ~75 |
 
 ### Implementation
 
@@ -539,15 +698,39 @@ export const searchStrings = {
     findSimilar: 'Find similar',
     similarResults: 'Similar nodes',
     noSimilarResults: 'No similar nodes found',
+    // Empty / idle state
+    emptyStateTitle: 'Search your second brain',
+    emptyStateHint: '⌘K to open, or type below',
+    showMore: 'Show {n} more results',
+    keyboardHint: '↑↓ navigate · ↵ select · Esc close',
 } as const;
 ```
 
-**SearchFilterBar** (~85 lines) — horizontal bar below search input:
-- **Tag chips**: Multi-select from tags found across all nodes (computed via `useMemo`)
+**`TagFilterChips.tsx`** (~40 lines) — extracted sub-component for multi-select tag filtering:
+- Receives `availableTags`, `selectedTags`, `onToggle` as props (no direct store access)
+- Renders chips as `<button role="checkbox" aria-checked>` (WCAG 2.1 AA)
+- Isolated: independently testable, single responsibility
+
+**`SearchFilterBar.tsx`** (~65 lines) — horizontal bar, composes `TagFilterChips`:
+- **Tag chips**: delegates to `<TagFilterChips>` (available tags computed via `useMemo` over all nodes)
 - **Date range**: Native `<input type="date">` (no external dependency)
-- **Content type**: `<select>` dropdown
+- **Content type**: `<select aria-label>` dropdown
 - **Active filter badge**: Shows count of active filters
-- **Clear all button**: `dispatch({ type: 'CLEAR_FILTERS' })`
+- **Clear all button**: dispatches `CLEAR_FILTERS`
+- Visibility gated by `isFilterBarOpen` from reducer (no local `useState`)
+
+**`SearchBar.tsx` keyboard navigation** (added to existing component):
+
+```typescript
+const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') dispatch({ type: 'SET_ACTIVE_INDEX', index: Math.min(activeIndex + 1, results.length - 1) });
+    if (e.key === 'ArrowUp')   dispatch({ type: 'SET_ACTIVE_INDEX', index: Math.max(activeIndex - 1, -1) });
+    if (e.key === 'Enter' && activeIndex >= 0) { onResultClick(results[activeIndex]!); clear(); }
+    if (e.key === 'Escape') { clear(); inputRef.current?.blur(); }
+};
+```
+
+ARIA: `role="combobox"` on input, `aria-expanded`, `aria-haspopup="listbox"`, `aria-activedescendant` on input; `role="listbox"` on results `<ul>`; `role="option"` + `aria-selected` on each `<li>`.
 
 **SearchBar highlight rendering** — safe React elements, NO `dangerouslySetInnerHTML`:
 
@@ -566,17 +749,36 @@ function HighlightedText({ text, ranges }: { text: string; ranges: ... }) {
 
 ### TDD Tests
 
-**SearchFilterBar tests** (~75 lines):
+**`TagFilterChips` tests** (`TagFilterChips.test.tsx`, ~40 lines):
 ```
-1. Renders tag chips, date inputs, content type dropdown
-2. Selecting a tag calls dispatch with SET_FILTER + tags
-3. Setting date range calls dispatch with SET_FILTER + dateRange
-4. Content type dropdown updates filter
-5. Active filter count badge displays correct number
-6. Clear all button dispatches CLEAR_FILTERS
-7. Filter bar toggles on filter icon click
-8. All labels from searchStrings (no hardcoded text)
-9. Invalid date input is ignored (NaN guard)
+1. Renders one chip per availableTag
+2. Selected chips have aria-checked="true"
+3. Clicking a chip calls onToggle with correct tag
+4. Clicking a selected chip calls onToggle again (deselect)
+5. Empty availableTags renders nothing (no crash)
+```
+
+**SearchFilterBar tests** (`SearchFilterBar.test.tsx`, ~65 lines):
+```
+1. Renders when isFilterBarOpen=true; hidden when false
+2. Setting date range dispatches SET_FILTER + dateRange
+3. Content type dropdown dispatches SET_FILTER + contentType
+4. Active filter count badge shows correct number
+5. Clear all button dispatches CLEAR_FILTERS
+6. All labels sourced from searchStrings (no hardcoded text)
+7. Invalid date input is ignored (NaN guard)
+8. Delegates tag rendering to TagFilterChips
+```
+
+**SearchBar keyboard navigation tests** (add to existing `SearchBar.test.tsx`):
+```
+1. ArrowDown increments activeIndex
+2. ArrowUp decrements activeIndex (clamps at -1)
+3. Enter with activeIndex ≥ 0 calls onResultClick and clears search
+4. Escape blurs the input and dispatches CLEAR_ALL
+5. Input has role="combobox" and aria-expanded
+6. Active result item has aria-selected="true"
+7. ⌘K hint visible in empty state (from searchStrings.emptyStateHint)
 ```
 
 **Integration test** (`searchUI.integration.test.tsx`, ~60 lines):
@@ -588,9 +790,16 @@ function HighlightedText({ text, ranges }: { text: string; ranges: ... }) {
 
 ### Tech Debt Checkpoint
 
-- [ ] `SearchFilterBar.tsx` under 90 lines
-- [ ] `SearchBar.tsx` under 110 lines after edits
-- [ ] ALL strings from `searchStrings` (zero hardcoded text)
+- [ ] `TagFilterChips.tsx` under 45 lines, no direct store access
+- [ ] `SearchFilterBar.tsx` under 70 lines (composed via `TagFilterChips`)
+- [ ] `SearchFilterBar.module.css` ~75 lines (chips, date, dropdown, badge, responsive)
+- [ ] `SearchBar.tsx` under 135 lines after keyboard nav + filter integration
+- [ ] `SearchBar` has `role="combobox"`, `aria-expanded`, `aria-haspopup="listbox"`, `aria-activedescendant` (WCAG 2.1 AA)
+- [ ] Results `<ul>` has `role="listbox"`; each `<li>` has `role="option"` + `aria-selected`
+- [ ] `TagFilterChips` uses `role="checkbox"` + `aria-checked` per chip
+- [ ] `isFilterBarOpen` sourced from reducer state (no local `useState` for toggle)
+- [ ] `activeIndex` sourced from reducer state (no local `useState` for navigation)
+- [ ] ALL strings from `searchStrings` (zero hardcoded text, including empty-state hint)
 - [ ] ALL CSS uses `var(--color-*)` / `var(--space-*)` / `var(--radius-*)` variables
 - [ ] No `dangerouslySetInnerHTML` — safe React elements for highlights
 - [ ] Native date inputs (no external date picker dependency)
@@ -612,7 +821,7 @@ TF-IDF cosine similarity for node-to-node semantic search. Triggered from contex
 | `src/features/knowledgeBank/services/tfidfScorer.ts` | EDIT | Add `buildTFIDFVector` (~12 lines) |
 | `src/features/search/services/findSimilar.ts` | NEW | ~55 |
 | `src/features/search/services/__tests__/findSimilar.test.ts` | NEW | ~80 |
-| `src/features/search/hooks/useFindSimilar.ts` | NEW | ~35 |
+| `src/features/search/hooks/useFindSimilar.ts` | NEW | ~50 |
 | `src/features/search/hooks/__tests__/useFindSimilar.test.ts` | NEW | ~55 |
 | `src/features/canvas/components/nodes/NodeContextMenu.tsx` | EDIT | Add "Find Similar" menu item (~3 lines) |
 
@@ -655,10 +864,13 @@ export interface SimilarResult {
     heading: string;
 }
 
-const SIMILARITY_THRESHOLD = 0.1;
+const SIMILARITY_THRESHOLD = 0.15; // 0.1 surfaces too many loosely-related nodes; 0.15 is the practical floor
 
 export function findSimilarNodes(
-    sourceNodeId: string, nodes: CanvasNode[], topN = 10
+    sourceNodeId: string,
+    nodes: CanvasNode[],
+    topN = 7,
+    precomputedIDF?: ReadonlyMap<string, number>, // Cache — avoids rebuilding IDF per call
 ): SimilarResult[] {
     const sourceNode = nodes.find((n) => n.id === sourceNodeId);
     if (!sourceNode) return [];
@@ -668,7 +880,7 @@ export function findSimilarNodes(
 
     // Build tokenized corpus (reuses SSOT tokenizeRaw)
     const corpus = nodes.map((n) => tokenizeRaw(getNodeText(n)));
-    const idf = buildCorpusIDF(corpus);
+    const idf = precomputedIDF ?? buildCorpusIDF(corpus); // Use cache when provided
 
     const sourceIdx = nodes.findIndex((n) => n.id === sourceNodeId);
     const sourceVec = buildTFIDFVector(corpus[sourceIdx] ?? [], idf);
@@ -707,15 +919,29 @@ export function useFindSimilar() {
     const [sourceNodeId, setSourceNodeId] = useState<string | null>(null);
     const nodes = useCanvasStore((s) => s.nodes);
 
-    const results = useMemo(() => {
-        if (!sourceNodeId) return [];
-        return findSimilarNodes(sourceNodeId, nodes);
-    }, [sourceNodeId, nodes]);
+    // Pre-compute and cache corpus IDF whenever nodes change.
+    // findSimilarNodes receives this cache — avoids rebuilding O(n) tokenization per call.
+    const cachedIDF = useMemo(() => {
+        if (nodes.length === 0) return new Map<string, number>();
+        const corpus = nodes.map((n) => tokenizeRaw(getNodeText(n)));
+        return buildCorpusIDF(corpus);
+    }, [nodes]);
+
+    // useDeferredValue keeps UI responsive during O(n²) TF-IDF computation.
+    const deferredSourceId = useDeferredValue(sourceNodeId);
+
+    // isComputing: true in the window between user trigger and deferred computation
+    const isComputing = sourceNodeId !== null && deferredSourceId !== sourceNodeId;
+
+    const results = useMemo(
+        () => deferredSourceId ? findSimilarNodes(deferredSourceId, nodes, 7, cachedIDF) : [],
+        [deferredSourceId, nodes, cachedIDF],
+    );
 
     const findSimilar = useCallback((nodeId: string) => setSourceNodeId(nodeId), []);
     const clearSimilar = useCallback(() => setSourceNodeId(null), []);
 
-    return { results, isActive: sourceNodeId !== null, findSimilar, clearSimilar };
+    return { results, isActive: sourceNodeId !== null, isComputing, findSimilar, clearSimilar };
 }
 ```
 
@@ -741,20 +967,29 @@ export function useFindSimilar() {
 11. getNodeText combines heading + output
 ```
 
-**useFindSimilar hook tests** (~55 lines):
+**useFindSimilar hook tests** (~70 lines):
 ```
-1. Initially returns no results and isActive=false
+1. Initially returns no results, isActive=false, isComputing=false
 2. findSimilar(nodeId) activates and returns results
 3. clearSimilar resets to initial state
 4. Recomputes when nodes change
 5. Handles missing source node gracefully
+6. isComputing is true between findSimilar call and deferred computation completing
+7. Corpus IDF cache updates when nodes change (not on every findSimilar call)
+8. topN defaults to 7 (not 10)
+9. Results list never exceeds topN
 ```
 
 ### Tech Debt Checkpoint
 
 - [ ] `tfidfScorer.ts` under 90 lines after addition
-- [ ] `findSimilar.ts` under 60 lines
-- [ ] `useFindSimilar.ts` under 40 lines
+- [ ] `findSimilar.ts` under 70 lines (updated signature with `precomputedIDF?` param)
+- [ ] `useFindSimilar.ts` under 55 lines
+- [ ] `SIMILARITY_THRESHOLD` is 0.15 (not 0.1 — avoids noise results)
+- [ ] `topN` default is 7 (not 10 — cognitive load limit for a sidebar)
+- [ ] Corpus IDF memoized in `useFindSimilar` keyed on `nodes` (O(n) once per nodes change, not per call)
+- [ ] `isComputing` derived from `useDeferredValue` (no `setState` side-effect anti-pattern)
+- [ ] `useDeferredValue` wraps `sourceNodeId` — UI stays responsive during O(n²) computation
 - [ ] Reuses `tokenizeRaw` from relevanceScorer (DRY)
 - [ ] Reuses `buildCorpusIDF` + `buildTFIDFVector` from tfidfScorer (SSOT)
 - [ ] `cosineSimilarity` is exported (testable)
@@ -777,15 +1012,21 @@ export function useFindSimilar() {
 ```
 1. useSearch accepts SearchFilters parameter (return type includes filters)
 2. SearchResult includes highlightRanges field
-3. fuzzyMatch is a pure function (no imports of stores/hooks/React)
-4. searchFilters is a pure function (no imports of stores/hooks/React)
-5. searchReducer is a pure function (no side effects)
-6. findSimilar imports from tfidfScorer (reuse check — DRY)
-7. findSimilar imports tokenizeRaw from relevanceScorer (SSOT tokenization)
-8. No hardcoded strings in search components (grep scan of .tsx files)
-9. SearchFilterBar.module.css uses only CSS variables (no hex colors)
-10. No dangerouslySetInnerHTML in search components (XSS protection)
-11. No `new RegExp(` with user input in search services (ReDoS protection)
+3. useSearch return type includes activeIndex, isFilterBarOpen, toggleFilterBar, setActiveIndex
+4. fuzzyMatch is a pure function (no imports of stores/hooks/React)
+5. splitByRanges defensively sorts input ranges before processing (sort call present)
+6. searchFilters is a pure function (no imports of stores/hooks/React)
+7. searchReducer is a pure function (no side effects)
+8. searchReducer handles SET_ACTIVE_INDEX and TOGGLE_FILTER_BAR actions
+9. findSimilar imports from tfidfScorer (reuse check — DRY)
+10. findSimilar imports tokenizeRaw from relevanceScorer (SSOT tokenization)
+11. findSimilar SIMILARITY_THRESHOLD >= 0.15 (grep scan — noise filter enforced)
+12. No hardcoded strings in search components (grep scan of .tsx files)
+13. SearchFilterBar.module.css uses only CSS variables (no hex colors)
+14. No dangerouslySetInnerHTML in search components (XSS protection)
+15. No `new RegExp(` with user input in search services (ReDoS protection)
+16. SearchBar has role="combobox" attribute (WCAG 2.1 AA — grep scan)
+17. TagFilterChips has role="checkbox" attribute (accessibility — grep scan)
 ```
 
 ### Security Audit Checklist
@@ -799,15 +1040,61 @@ export function useFindSimilar() {
 | Tag injection | SearchFilterBar.tsx | Tags rendered as text content, not HTML |
 | Prototype pollution | searchReducer.ts | Spread only on known `SearchFilters` shape |
 
+### Accessibility Audit Checklist
+
+| Check | Element | Requirement |
+|-------|---------|-------------|
+| Search role | `SearchBar` input | `role="combobox"`, `aria-expanded`, `aria-haspopup="listbox"` |
+| Results list | Dropdown `<ul>` | `role="listbox"`, `aria-label` from `searchStrings` |
+| Result item | Each `<li>` | `role="option"`, `aria-selected` matches `activeIndex` |
+| Filter bar | `<section>` | `aria-label="Search filters"` |
+| Tag chip | Each `<button>` | `role="checkbox"`, `aria-checked` |
+| Global hotkey | `⌘+K` | Does not conflict with browser shortcuts; suppressed inside node editors |
+
 ### Tech Debt Checkpoint
 
-- [ ] All 11 structural tests pass
+- [ ] All 17 structural tests pass
 - [ ] Security audit: all 6 checks verified
+- [ ] Accessibility audit: all 6 WCAG checks verified
 - [ ] `npm run lint` → 0 errors
 - [ ] `npm run test` → 100% pass (including all existing tests)
 - [ ] `npm run build` → success
 - [ ] File audit: no file over 300 lines
 - [ ] String audit: no inline strings in search components
+
+---
+
+## Alternatives Worth Considering
+
+Evaluated during planning. None adopted by default — documented for future reference.
+
+### Alt 1: Web Worker for Search (Future-Proofing)
+
+The plan keeps all computation on the main thread. At production scale (1000+ nodes), the fuzzy match + filter pipeline and TF-IDF corpus build should move to a Web Worker.
+
+**Current architecture already enables this** — `fuzzyMatch`, `applyFilters`, and `findSimilarNodes` are pure functions with fully serializable inputs/outputs (plain objects, strings, arrays). A future Worker migration is a transport-layer change, not a rewrite.
+
+**Decision:** Don't add a Worker in Phase 8 (adds build complexity, complicates testing). Document as an explicit migration path. Add a comment to `findSimilarNodes`: `// Pure fn: safe to move to Web Worker when corpus > 1000 nodes`.
+
+### Alt 2: Fuse.js vs Custom Fuzzy Matcher
+
+[Fuse.js](https://fusejs.io/) (~5 KB gzipped) offers battle-tested fuzzy search with weighted multi-field search, extended syntax (`'exact`, `!exclude`, `^prefix`), configurable threshold, and proper Unicode/CJK handling.
+
+**Why we use custom:** Full control over the `fuzzyScore × fieldWeight × recencyBoost` composite, zero runtime dependencies, deterministic scoring that maps directly to BASB retrieval semantics. Fuse.js doesn't surface per-result highlight ranges in the same composable way as our `splitByRanges`/`extractSnippet` pipeline.
+
+**When to reconsider:** If the custom fuzzy produces user-visible quality regressions on non-ASCII content (accented chars, CJK), adopt Fuse.js as a drop-in replacement for `fuzzyMatch` only — the rest of the architecture is unaffected.
+
+### Alt 3: Search History / Recent Searches (Deferred to Phase 8G)
+
+BASB is fundamentally about retrieval patterns. Users repeatedly search for the same topics.
+
+**Proposed feature:**
+- Persist last 10 search queries in `localStorage` (key: `eden:search:history`)
+- Show as suggestions when input is focused + query is empty
+- Deduplicate, most-recent first; clear on `CLEAR_ALL` dispatch
+- ~30 lines in a new `useSearchHistory.ts` hook (no new store)
+
+**Not included in Phase 8** because core filter + fuzzy + semantic search should ship and stabilize first. History is purely additive and non-breaking, making it an ideal first-task for Phase 8G.
 
 ---
 
@@ -817,18 +1104,19 @@ export function useFindSimilar() {
 
 | Sub-phase | What | Why This Order | Build Passes? |
 |-----------|------|----------------|---------------|
+| **8A.0** | **⌘+K global hotkey + focus** | First: unblocks keyboard-first UX before all other work | Yes |
 | 8A | Filter types + predicates | Foundation — pure functions, no UI dependency | Yes |
-| 8B | Fuzzy match + highlight (consolidated) | Used by enhanced useSearch in 8C | Yes |
-| 8C | Search reducer + enhanced useSearch | Composes 8A + 8B, backward compatible | Yes |
-| 8D | Filter bar UI + string resources | Consumes 8C hook, renders highlights | Yes |
-| 8E | Find Similar (TF-IDF cosine) | Independent feature, reuses KB scorer | Yes |
-| 8F | Structural + security tests | Validates final state | Yes |
+| 8B | Fuzzy match + highlight + `extractSnippet` (consolidated) | Used by enhanced useSearch in 8C | Yes |
+| 8C | Search reducer (+ `activeIndex`, `isFilterBarOpen`) + enhanced useSearch (+ `useDeferredValue`, composite scoring, pagination) | Composes 8A + 8B, backward compatible | Yes |
+| 8D | Filter bar UI + `TagFilterChips` + keyboard nav + ARIA + string resources | Consumes 8C hook, renders highlights, keyboard navigable | Yes |
+| 8E | Find Similar (TF-IDF cosine, IDF cache, `isComputing` via `useDeferredValue`) | Independent feature, reuses KB scorer | Yes |
+| 8F | Structural + security + a11y tests | Validates final state | Yes |
 
 ### Net Impact
 
-- **Files created**: 14 (services, hooks, components, CSS, tests, strings)
-- **Files edited**: 6 (search.ts, useSearch.ts, SearchBar.tsx, SearchBar.module.css, tfidfScorer.ts, NodeContextMenu.tsx, strings.ts)
-- **Net line count change**: ~+900 lines
+- **Files created**: 20 (+ Sub-phase 8A.0 shortcut edit, `TagFilterChips.tsx` + test, `extractSnippet` in `fuzzyMatch.ts`, alternatives doc inline)
+- **Files edited**: 8 (`search.ts`, `useSearch.ts`, `SearchBar.tsx`, `SearchBar.module.css`, `tfidfScorer.ts`, `NodeContextMenu.tsx`, `strings.ts`, `useKeyboardShortcuts.ts`)
+- **Net line count change**: ~+1 250 lines
 - **External dependencies added**: 0
 - **Zustand stores added**: 0 (search state via `useReducer`, completely isolated)
 
@@ -841,5 +1129,10 @@ export function useFindSimilar() {
 | No ReactFlow cascade | Search never mutates canvas store; read-only selectors |
 | No closure variables in selectors | Structural test enforces |
 | One-shot state updates | `useReducer` dispatch → single state transition |
+| Input responsiveness at scale | `useDeferredValue` on query in `useSearch`; `useDeferredValue` on `sourceNodeId` in `useFindSimilar` |
+| O(n²) cost amortized | Corpus IDF pre-computed and memoized in `useFindSimilar`; rebuilt only when `nodes` changes |
+| Keyboard-first UX | ⌘+K global shortcut + ArrowDown/Up/Enter navigation fully covered |
+| Accessible | WCAG 2.1 AA: `role="combobox"`, `aria-expanded`, `role="option"`, `aria-selected`, `role="checkbox"` |
 | Security compliant | No `dangerouslySetInnerHTML`, no user-input RegExp, query length cap, date NaN guard |
-| Backward compatible | Existing `search(query)` / `clear()` API preserved; existing 11 tests pass |
+| Backward compatible | Existing `search(query)` / `clear()` API preserved; existing 12 unit tests pass |
+| Web Worker ready | All search functions are pure with serializable I/O — Worker migration is transport-layer only |

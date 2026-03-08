@@ -10,6 +10,7 @@ import { documentAgentStrings } from '@/features/documentAgent/strings/documentA
 import { synthesisStrings } from '@/features/synthesis/strings/synthesisStrings';
 import { exportStrings } from '@/features/export/strings/exportStrings';
 import { contextMenuStrings } from './contextMenuStrings';
+import { searchStrings } from '@/features/search/strings/searchStrings';
 
 export const strings = {
     app: {
@@ -80,15 +81,7 @@ export const strings = {
         redo: 'Redo',
         search: 'Search',
     },
-    search: {
-        placeholder: 'Search notes...',
-        noResults: 'No results found',
-        resultsCount: 'results',
-        inWorkspace: 'in',
-        prompt: 'Prompt',
-        heading: 'Heading',
-        output: 'Output',
-    },
+    search: searchStrings,
     tags: {
         addTag: 'Add tag',
         placeholder: 'Add tag...',

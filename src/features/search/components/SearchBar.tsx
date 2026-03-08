@@ -1,22 +1,70 @@
 /**
- * SearchBar Component - Global search for notes
+ * SearchBar Component - Global search with fuzzy match, filters, keyboard navigation
  * BASB: Quick retrieval of captured ideas
+ * Phase 8: ARIA combobox, highlight rendering, filter bar integration
  */
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, useId } from 'react';
 import { useSearch } from '../hooks/useSearch';
-import { strings } from '@/shared/localization/strings';
+import { splitByRanges } from '../services/fuzzyMatch';
+import { searchStrings } from '../strings/searchStrings';
+import { SearchFilterBar } from './SearchFilterBar';
+import type { SearchResult } from '../types/search';
 import styles from './SearchBar.module.css';
 
 interface SearchBarProps {
     onResultClick?: (nodeId: string, workspaceId: string) => void;
 }
 
- 
-export function SearchBar({ onResultClick }: SearchBarProps) {
+/** Safe React highlight rendering — uses splitByRanges, not raw HTML injection */
+function HighlightedText({ text, ranges }: { text: string; ranges: ReadonlyArray<{ start: number; end: number }> }) {
+    const segments = splitByRanges(text, ranges);
+    return (
+        <>
+            {segments.map((seg, si) =>
+                seg.highlighted ? (
+                    <mark key={`hl-${si}`} className={styles.highlight}>
+                        {seg.text}
+                    </mark>
+                ) : (
+                    <span key={`seg-${si}`}>{seg.text}</span>
+                ),
+            )}
+        </>
+    );
+}
+
+export interface SearchBarHandle {
+    focus: () => void;
+    select: () => void;
+}
+
+function matchTypeLabel(matchType: SearchResult['matchType']): string {
+    switch (matchType) {
+        case 'output': return searchStrings.output;
+        case 'tag': return searchStrings.tag;
+        case 'prompt': return searchStrings.prompt;
+        default: return searchStrings.heading;
+    }
+}
+
+export const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(function SearchBar(
+    { onResultClick },
+    ref,
+) {
     const [inputValue, setInputValue] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
-    const { results, search, clear } = useSearch();
+    const containerRef = useRef<HTMLDivElement>(null);
+    const {
+        results, search, clear, activeIndex, setActiveIndex,
+        filters, setFilters, clearFilters, isFilterBarOpen, toggleFilterBar,
+    } = useSearch();
+
+    // Expose focus/select to parent via useImperativeHandle (⌘+K hotkey)
+    useImperativeHandle(ref, () => ({
+        focus: () => { inputRef.current?.focus(); },
+        select: () => { inputRef.current?.select(); },
+    }), []);
 
     const handleInputChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,38 +73,46 @@ export function SearchBar({ onResultClick }: SearchBarProps) {
             search(value);
             setIsOpen(value.length > 0);
         },
-        [search]
+        [search],
     );
 
-    const handleKeyDown = useCallback(
-        (e: React.KeyboardEvent) => {
-            // NOTE: Escape here is intentionally local — it clears the search input
-            // and is NOT migrated to useEscapeLayer. The input is a controlled
-            // element, and closing it on Escape is the correct UX for a text field.
-            // See PHASE-ESC-N-KEY-BULLETPROOF.md §2.6.
-            if (e.key === 'Escape') {
-                setInputValue('');
-                clear();
-                setIsOpen(false);
-            }
-        },
-        [clear]
-    );
-
-    const handleResultClick = useCallback(
-        (nodeId: string, workspaceId: string) => {
-            onResultClick?.(nodeId, workspaceId);
+    const handleResultSelect = useCallback(
+        (result: SearchResult) => {
+            onResultClick?.(result.nodeId, result.workspaceId);
             setInputValue('');
             clear();
             setIsOpen(false);
         },
-        [onResultClick, clear]
+        [onResultClick, clear],
+    );
+
+    const handleKeyDown = useCallback(
+        (e: React.KeyboardEvent) => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setActiveIndex(Math.min(activeIndex + 1, results.length - 1));
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActiveIndex(Math.max(activeIndex - 1, -1));
+            } else if (e.key === 'Enter' && activeIndex >= 0 && results[activeIndex]) {
+                e.preventDefault();
+                handleResultSelect(results[activeIndex]);
+            } else if (e.key === 'Escape') {
+                // Local escape: clears search input. NOT migrated to useEscapeLayer.
+                // See PHASE-ESC-N-KEY-BULLETPROOF.md §2.6.
+                setInputValue('');
+                clear();
+                setIsOpen(false);
+                inputRef.current?.blur();
+            }
+        },
+        [activeIndex, results, setActiveIndex, handleResultSelect, clear],
     );
 
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (inputRef.current && !inputRef.current.contains(e.target as Node)) {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -64,43 +120,81 @@ export function SearchBar({ onResultClick }: SearchBarProps) {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    return (
-        <div className={styles.searchContainer} ref={inputRef}>
-            <input
-                type="text"
-                className={styles.searchInput}
-                placeholder={strings.search.placeholder}
-                value={inputValue}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                onFocus={() => inputValue && setIsOpen(true)}
-            />
-            <span className={styles.searchIcon}>🔍</span>
+    const hasResults = results.length > 0;
+    const showDropdown = isOpen && (hasResults || inputValue.length > 0);
+    const activeDescendant = activeIndex >= 0 ? `search-result-${activeIndex}` : undefined;
+    const uniqueId = useId();
+    const listboxId = `search-results-listbox-${uniqueId}`;
 
-            {isOpen && results.length > 0 && (
-                <div className={styles.resultsDropdown}>
+    return (
+        <div className={styles.searchContainer} ref={containerRef}>
+            <div className={styles.inputRow}>
+                <input
+                    type="text"
+                    role="combobox"
+                    aria-expanded={showDropdown}
+                    aria-haspopup="listbox"
+                    aria-controls={listboxId}
+                    aria-activedescendant={activeDescendant}
+                    aria-autocomplete="list"
+                    className={styles.searchInput}
+                    placeholder={searchStrings.placeholder}
+                    value={inputValue}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => { if (inputValue.length > 0) setIsOpen(true); }}
+                    ref={inputRef}
+                />
+                <span className={styles.searchIcon}>🔍</span>
+                <button
+                    type="button"
+                    className={styles.filterToggleBtn}
+                    onClick={toggleFilterBar}
+                    aria-label={searchStrings.filterToggle}
+                    title={searchStrings.filterToggle}
+                >
+                    ⚙
+                </button>
+            </div>
+
+            <SearchFilterBar
+                filters={filters}
+                isOpen={isFilterBarOpen}
+                onSetFilter={setFilters}
+                onClearFilters={clearFilters}
+            />
+
+            {showDropdown && hasResults && (
+                <ul className={styles.resultsDropdown} role="listbox" id={listboxId} aria-label={searchStrings.resultsCount}>
                     {results.map((result, index) => (
-                        <button
+                        <li
                             key={`${result.nodeId}-${result.matchType}-${index}`}
-                            className={styles.resultItem}
-                            onClick={() => handleResultClick(result.nodeId, result.workspaceId)}
+                            id={`search-result-${index}`}
+                            role="option"
+                            aria-selected={index === activeIndex}
+                            className={`${styles.resultItem} ${index === activeIndex ? styles.resultItemActive : ''}`}
+                            onClick={() => handleResultSelect(result)}
+                            onMouseEnter={() => setActiveIndex(index)}
                         >
-                            <span className={styles.resultContent}>{result.matchedContent}</span>
+                            <span className={styles.resultContent}>
+                                <HighlightedText text={result.matchedContent} ranges={result.highlightRanges} />
+                            </span>
                             <span className={styles.resultMeta}>
-                                {result.matchType === 'output' ? strings.search.output : strings.search.heading}
+                                {matchTypeLabel(result.matchType)}
                                 {' · '}
                                 {result.workspaceName}
                             </span>
-                        </button>
+                        </li>
                     ))}
-                </div>
+                    <li className={styles.keyboardHint}>{searchStrings.keyboardHint}</li>
+                </ul>
             )}
 
-            {isOpen && inputValue && results.length === 0 && (
+            {showDropdown && inputValue.length > 0 && !hasResults && (
                 <div className={styles.resultsDropdown}>
-                    <div className={styles.noResults}>{strings.search.noResults}</div>
+                    <div className={styles.noResults}>{searchStrings.noResults}</div>
                 </div>
             )}
         </div>
     );
-}
+});

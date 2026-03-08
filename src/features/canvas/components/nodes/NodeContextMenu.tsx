@@ -34,6 +34,7 @@ export interface NodeContextMenuProps {
     readonly isPinned: boolean;
     readonly isCollapsed: boolean;
     readonly isInPool: boolean;
+    readonly onFindSimilar?: () => void;
 }
 
 export const NodeContextMenu = React.memo(function NodeContextMenu(props: NodeContextMenuProps) {
@@ -62,6 +63,7 @@ export const NodeContextMenu = React.memo(function NodeContextMenu(props: NodeCo
             {props.onDuplicateClick && <MenuItem icon="📑" label={strings.nodeUtils.duplicate} onClick={action(props.onDuplicateClick)} />}
             {props.onCollapseToggle && <MenuItem icon={props.isCollapsed ? '🔽' : '🔼'} label={collapseLabel} onClick={action(props.onCollapseToggle)} />}
             {props.onFocusClick && <MenuItem icon="🔍" label={strings.nodeUtils.focus} onClick={action(props.onFocusClick)} />}
+            {props.onFindSimilar && <MenuItem icon="🔎" label={strings.search.findSimilar} onClick={action(props.onFindSimilar)} />}
             <MenuSeparator />
             <GroupLabel>{strings.contextMenu.appearance}</GroupLabel>
             <MenuItem icon="🏷️" label={strings.nodeUtils.tags} onClick={action(props.onTagClick)} />

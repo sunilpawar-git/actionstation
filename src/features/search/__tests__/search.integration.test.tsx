@@ -64,12 +64,12 @@ describe('Search Integration', () => {
         const input = screen.getByPlaceholderText(/search/i);
         fireEvent.change(input, { target: { value: 'React' } });
 
-        // Wait for results to appear
-        const result = screen.getByText(/React hooks/i);
-        expect(result).toBeInTheDocument();
+        // Results rendered as role="option" items with highlighted text
+        const resultItems = screen.getAllByRole('option');
+        expect(resultItems.length).toBeGreaterThanOrEqual(1);
 
-        // Click the result
-        fireEvent.click(result);
+        // Click the first result
+        fireEvent.click(resultItems[0]!);
 
         // Verify node was selected
         const selectedNodes = useCanvasStore.getState().selectedNodeIds;
@@ -89,8 +89,8 @@ describe('Search Integration', () => {
         const input = screen.getByPlaceholderText(/search/i);
         fireEvent.change(input, { target: { value: 'React' } });
 
-        const result = screen.getByText(/React hooks/i);
-        fireEvent.click(result);
+        const resultItems = screen.getAllByRole('option');
+        fireEvent.click(resultItems[0]!);
 
         // Verify only the clicked node is selected
         const selectedNodes = useCanvasStore.getState().selectedNodeIds;
@@ -130,8 +130,8 @@ describe('Search Integration', () => {
         const input = screen.getByPlaceholderText(/search/i);
         fireEvent.change(input, { target: { value: 'React' } });
 
-        const result = screen.getByText(/React hooks/i);
-        fireEvent.click(result);
+        const resultItems = screen.getAllByRole('option');
+        fireEvent.click(resultItems[0]!);
 
         // Node should not be selected because it's in a different workspace
         const selectedNodes = useCanvasStore.getState().selectedNodeIds;

@@ -11,6 +11,7 @@ import { subscribeToAuthState } from '@/features/auth/services/authService';
 import { Layout } from '@/app/components/Layout';
 import { CanvasView } from '@/features/canvas/components/CanvasView';
 import { KeyboardShortcutsProvider } from '@/features/canvas/components/KeyboardShortcutsProvider';
+import { SearchInputRefProvider } from '@/features/search/context/SearchInputRefContext';
 import { ToastContainer } from '@/shared/components/Toast';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
@@ -81,10 +82,11 @@ function AuthenticatedApp() {
     return (
         <WorkspaceContext.Provider value={wsCtx}>
             <ReactFlowProvider>
-                <KeyboardShortcutsProvider
-                    onOpenSettings={() => setIsSettingsOpen(true)}
-                />
-                <Layout onSettingsClick={() => setIsSettingsOpen(true)}>
+                <SearchInputRefProvider>
+                    <KeyboardShortcutsProvider
+                        onOpenSettings={() => setIsSettingsOpen(true)}
+                    />
+                    <Layout onSettingsClick={() => setIsSettingsOpen(true)}>
                     <CanvasView />
                     {initialLoading && (
                         <div className="canvas-loading-overlay">
@@ -92,7 +94,8 @@ function AuthenticatedApp() {
                             <p>{strings.common.loading}</p>
                         </div>
                     )}
-                </Layout>
+                    </Layout>
+                </SearchInputRefProvider>
                 <Suspense fallback={null}>
                     <SettingsPanel
                         isOpen={isSettingsOpen}

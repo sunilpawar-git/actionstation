@@ -1,5 +1,6 @@
 /**
  * SearchBar Styles
+ * Phase 8: Added highlight, active result, filter toggle, keyboard hint
  */
 .searchContainer {
     position: relative;
@@ -7,10 +8,17 @@
     max-width: 300px;
 }
 
+.inputRow {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
 .searchInput {
     width: 100%;
     padding: var(--space-sm) var(--space-md);
     padding-left: var(--space-xl);
+    padding-right: var(--space-xl);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-surface);
@@ -39,6 +47,25 @@
     color: var(--color-text-muted);
 }
 
+.filterToggleBtn {
+    position: absolute;
+    right: var(--space-xs);
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    padding: var(--space-xxs);
+    border-radius: var(--radius-sm);
+    transition: color var(--transition-fast);
+}
+
+.filterToggleBtn:hover {
+    color: var(--color-text-primary);
+}
+
 .resultsDropdown {
     position: absolute;
     top: calc(100% + var(--space-xs));
@@ -51,6 +78,9 @@
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     z-index: 100;
+    list-style: none;
+    margin: 0;
+    padding: 0;
 }
 
 .resultItem {
@@ -65,7 +95,8 @@
     transition: background 0.15s;
 }
 
-.resultItem:hover {
+.resultItem:hover,
+.resultItemActive {
     background: var(--color-surface-hover);
 }
 
@@ -88,4 +119,20 @@
     text-align: center;
     color: var(--color-text-muted);
     font-size: var(--font-size-sm);
+}
+
+.highlight {
+    background: var(--color-warning);
+    color: var(--color-text-primary);
+    border-radius: var(--radius-sm);
+    padding: 0 1px;
+}
+
+.keyboardHint {
+    padding: var(--space-xs) var(--space-md);
+    text-align: center;
+    font-size: var(--font-size-xxs);
+    color: var(--color-text-muted);
+    border-top: 1px solid var(--color-border);
+    list-style: none;
 }

@@ -1,0 +1,105 @@
+/**
+ * Styles for the "Find Similar" results panel.
+ * Floated below the node card, inherits theme variables.
+ */
+.panel {
+    position: absolute;
+    top: calc(100% + var(--space-1, 6px));
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    min-width: 200px;
+    max-width: 320px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.title {
+    font-size: var(--font-size-xs, 11px);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: var(--font-size-sm, 12px);
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-sm);
+    line-height: 1;
+}
+
+.closeBtn:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+}
+
+.computing,
+.empty {
+    padding: var(--space-3, 12px);
+    font-size: var(--font-size-sm, 13px);
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-1, 4px) 0;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.item {
+    display: block;
+}
+
+.itemBtn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: var(--space-2, 6px) var(--space-3, 12px);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    gap: var(--space-2, 8px);
+    border-radius: 0;
+    transition: background 0.1s;
+}
+
+.itemBtn:hover {
+    background: var(--color-surface-hover);
+}
+
+.itemHeading {
+    flex: 1;
+    font-size: var(--font-size-sm, 13px);
+    color: var(--color-text-primary);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.itemScore {
+    flex-shrink: 0;
+    font-size: var(--font-size-xs, 11px);
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}

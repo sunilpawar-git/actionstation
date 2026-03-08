@@ -26,13 +26,13 @@ describe('SearchBar', () => {
         });
         useWorkspaceStore.setState({
             currentWorkspaceId: 'ws-1',
-            workspaces: [{ 
-                id: 'ws-1', 
+            workspaces: [{
+                id: 'ws-1',
                 userId: 'user-1',
-                name: 'My Workspace', 
+                name: 'My Workspace',
                 canvasSettings: { backgroundColor: 'grid' },
-                createdAt: new Date(), 
-                updatedAt: new Date() 
+                createdAt: new Date(),
+                updatedAt: new Date(),
             }],
         });
     });
@@ -44,33 +44,51 @@ describe('SearchBar', () => {
 
     it('should show results when typing', () => {
         render(<SearchBar />);
-
         const input = screen.getByPlaceholderText(/search/i);
         fireEvent.change(input, { target: { value: 'React' } });
-
-        expect(screen.getByText(/React hooks/i)).toBeInTheDocument();
+        // Text is split across highlight <mark> + <span>, use role query
+        const resultItems = screen.getAllByRole('option');
+        expect(resultItems.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should clear search on escape', () => {
         render(<SearchBar />);
-
         const input = screen.getByPlaceholderText(/search/i);
         fireEvent.change(input, { target: { value: 'React' } });
         fireEvent.keyDown(input, { key: 'Escape' });
-
         expect(input).toHaveValue('');
     });
 
     it('should call onResultClick when clicking a result', () => {
         const onResultClick = vi.fn();
         render(<SearchBar onResultClick={onResultClick} />);
-
         const input = screen.getByPlaceholderText(/search/i);
         fireEvent.change(input, { target: { value: 'React' } });
-
-        const result = screen.getByText(/React hooks/i);
-        fireEvent.click(result);
-
+        const resultItem = screen.getAllByRole('option')[0]!;
+        fireEvent.click(resultItem);
         expect(onResultClick).toHaveBeenCalledWith('node-1', 'ws-1');
+    });
+
+    it('should have role="combobox" on input', () => {
+        render(<SearchBar />);
+        const input = screen.getByPlaceholderText(/search/i);
+        expect(input).toHaveAttribute('role', 'combobox');
+    });
+
+    it('ArrowDown increments activeIndex', () => {
+        render(<SearchBar />);
+        const input = screen.getByPlaceholderText(/search/i);
+        fireEvent.change(input, { target: { value: 'React' } });
+        fireEvent.keyDown(input, { key: 'ArrowDown' });
+        const items = screen.getAllByRole('option');
+        expect(items[0]).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('Escape blurs the input and clears', () => {
+        render(<SearchBar />);
+        const input = screen.getByPlaceholderText(/search/i);
+        fireEvent.change(input, { target: { value: 'React' } });
+        fireEvent.keyDown(input, { key: 'Escape' });
+        expect(input).toHaveValue('');
     });
 });

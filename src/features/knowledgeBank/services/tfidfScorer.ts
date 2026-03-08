@@ -72,3 +72,22 @@ export function tfidfScore(
     }
     return score;
 }
+
+/**
+ * Build a TF-IDF vector for a document against a corpus IDF map.
+ * Returns Map<term, tf*idf> for cosine similarity computation.
+ * SSOT: All TF-IDF vector math lives in this file.
+ */
+export function buildTFIDFVector(
+    tokens: readonly string[],
+    idfMap: ReadonlyMap<string, number>,
+): Map<string, number> {
+    const vec = new Map<string, number>();
+    const unique = new Set(tokens);
+    for (const term of unique) {
+        const tf = computeTF(tokens, term);
+        const idf = idfMap.get(term) ?? 0;
+        if (tf > 0 && idf > 0) vec.set(term, tf * idf);
+    }
+    return vec;
+}

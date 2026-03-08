@@ -9,6 +9,7 @@
  * Plain shortcuts (n, Delete) must NEVER fire inside editable elements, so a
  * blanket `isEditableTarget` guard runs once before dispatching.
  */
+import type React from 'react';
 import { useEffect, useCallback } from 'react';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import { useHistoryStore } from '@/features/canvas/stores/historyStore';
@@ -30,6 +31,8 @@ interface KeyboardShortcutsOptions {
      * Provided by KeyboardShortcutsProvider via useQuickCapture.isNodeCreationLocked.
      */
     isNodeCreationLocked?: () => boolean;
+    /** Ref to the SearchBar component for ⌘+K focus (Phase 8) */
+    searchInputRef?: React.RefObject<{ focus: () => void; select: () => void }>;
 }
 
 function hasModifier(e: KeyboardEvent): boolean {
@@ -44,14 +47,14 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
     // every individual node select/deselect during drag-select operations.
     const hasSelection = useCanvasStore((s) => s.selectedNodeIds.size > 0);
     const editingNodeId = useCanvasStore((s) => s.editingNodeId);
-    const { onOpenSettings, onAddNode, onQuickCapture, onDeleteNodes, isNodeCreationLocked } = options;
+    const { onOpenSettings, onAddNode, onQuickCapture, onDeleteNodes, isNodeCreationLocked, searchInputRef } = options;
 
     // NOTE: `selectedNodeIds` is read via getState() inside handlePlainShortcuts
     // (not closed over here) so the handler identity stays stable and we avoid
     // re-registering the document listener on every selection change.
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
-            if (handleModifierShortcuts(e, onQuickCapture, onOpenSettings)) {
+            if (handleModifierShortcuts(e, onQuickCapture, onOpenSettings, searchInputRef)) {
                 return;
             }
 
@@ -60,7 +63,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
 
             handlePlainShortcuts(e, onAddNode, onDeleteNodes, isNodeCreationLocked);
         },
-        [editingNodeId, onOpenSettings, onAddNode, onQuickCapture, onDeleteNodes, isNodeCreationLocked]
+        [editingNodeId, onOpenSettings, onAddNode, onQuickCapture, onDeleteNodes, isNodeCreationLocked, searchInputRef]
     );
 
     useEffect(() => {
@@ -82,8 +85,20 @@ function handleModifierShortcuts(
     e: KeyboardEvent,
     onQuickCapture?: () => void,
     onOpenSettings?: () => void,
+    searchInputRef?: React.RefObject<{ focus: () => void; select: () => void } | null>,
 ): boolean {
     if (!hasModifier(e)) return false;
+
+    // ⌘+K / Ctrl+K: Focus search input (Phase 8)
+    if (e.key === 'k' || e.key === 'K') {
+        // Don't fire when user is already typing in a node editor
+        if (e.target instanceof HTMLElement && e.target.closest('[data-node-editor]')) return false;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        searchInputRef?.current?.focus();
+        searchInputRef?.current?.select();
+        return true;
+    }
 
     if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();

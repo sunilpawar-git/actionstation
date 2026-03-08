@@ -8,6 +8,7 @@ import { Sidebar } from '@/shared/components/Sidebar';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { OfflineBanner } from './OfflineBanner';
 import { SearchBar } from '@/features/search';
+import { useSearchInputRef } from '@/features/search/context/SearchInputRefContext';
 import { WorkspaceControls } from '@/features/workspace/components/WorkspaceControls';
 import { KnowledgeBankAddButton } from '@/features/knowledgeBank/components/KnowledgeBankAddButton';
 import { KnowledgeBankPanel } from '@/features/knowledgeBank/components/KnowledgeBankPanel';
@@ -23,6 +24,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, onSettingsClick }: LayoutProps) {
+    const searchRef = useSearchInputRef();
     const currentWorkspaceId = useWorkspaceStore((s) => s.currentWorkspaceId);
     const isPinned = useSidebarStore((s) => s.isPinned);
     const isHoverOpen = useSidebarStore((s) => s.isHoverOpen);
@@ -56,7 +58,7 @@ export function Layout({ children, onSettingsClick }: LayoutProps) {
             <div className={styles.mainArea}>
                 <header className={styles.topBar}>
                     <KnowledgeBankAddButton />
-                    <SearchBar onResultClick={handleSearchResultClick} />
+                    <SearchBar ref={searchRef} onResultClick={handleSearchResultClick} />
                     <WorkspaceControls />
                     <SyncStatusIndicator />
                 </header>
