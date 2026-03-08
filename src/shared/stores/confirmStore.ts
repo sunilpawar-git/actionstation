@@ -63,8 +63,13 @@ export const useConfirmStore = create<ConfirmStore>((set, get) => ({
 }));
 
 /**
- * Convenient hook to extract just the trigger function.
- * Uses getState() for stable reference -- no subscription needed for actions.
+ * Convenient accessor to get the confirm trigger function.
+ *
+ * @note Despite the `use` prefix this is NOT a React hook \u2014 it contains no
+ * hook calls internally and does not establish a subscription.  It is safe to
+ * call outside of component render (e.g. in other hooks\u2019 useCallback bodies).
+ * Named with the `use` prefix only to signal that its return value is a
+ * stable reference obtained from a Zustand store.
  */
 export const useConfirm = () => {
     return useConfirmStore.getState().confirm;

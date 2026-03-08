@@ -67,6 +67,7 @@ export const strings = {
         loadingComponent: 'Loading component...',
         comingSoon: 'Coming soon!',
         closeSymbol: '\u00D7',
+        undo: 'Undo',
     },
     settings: settingsStrings,
     shortcuts: {

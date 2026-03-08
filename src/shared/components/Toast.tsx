@@ -18,6 +18,14 @@ export function ToastContainer() {
             {toasts.map((t) => (
                 <div key={t.id} className={`${styles.toast} ${styles[t.type]}`}>
                     <span className={styles.message}>{t.message}</span>
+                    {t.action && (
+                        <button
+                            className={styles.action}
+                            onClick={() => { t.action!.onClick(); handleRemove(t.id); }}
+                        >
+                            {t.action.label}
+                        </button>
+                    )}
                     <button
                         className={styles.close}
                         onClick={() => handleRemove(t.id)}

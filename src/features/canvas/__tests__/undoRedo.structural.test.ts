@@ -102,12 +102,17 @@ describe('Undo/Redo structural wiring', () => {
         }
     });
 
-    // 10. ZoomControls imports useHistoryStore (UI buttons wired)
-    it('ZoomControls imports useHistoryStore for undo/redo buttons', () => {
+    // 10. UndoRedoButtons imports useHistoryStore and ZoomControls renders it
+    it('UndoRedoButtons imports useHistoryStore for undo/redo buttons', () => {
+        const undoRedo = SRC('features/canvas/components/UndoRedoButtons.tsx');
+        expect(undoRedo).toContain('useHistoryStore');
+        expect(undoRedo).toContain('UNDO');
+        expect(undoRedo).toContain('REDO');
+    });
+
+    it('ZoomControls renders UndoRedoButtons (extracted component)', () => {
         const zoom = SRC('features/canvas/components/ZoomControls.tsx');
-        expect(zoom).toContain('useHistoryStore');
-        expect(zoom).toContain('UNDO');
-        expect(zoom).toContain('REDO');
+        expect(zoom).toContain('UndoRedoButtons');
     });
 
     // 11. canvasStrings.ts contains 'history' object with undo/redo labels
@@ -163,5 +168,47 @@ describe('Undo/Redo structural wiring', () => {
         const historyStore = SRC('features/canvas/stores/historyStore.ts');
         expect(historyStore).toContain('toast.info');
         expect(historyStore).toContain('TOAST_ON_UNDO');
+    });
+
+    // 18. ClearCanvasButton uses useClearCanvasWithUndo (not raw clearCanvas)
+    it('ClearCanvasButton delegates to useClearCanvasWithUndo', () => {
+        const btn = SRC('features/workspace/components/ClearCanvasButton.tsx');
+        expect(btn).toContain('useClearCanvasWithUndo');
+        expect(btn).not.toMatch(/useCanvasStore.*clearCanvas\b/);
+    });
+
+    // 19. TOAST_ON_UNDO set does NOT contain deleteNode or batchDelete
+    it('historyStore TOAST_ON_UNDO excludes deleteNode and batchDelete (handled at call site)', () => {
+        const historyStore = SRC('features/canvas/stores/historyStore.ts');
+        // TOAST_ON_UNDO must not list deleteNode/batchDelete — those toasts
+        // are shown by useUndoableActions at the point of action.
+        expect(historyStore).not.toMatch(/TOAST_ON_UNDO.*deleteNode/s);
+        expect(historyStore).not.toMatch(/TOAST_ON_UNDO.*batchDelete/s);
+    });
+
+    // 20. historyStore exports selectCanUndo and selectCanRedo
+    it('historyStore exports selectCanUndo and selectCanRedo selectors', () => {
+        const historyStore = SRC('features/canvas/stores/historyStore.ts');
+        expect(historyStore).toContain('export const selectCanUndo');
+        expect(historyStore).toContain('export const selectCanRedo');
+    });
+
+    // 21. useUndoableActions uses toastWithAction for undo toasts
+    it('useUndoableActions uses toastWithAction for node deletion undo toasts', () => {
+        const undoableActions = SRC('features/canvas/hooks/useUndoableActions.ts');
+        expect(undoableActions).toContain('toastWithAction');
+    });
+
+    // 22. useClearCanvasWithUndo uses toastWithAction for undo toast
+    it('useClearCanvasWithUndo uses toastWithAction for clear-canvas undo toast', () => {
+        const clearUndo = SRC('features/canvas/hooks/useClearCanvasWithUndo.ts');
+        expect(clearUndo).toContain('toastWithAction');
+    });
+
+    // 23. withUndo and pushCmd live in historyUtils (not duplicated in hook files)
+    it('withUndo and pushCmd are defined in historyUtils (canonical location)', () => {
+        const utils = SRC('features/canvas/utils/historyUtils.ts');
+        expect(utils).toContain('export function withUndo');
+        expect(utils).toContain('export function pushCmd');
     });
 });

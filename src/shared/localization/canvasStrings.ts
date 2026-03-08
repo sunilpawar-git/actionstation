@@ -60,5 +60,12 @@ export const canvasStrings = {
         undoTooltip: 'Undo last action (Ctrl+Z)',
         redoButton: 'Redo',
         redoTooltip: 'Redo last action (Ctrl+Shift+Z)',
+        nodeDeleted: 'Node deleted',
+        nodesDeleted: (count: number) => `${count} nodes deleted`,
+        edgeDeleted: 'Connection removed',
+        canvasCleared: 'Canvas cleared',
+        deleteNodesConfirmTitle: 'Delete nodes',
+        deleteNodesConfirm: (count: number) => `Delete ${count} nodes? This can be undone.`,
+        deleteNodesConfirmButton: 'Delete',
     },
 };

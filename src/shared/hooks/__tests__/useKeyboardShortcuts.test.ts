@@ -80,7 +80,9 @@ describe('useKeyboardShortcuts', () => {
             fireKeyDown('Delete');
             expect(mockOnDeleteNodes).toHaveBeenCalledTimes(1);
             expect(mockOnDeleteNodes).toHaveBeenCalledWith(expect.arrayContaining(['node-1', 'node-2']));
-            expect(mockClearSelection).toHaveBeenCalledTimes(1);
+            // clearSelection is NOT called synchronously here — deleteNodeWithUndo is async
+            // and clears the selection atomically inside deleteNodes() after confirm resolves.
+            expect(mockClearSelection).not.toHaveBeenCalled();
         });
 
         it('should delete selected nodes when Backspace is pressed', () => {
@@ -89,7 +91,8 @@ describe('useKeyboardShortcuts', () => {
             renderHook(() => useKeyboardShortcuts({ onDeleteNodes: mockOnDeleteNodes }));
             fireKeyDown('Backspace');
             expect(mockOnDeleteNodes).toHaveBeenCalledWith(['node-1']);
-            expect(mockClearSelection).toHaveBeenCalled();
+            // clearSelection is NOT called synchronously — see Delete test comment above.
+            expect(mockClearSelection).not.toHaveBeenCalled();
         });
 
         it('should preventDefault on Delete to block browser default behavior', () => {

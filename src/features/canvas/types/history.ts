@@ -13,7 +13,8 @@ export type CanvasCommandType =
     | 'addEdge'
     | 'deleteEdge'
     | 'changeColor'
-    | 'transformContent';
+    | 'transformContent'
+    | 'clearCanvas';
 
 export interface CanvasCommand {
     readonly type: CanvasCommandType;
@@ -25,8 +26,8 @@ export interface CanvasCommand {
 
 export type HistoryAction =
     | { type: 'PUSH'; command: CanvasCommand }
-    | { type: 'UNDO' }
-    | { type: 'REDO' }
+    | { type: 'UNDO'; source?: 'keyboard' | 'toast' | 'button' }
+    | { type: 'REDO'; source?: 'keyboard' | 'toast' | 'button' }
     | { type: 'CLEAR' };
 
 export interface HistoryState {

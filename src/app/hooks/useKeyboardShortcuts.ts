@@ -15,12 +15,14 @@ import { useHistoryStore } from '@/features/canvas/stores/historyStore';
 import { isEditableTarget } from '@/shared/utils/domGuards';
 import { useEscapeLayer } from '@/shared/hooks/useEscapeLayer';
 import { ESCAPE_PRIORITY } from '@/shared/hooks/escapePriorities';
+import { captureError } from '@/shared/services/sentryService';
 
 interface KeyboardShortcutsOptions {
     onOpenSettings?: () => void;
     onAddNode?: () => void;
     onQuickCapture?: () => void;
-    onDeleteNodes?: (nodeIds: string[]) => void;
+    /** May be async (shows confirm dialog for bulk deletes). Promise rejections are caught internally. */
+    onDeleteNodes?: (nodeIds: string[]) => void | Promise<void>;
 }
 
 function hasModifier(e: KeyboardEvent): boolean {
@@ -136,8 +138,12 @@ function handlePlainShortcuts(
         e.preventDefault();
         const ids = [...useCanvasStore.getState().selectedNodeIds];
         if (ids.length === 0) return;
-        onDeleteNodes?.(ids);
-        useCanvasStore.getState().clearSelection();
+        // NOTE: do NOT call clearSelection() here — deleteNodeWithUndo is async
+        // and shows a confirm dialog for bulk deletes. Calling clearSelection()
+        // synchronously would clear the user's selection before they confirm,
+        // and leave it cleared even if they cancel. deleteNodes() removes the
+        // deleted nodes from selectedNodeIds atomically inside the same set() call.
+        void onDeleteNodes?.(ids)?.catch((e: unknown) => captureError(e));
         return;
     }
 

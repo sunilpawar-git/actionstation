@@ -7,6 +7,7 @@ import { strings } from '@/shared/localization/strings';
 import { toast } from '@/shared/stores/toastStore';
 import { useCanvasStore } from '../stores/canvasStore';
 import { useUndoableActions } from './useUndoableActions';
+import { captureError } from '@/shared/services/sentryService';
 import { useNodeTransformation, type TransformationType } from '@/features/ai/hooks/useNodeTransformation';
 import { FOCUS_NODE_EVENT, type FocusNodeEvent } from './useQuickCapture';
 
@@ -30,7 +31,7 @@ export function useIdeaCardActions(options: UseIdeaCardActionsOptions) {
     const handleDelete = useCallback(() => {
         // deleteNodeWithUndo accepts an array of ids; most callers only
         // delete a single node but we keep the signature for consistency.
-        deleteNodeWithUndo([nodeId]);
+        void deleteNodeWithUndo([nodeId]).catch((e: unknown) => captureError(e));
     }, [nodeId, deleteNodeWithUndo]);
     const handleRegenerate = useCallback(() => { void generateFromPrompt(nodeId); }, [nodeId, generateFromPrompt]);
     const handleConnectClick = useCallback(() => { void branchFromNode(nodeId); }, [nodeId, branchFromNode]);

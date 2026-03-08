@@ -61,6 +61,23 @@
     opacity: 1;
 }
 
+.action {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: underline;
+    color: inherit;
+    opacity: 0.9;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.action:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.15);
+}
+
 @keyframes slideUp {
     from {
         opacity: 0;

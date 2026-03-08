@@ -88,12 +88,12 @@ export function trackKbEntryAdded(method: 'paste' | 'file'): void {
     track('kb_entry_added', { method });
 }
 
-export function trackCanvasUndo(commandType: string): void {
-    track('canvas_undo', { command_type: commandType });
+export function trackCanvasUndo(commandType: string, source: 'keyboard' | 'toast' | 'button' = 'keyboard'): void {
+    track('canvas_undo', { command_type: commandType, source });
 }
 
-export function trackCanvasRedo(commandType: string): void {
-    track('canvas_redo', { command_type: commandType });
+export function trackCanvasRedo(commandType: string, source: 'keyboard' | 'toast' | 'button' = 'keyboard'): void {
+    track('canvas_redo', { command_type: commandType, source });
 }
 
 type SettingKey =

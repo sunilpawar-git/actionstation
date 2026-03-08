@@ -88,6 +88,16 @@ export function createNodeMutationActions(set: SetFn, get: GetFn) {
         insertNodeAtIndex: (node: CanvasNode, index: number) =>
             set((s) => ({ nodes: insertNodeAtIndexInArray(s.nodes, node, index) })),
 
+        /** Batch restore — inserts all entries in ONE set() call to avoid N-cascade updates */
+        insertNodesAtIndices: (entries: { node: CanvasNode; index: number }[]) =>
+            set((s) => {
+                let nodes = s.nodes;
+                for (const { node, index } of entries) {
+                    nodes = insertNodeAtIndexInArray(nodes, node, index);
+                }
+                return { nodes };
+            }),
+
         /** Bulk delete — single set() call, O(1) Zustand notification vs O(N) */
         deleteNodes: (nodeIds: string[]) => {
             const idSet = new Set(nodeIds);

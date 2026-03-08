@@ -1,8 +1,8 @@
 import { memo, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
-import { useHistoryStore } from '../stores/historyStore';
 import { strings } from '@/shared/localization/strings';
+import { UndoRedoButtons } from './UndoRedoButtons';
 import { CanvasRadar } from './CanvasRadar';
 import styles from './ZoomControls.module.css';
 
@@ -15,57 +15,19 @@ export const ZoomControls = memo(function ZoomControls() {
     const { zoomIn, zoomOut } = useReactFlow();
     const isCanvasLocked = useSettingsStore((s) => s.isCanvasLocked);
 
-    // Derived selectors from isolated history store — no canvas cascade
-    const canUndo = useHistoryStore((s) => s.undoStack.length > 0);
-    const canRedo = useHistoryStore((s) => s.redoStack.length > 0);
-
     const handleToggleLock = useCallback(() => {
         useSettingsStore.getState().toggleCanvasLocked();
     }, []);
 
-    const handleUndo = useCallback(() => {
-        useHistoryStore.getState().dispatch({ type: 'UNDO' });
-    }, []);
-
-    const handleRedo = useCallback(() => {
-        useHistoryStore.getState().dispatch({ type: 'REDO' });
-    }, []);
-
     const zc = strings.canvas.zoomControls;
-    const hc = strings.canvas.history;
     const lockLabel = isCanvasLocked ? zc.unlockCanvas : zc.lockCanvas;
 
     return (
         <div className={styles.container} data-testid="zoom-controls">
             <CanvasRadar />
 
-            {/* Undo/Redo buttons */}
-            <button
-                className={`${styles.button} ${!canUndo ? styles.disabled : ''}`}
-                onClick={handleUndo}
-                disabled={!canUndo}
-                aria-label={hc.undoButton}
-                title={hc.undoTooltip}
-                data-testid="undo-button"
-            >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 7v6h6" />
-                    <path d="M3 13a9 9 0 0 1 15.36-6.36" />
-                </svg>
-            </button>
-            <button
-                className={`${styles.button} ${!canRedo ? styles.disabled : ''}`}
-                onClick={handleRedo}
-                disabled={!canRedo}
-                aria-label={hc.redoButton}
-                title={hc.redoTooltip}
-                data-testid="redo-button"
-            >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 7v6h-6" />
-                    <path d="M21 13a9 9 0 0 0-15.36-6.36" />
-                </svg>
-            </button>
+            {/* Undo/Redo buttons — extracted to UndoRedoButtons for selector-based rendering */}
+            <UndoRedoButtons />
 
             <div className={styles.divider} />
 

@@ -8,7 +8,7 @@ import { ToastContainer } from '../Toast';
 
 // Mock the toast store - must handle selector pattern and getState()
 const mockRemoveToastFn = vi.fn();
-let mockToasts: Array<{ id: string; message: string; type: string }> = [];
+let mockToasts: Array<{ id: string; message: string; type: string; action?: { label: string; onClick: () => void } }> = [];
 vi.mock('../../stores/toastStore', () => ({
     useToastStore: Object.assign(
         vi.fn((selector?: (s: { toasts: typeof mockToasts; removeToast: typeof mockRemoveToastFn }) => unknown) => {
@@ -31,6 +31,7 @@ vi.mock('../Toast.module.css', () => ({
         info: 'info',
         message: 'message',
         close: 'close',
+        action: 'action',
     },
 }));
 
@@ -90,5 +91,56 @@ describe('ToastContainer', () => {
         expect(screen.getByText('First')).toBeInTheDocument();
         expect(screen.getByText('Second')).toBeInTheDocument();
         expect(screen.getByText('Third')).toBeInTheDocument();
+    });
+
+    describe('action button', () => {
+        it('renders action button when toast has an action', () => {
+            mockToasts = [{ id: 'toast-1', message: 'Node deleted', type: 'info', action: { label: 'Undo', onClick: vi.fn() } }];
+
+            render(<ToastContainer />);
+
+            expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+        });
+
+        it('does NOT render action button when toast has no action', () => {
+            mockToasts = [{ id: 'toast-1', message: 'Node deleted', type: 'info' }];
+
+            render(<ToastContainer />);
+
+            // Only the close button — no Undo button
+            expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
+        });
+
+        it('calls action.onClick and removes toast when action button is clicked', () => {
+            const mockActionClick = vi.fn();
+            mockToasts = [{ id: 'toast-1', message: 'Node deleted', type: 'info', action: { label: 'Undo', onClick: mockActionClick } }];
+
+            render(<ToastContainer />);
+
+            fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+
+            expect(mockActionClick).toHaveBeenCalledOnce();
+            expect(mockRemoveToastFn).toHaveBeenCalledWith('toast-1');
+        });
+
+        it('applies action CSS class to the action button', () => {
+            mockToasts = [{ id: 'toast-1', message: 'Test', type: 'info', action: { label: 'Undo', onClick: vi.fn() } }];
+
+            render(<ToastContainer />);
+
+            const actionBtn = screen.getByRole('button', { name: 'Undo' });
+            expect(actionBtn).toHaveClass('action');
+        });
+
+        it('close button still works when action is present', () => {
+            mockToasts = [{ id: 'toast-1', message: 'Test', type: 'info', action: { label: 'Undo', onClick: vi.fn() } }];
+
+            render(<ToastContainer />);
+
+            fireEvent.click(screen.getByRole('button', { name: /close/i }));
+
+            expect(mockRemoveToastFn).toHaveBeenCalledWith('toast-1');
+        });
     });
 });

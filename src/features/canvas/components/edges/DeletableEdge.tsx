@@ -12,6 +12,7 @@ import {
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useHistoryStore } from '../../stores/historyStore';
 import { useSettingsStore, type ConnectorStyle } from '@/shared/stores/settingsStore';
+import { toastWithAction } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
 import styles from './DeletableEdge.module.css';
 
@@ -88,6 +89,12 @@ export const DeletableEdge = React.memo(function DeletableEdge({
                     useCanvasStore.getState().deleteEdge(id);
                 },
             },
+        });
+
+        // Actionable undo toast — one-click recovery
+        toastWithAction(strings.canvas.history.edgeDeleted, 'info', {
+            label: strings.common.undo,
+            onClick: () => useHistoryStore.getState().dispatch({ type: 'UNDO', source: 'toast' }),
         });
     }, [id]);
 

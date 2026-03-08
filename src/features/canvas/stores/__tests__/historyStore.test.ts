@@ -2,7 +2,7 @@
  * Tests for historyStore — Zustand integration
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useHistoryStore } from '../historyStore';
+import { useHistoryStore, selectCanUndo, selectCanRedo } from '../historyStore';
 import type { CanvasCommand } from '../../types/history';
 
 // Mock toast + analytics so we can assert they're called
@@ -87,60 +87,79 @@ describe('historyStore', () => {
     });
 
     it('selector canUndo returns correct value', () => {
-        const canUndo = (s: typeof useHistoryStore extends { getState: () => infer S } ? S : never) =>
-            s.undoStack.length > 0;
-
-        expect(canUndo(useHistoryStore.getState())).toBe(false);
+        expect(selectCanUndo(useHistoryStore.getState())).toBe(false);
         useHistoryStore.getState().dispatch({ type: 'PUSH', command: createCommand() });
-        expect(canUndo(useHistoryStore.getState())).toBe(true);
+        expect(selectCanUndo(useHistoryStore.getState())).toBe(true);
     });
 
     it('selector canRedo returns correct value', () => {
-        const canRedo = (s: typeof useHistoryStore extends { getState: () => infer S } ? S : never) =>
-            s.redoStack.length > 0;
-
-        expect(canRedo(useHistoryStore.getState())).toBe(false);
+        expect(selectCanRedo(useHistoryStore.getState())).toBe(false);
         useHistoryStore.getState().dispatch({ type: 'PUSH', command: createCommand() });
         useHistoryStore.getState().dispatch({ type: 'UNDO' });
-        expect(canRedo(useHistoryStore.getState())).toBe(true);
+        expect(selectCanRedo(useHistoryStore.getState())).toBe(true);
     });
 
     describe('analytics tracking', () => {
-        it('UNDO dispatches trackCanvasUndo with command type', () => {
+        it('UNDO dispatches trackCanvasUndo with command type and source', () => {
             const cmd = createCommand({ type: 'moveNode' });
             useHistoryStore.getState().dispatch({ type: 'PUSH', command: cmd });
             useHistoryStore.getState().dispatch({ type: 'UNDO' });
 
             expect(mockTrackUndo).toHaveBeenCalledOnce();
-            expect(mockTrackUndo).toHaveBeenCalledWith('moveNode');
+            expect(mockTrackUndo).toHaveBeenCalledWith('moveNode', 'keyboard');
         });
 
-        it('REDO dispatches trackCanvasRedo with command type', () => {
+        it('UNDO with explicit source passes it to analytics', () => {
+            const cmd = createCommand({ type: 'deleteNode' });
+            useHistoryStore.getState().dispatch({ type: 'PUSH', command: cmd });
+            useHistoryStore.getState().dispatch({ type: 'UNDO', source: 'toast' });
+
+            expect(mockTrackUndo).toHaveBeenCalledWith('deleteNode', 'toast');
+        });
+
+        it('REDO dispatches trackCanvasRedo with command type and source', () => {
             const cmd = createCommand({ type: 'addNode' });
             useHistoryStore.getState().dispatch({ type: 'PUSH', command: cmd });
             useHistoryStore.getState().dispatch({ type: 'UNDO' });
             useHistoryStore.getState().dispatch({ type: 'REDO' });
 
             expect(mockTrackRedo).toHaveBeenCalledOnce();
-            expect(mockTrackRedo).toHaveBeenCalledWith('addNode');
+            expect(mockTrackRedo).toHaveBeenCalledWith('addNode', 'keyboard');
+        });
+
+        it('REDO with explicit source passes it to analytics', () => {
+            const cmd = createCommand({ type: 'addNode' });
+            useHistoryStore.getState().dispatch({ type: 'PUSH', command: cmd });
+            useHistoryStore.getState().dispatch({ type: 'UNDO' });
+            useHistoryStore.getState().dispatch({ type: 'REDO', source: 'button' });
+
+            expect(mockTrackRedo).toHaveBeenCalledWith('addNode', 'button');
         });
     });
 
     describe('toast feedback', () => {
-        it('shows toast on UNDO for deleteNode (destructive)', () => {
-            const cmd = createCommand({ type: 'deleteNode' });
+        it('shows toast on UNDO for transformContent (still handled by historyStore)', () => {
+            const cmd = createCommand({ type: 'transformContent' });
             useHistoryStore.getState().dispatch({ type: 'PUSH', command: cmd });
             useHistoryStore.getState().dispatch({ type: 'UNDO' });
 
             expect(mockToastInfo).toHaveBeenCalledOnce();
         });
 
-        it('shows toast on UNDO for batchDelete (destructive)', () => {
+        it('does NOT show toast on UNDO for deleteNode (toast now comes from useUndoableActions)', () => {
+            const cmd = createCommand({ type: 'deleteNode' });
+            useHistoryStore.getState().dispatch({ type: 'PUSH', command: cmd });
+            useHistoryStore.getState().dispatch({ type: 'UNDO' });
+
+            expect(mockToastInfo).not.toHaveBeenCalled();
+        });
+
+        it('does NOT show toast on UNDO for batchDelete (toast now comes from useUndoableActions)', () => {
             const cmd = createCommand({ type: 'batchDelete' });
             useHistoryStore.getState().dispatch({ type: 'PUSH', command: cmd });
             useHistoryStore.getState().dispatch({ type: 'UNDO' });
 
-            expect(mockToastInfo).toHaveBeenCalledOnce();
+            expect(mockToastInfo).not.toHaveBeenCalled();
         });
 
         it('does NOT show toast on UNDO for moveNode (non-destructive)', () => {
@@ -152,7 +171,7 @@ describe('historyStore', () => {
         });
 
         it('does NOT show toast on REDO', () => {
-            const cmd = createCommand({ type: 'deleteNode' });
+            const cmd = createCommand({ type: 'transformContent' });
             useHistoryStore.getState().dispatch({ type: 'PUSH', command: cmd });
             useHistoryStore.getState().dispatch({ type: 'UNDO' });
             mockToastInfo.mockClear();
