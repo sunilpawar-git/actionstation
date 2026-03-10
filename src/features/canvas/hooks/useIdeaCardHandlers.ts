@@ -54,6 +54,7 @@ export function useIdeaCardHandlers(params: UseIdeaCardHandlersParams) {
         nodeId: id, isEditing, editor, getMarkdown, setContent, getEditableContent, saveContent,
         submitHandlerRef, isGenerating: Boolean(isGenerating),
         isNewEmptyNode: !prompt && !output, focusHeading, shortcuts: nodeShortcuts,
+        nodeOutput: output,
     });
 
     const onTagsChange = useCallback((ids: string[]) => {

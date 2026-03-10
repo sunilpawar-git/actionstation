@@ -17,6 +17,8 @@ export interface UseNodeInputOptions {
     isNewEmptyNode: boolean;
     focusHeading?: () => void;
     shortcuts?: NodeShortcutMap;
+    /** Node output passed from parent — avoids redundant useNodeData subscription */
+    nodeOutput?: string;
 }
 
 export interface UseNodeInputReturn {

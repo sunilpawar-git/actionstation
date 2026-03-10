@@ -248,7 +248,8 @@ describe('Zustand selector enforcement', () => {
 
         const PER_NODE_IMPORTS = [
             { file: 'features/canvas/hooks/useIdeaCard.ts', hook: 'useNodeData' },
-            { file: 'features/canvas/hooks/useNodeInput.ts', hook: 'useNodeData' },
+            // useNodeInput no longer imports useNodeData — redundant subscription removed.
+            // nodeOutput is passed as a parameter from useIdeaCardHandlers instead.
             { file: 'features/canvas/hooks/useNodeResize.ts', hook: 'useNodeDimensions' },
             { file: 'features/canvas/hooks/useFocusMode.ts', hook: 'useNode' },
         ];

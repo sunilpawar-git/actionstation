@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useCanvasStore } from '../stores/canvasStore';
-import { useNodeData } from './useNodeData';
 import { useLinkPreviewFetch } from './useLinkPreviewFetch';
 import { extractUrls } from './nodeInputUtils';
 import { getViewModeKeyAction, applyViewModeKeyAction } from './nodeInputKeyHandler';
@@ -16,14 +15,13 @@ export function useNodeInput(options: UseNodeInputOptions): UseNodeInputReturn {
         nodeId, isEditing, editor, getMarkdown, setContent,
         getEditableContent, saveContent, submitHandlerRef,
         isGenerating, isNewEmptyNode, focusHeading, shortcuts,
+        nodeOutput,
     } = options;
 
     // Scoped selector: only subscribe to draftContent when THIS node is editing.
     // Unscoped `(s) => s.draftContent` caused O(N) re-renders per keystroke — all N
     // IdeaCards would re-render on every keystroke even though only one is editing.
     const draftContent = useCanvasStore((s) => s.editingNodeId === nodeId ? s.draftContent : null);
-    const nodeData = useNodeData(nodeId);
-    const nodeOutput = nodeData?.output;
     const detectedUrls = useMemo(
         () => extractUrls(isEditing ? draftContent : (nodeOutput ?? null)),
         [isEditing, draftContent, nodeOutput],

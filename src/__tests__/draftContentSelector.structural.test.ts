@@ -122,4 +122,51 @@ describe('draftContent selector scope enforcement (prevents O(N) keystroke re-re
             '    const isFocusedOnThisNode = useFocusStore((s) => s.focusedNodeId === id);',
         ).toBe(false);
     });
+
+    // == useNodeShortcuts: NO Zustand subscription for editingNodeId ==
+    // useNodeShortcuts is called per-node via useIdeaCardHandlers. Previously it
+    // subscribed to `(s) => s.editingNodeId !== null` — a boolean that flips for
+    // ALL N subscribers on edit start (null→non-null) and stop (non-null→null).
+    // Fix: read editingNodeId via getState() inside the event handler.
+
+    it('useNodeShortcuts must NOT subscribe to editingNodeId via selector', () => {
+        const shortcutsContent = readFileSync(
+            join(SRC_DIR, 'features/canvas/hooks/useNodeShortcuts.ts'), 'utf-8',
+        );
+        // Any useCanvasStore((s) => ...) selector pattern — this hook should only use getState()
+        const selectorPattern = /useCanvasStore\(\s*\(/;
+        expect(
+            selectorPattern.test(shortcutsContent),
+            'useNodeShortcuts.ts subscribes to canvasStore via selector — O(N) re-renders.\n\n' +
+            '  useNodeShortcuts is called per-node. Any Zustand selector subscription\n' +
+            '  fires for ALL N IdeaCards on every store change.\n' +
+            '  Fix: read editingNodeId via getState() inside the keydown handler.',
+        ).toBe(false);
+    });
+
+    it('useNodeShortcuts uses getState() for editingNodeId check', () => {
+        const shortcutsContent = readFileSync(
+            join(SRC_DIR, 'features/canvas/hooks/useNodeShortcuts.ts'), 'utf-8',
+        );
+        expect(
+            shortcutsContent.includes('getState().editingNodeId'),
+            'useNodeShortcuts.ts must check editingNodeId via getState() inside the handler.\n' +
+            '  This avoids O(N) Zustand subscription re-renders on edit start/stop.',
+        ).toBe(true);
+    });
+
+    // == useNodeInput: must NOT have redundant useNodeData subscription ==
+    // useNodeInput is called per-node. useIdeaCard already calls useNodeData(id),
+    // so useNodeInput must NOT call it again — that would create 2N snapshot
+    // functions firing on every store change.
+
+    it('useNodeInput must NOT import or call useNodeData', () => {
+        expect(
+            content.includes('useNodeData'),
+            'useNodeInput.ts imports/calls useNodeData — redundant subscription.\n\n' +
+            '  useIdeaCard already subscribes to useNodeData(id). Adding a second\n' +
+            '  subscription in useNodeInput doubles the snapshot computations (2N).\n' +
+            '  Fix: pass nodeOutput as a parameter from useIdeaCardHandlers.',
+        ).toBe(false);
+    });
 });

@@ -1,5 +1,5 @@
 /**
- * useNodeShortcuts — Document-level keyboard shortcuts for selected nodes
+ * useNodeShortcuts -- Document-level keyboard shortcuts for selected nodes
  *
  * Listens on `document` (not on a specific DOM element) so shortcuts fire
  * regardless of which element has focus. Only active when the node is
@@ -20,19 +20,16 @@ export function useNodeShortcuts(
     selected: boolean,
     shortcuts: NodeShortcutMap,
 ): void {
-    // NOTE: inline boolean transform inside the selector is intentional and
-    // MORE optimal than selecting the raw scalar. Returning a primitive means
-    // Zustand’s Object.is(true, true) short-circuits re-renders when
-    // editingNodeId changes between two different non-null values (e.g.
-    // ’node-1’ → ’node-2’). Selecting the raw string would re-render on every
-    // editingNodeId change even when isAnyEditing stays true.
-    // The zustandSelectors structural rule targets object/array literals that
-    // create new references each render — not primitive-returning comparisons.
-    const isAnyEditing = useCanvasStore((s) => s.editingNodeId !== null);
-    const isActive = selected && !isAnyEditing;
+    // Previously subscribed to `(s) => s.editingNodeId !== null` -- a boolean
+    // selector. While it short-circuits non-null-to-non-null transitions, it
+    // still causes O(N) re-renders on every edit start (null to non-null) and
+    // stop (non-null to null) because ALL N IdeaCards flip false/true at once.
+    // Fix: read editingNodeId inside the event handler via getState() -- zero
+    // Zustand subscriptions, zero re-renders from editing transitions.
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (!isActive) return;
+        if (!selected) return;
+        if (useCanvasStore.getState().editingNodeId !== null) return;
         if (isEditableTarget(e)) return;
 
         // Only handle single-char keys without modifiers
@@ -47,12 +44,12 @@ export function useNodeShortcuts(
             e.stopPropagation();
             handler();
         }
-    }, [isActive, shortcuts]);
+    }, [selected, shortcuts]);
 
     useEffect(() => {
-        if (!isActive) return;
+        if (!selected) return;
 
         document.addEventListener('keydown', handleKeyDown, { capture: true });
         return () => document.removeEventListener('keydown', handleKeyDown, { capture: true });
-    }, [isActive, handleKeyDown]);
+    }, [selected, handleKeyDown]);
 }

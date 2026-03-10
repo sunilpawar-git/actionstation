@@ -1,20 +1,20 @@
 /**
- * useNodeShortcuts — Selector optimization tests
- * Verifies the hook subscribes to a boolean (isAnyEditing), not the raw
- * editingNodeId string, so switching between editing different nodes
- * does NOT cause re-renders in unrelated selected nodes.
+ * useNodeShortcuts -- getState() optimization tests
+ * Verifies the hook does NOT subscribe to editingNodeId via a selector.
+ * Instead it reads editingNodeId via getState() inside the keydown handler,
+ * eliminating O(N) re-renders on edit start/stop transitions.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useNodeShortcuts } from '../useNodeShortcuts';
 
-describe('useNodeShortcuts selector optimization', () => {
+describe('useNodeShortcuts getState() optimization', () => {
     beforeEach(() => {
         useCanvasStore.setState({ editingNodeId: null });
     });
 
-    it('does not re-render when editingNodeId switches between two non-null IDs', () => {
+    it('does not re-render when editingNodeId changes at all (no subscription)', () => {
         let renderCount = 0;
         const shortcuts = { t: () => {} };
 
@@ -23,27 +23,35 @@ describe('useNodeShortcuts selector optimization', () => {
             useNodeShortcuts(true, shortcuts);
         });
 
+        const afterInitial = renderCount;
+
         act(() => { useCanvasStore.setState({ editingNodeId: 'node-A' }); });
-        const afterFirstEdit = renderCount;
+        expect(renderCount).toBe(afterInitial);
 
         act(() => { useCanvasStore.setState({ editingNodeId: 'node-B' }); });
-        const afterSwitchEdit = renderCount;
+        expect(renderCount).toBe(afterInitial);
 
-        expect(afterSwitchEdit).toBe(afterFirstEdit);
+        act(() => { useCanvasStore.setState({ editingNodeId: null }); });
+        expect(renderCount).toBe(afterInitial);
     });
 
-    it('re-renders when editingNodeId transitions from null to non-null', () => {
-        let renderCount = 0;
-        const shortcuts = { t: () => {} };
+    it('blocks shortcut when editingNodeId is set (checked via getState)', () => {
+        const calls: string[] = [];
+        const shortcuts = { t: () => { calls.push('t'); } };
 
         renderHook(() => {
-            renderCount++;
             useNodeShortcuts(true, shortcuts);
         });
 
-        const beforeEdit = renderCount;
-        act(() => { useCanvasStore.setState({ editingNodeId: 'node-A' }); });
+        // Shortcut should fire when no editing
+        const keyEvent = new KeyboardEvent('keydown', { key: 't', bubbles: true });
+        act(() => { document.dispatchEvent(keyEvent); });
+        expect(calls).toHaveLength(1);
 
-        expect(renderCount).toBeGreaterThan(beforeEdit);
+        // Set editing state -- shortcut should be blocked
+        act(() => { useCanvasStore.setState({ editingNodeId: 'node-A' }); });
+        const keyEvent2 = new KeyboardEvent('keydown', { key: 't', bubbles: true });
+        act(() => { document.dispatchEvent(keyEvent2); });
+        expect(calls).toHaveLength(1); // still 1, blocked
     });
 });
