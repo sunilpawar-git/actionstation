@@ -31,6 +31,8 @@ const SRC_DIR = join(process.cwd(), 'src');
 describe('draftContent selector scope enforcement (prevents O(N) keystroke re-renders)', () => {
     const useNodeInputPath = join(SRC_DIR, 'features/canvas/hooks/useNodeInput.ts');
     const content = readFileSync(useNodeInputPath, 'utf-8');
+    const headingEditorPath = join(SRC_DIR, 'features/canvas/hooks/useHeadingEditor.ts');
+    const headingContent = readFileSync(headingEditorPath, 'utf-8');
 
     it('useNodeInput does NOT use the unscoped (s) => s.draftContent selector', () => {
         // This pattern subscribes ALL N IdeaCards to draftContent — O(N) re-renders per keystroke.
@@ -54,6 +56,36 @@ describe('draftContent selector scope enforcement (prevents O(N) keystroke re-re
             '  Required pattern:\n' +
             '    const draftContent = useCanvasStore((s) => s.editingNodeId === nodeId ? s.draftContent : null);\n\n' +
             '  This ensures only the actively-editing IdeaCard re-renders on each keystroke.',
+        ).toBe(true);
+    });
+
+    // == HEADING EDITOR: deferred-save enforcement ==
+    // Previously, useHeadingEditor passed onUpdate/onHeadingChange to useTipTapEditor,
+    // calling updateNodeHeading() on every keystroke. Since updateNodeHeading mutates the
+    // nodes[] array, ALL N IdeaCards re-rendered per keystroke (O(N) stutter).
+    // Fix: heading is committed on blur/submit only, NOT per keystroke.
+
+    it('useHeadingEditor must NOT pass onUpdate to useTipTapEditor', () => {
+        // If onUpdate is passed, every keystroke in the heading fires a callback.
+        // Any callback that mutates nodes[] (e.g. updateNodeHeading) causes O(N) re-renders.
+        // Heading must be committed on blur/submit only (via commitHeading).
+        const tiptapCallBlock = headingContent.match(/useTipTapEditor\(\{[\s\S]*?\}\)/);
+        const hasOnUpdate = tiptapCallBlock?.[0].includes('onUpdate');
+        expect(
+            hasOnUpdate,
+            'useHeadingEditor passes onUpdate to useTipTapEditor — this causes O(N) re-renders.\n\n' +
+            '  The heading editor must NOT write to the store per keystroke.\n' +
+            '  Heading saves must be deferred to blur/submit via commitHeading().\n' +
+            '  Remove onUpdate from the useTipTapEditor options object.',
+        ).toBeFalsy();
+    });
+
+    it('useHeadingEditor uses deferred commitHeading pattern', () => {
+        expect(
+            headingContent.includes('commitHeading'),
+            'useHeadingEditor.ts is missing the commitHeading pattern.\n\n' +
+            '  Heading saves must be deferred to blur/submit — never per keystroke.\n' +
+            '  updateNodeHeading per keystroke mutates nodes[] → O(N) re-renders.',
         ).toBe(true);
     });
 });
