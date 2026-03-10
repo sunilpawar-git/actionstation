@@ -32,6 +32,7 @@ import { useSubscriptionStore } from '@/features/subscription/stores/subscriptio
 import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
 import { strings } from '@/shared/localization/strings';
 import { OnboardingWalkthrough } from '@/features/onboarding';
+import { FindSimilarProvider } from '@/features/search/context/FindSimilarContext';
 import '@/styles/global.css';
 
 // Lazy load non-critical components for better initial load performance
@@ -88,6 +89,7 @@ function AuthenticatedApp() {
                         onOpenSettings={() => setIsSettingsOpen(true)}
                     />
                     <Layout onSettingsClick={() => setIsSettingsOpen(true)}>
+                    <FindSimilarProvider>
                     <CanvasView />
                     {initialLoading && (
                         <div className="canvas-loading-overlay">
@@ -95,6 +97,7 @@ function AuthenticatedApp() {
                             <p>{strings.common.loading}</p>
                         </div>
                     )}
+                    </FindSimilarProvider>
                     </Layout>
                 </SearchInputRefProvider>
                 <Suspense fallback={null}>

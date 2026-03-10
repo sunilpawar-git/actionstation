@@ -35,5 +35,5 @@ export function useFindSimilar() {
     const findSimilar = useCallback((nodeId: string) => setSourceNodeId(nodeId), []);
     const clearSimilar = useCallback(() => setSourceNodeId(null), []);
 
-    return { results, isActive: sourceNodeId !== null, isComputing, findSimilar, clearSimilar };
+    return { results, isActive: sourceNodeId !== null, activeNodeId: sourceNodeId, isComputing, findSimilar, clearSimilar };
 }

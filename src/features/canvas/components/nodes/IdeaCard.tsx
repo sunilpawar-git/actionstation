@@ -6,7 +6,7 @@ import { useNodeContextMenu } from './useNodeContextMenu';
 import { NodeUtilsBar } from './NodeUtilsBar';
 import { IdeaCardContextMenuSection } from './IdeaCardContextMenuSection';
 import { IdeaCardSimilarResultsSection } from './IdeaCardSimilarResultsSection';
-import { useFindSimilar } from '@/features/search/hooks/useFindSimilar';
+import { useFindSimilarContext } from '@/features/search/context/FindSimilarContext';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import { NodeResizeButtons } from './NodeResizeButtons';
 import { IdeaCardHeadingSection } from './IdeaCardHeadingSection';
@@ -38,7 +38,7 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
     const isSynthesisNode = nodeColorKey === 'synthesis';
     const contextMenu = useNodeContextMenu();
     const { openAtElement } = contextMenu;
-    const { results: similarResults, isActive: isFindSimilarActive, isComputing: isFindSimilarComputing, findSimilar, clearSimilar } = useFindSimilar();
+    const { results: similarResults, activeNodeId: similarActiveNodeId, isComputing: isFindSimilarComputing, findSimilar, clearSimilar } = useFindSimilarContext();
 
     const handleMoreClick = React.useCallback(() => {
         if (barContainerRef.current) openAtElement(barContainerRef.current);
@@ -101,7 +101,7 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
                     isInPool={resolvedData.includeInAIPool ?? false}
                     onFindSimilar={handleFindSimilar} />
             )}
-            {isFindSimilarActive && (
+            {similarActiveNodeId === id && (
                 <IdeaCardSimilarResultsSection
                     results={similarResults}
                     isComputing={isFindSimilarComputing}

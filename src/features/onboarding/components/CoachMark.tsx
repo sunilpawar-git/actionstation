@@ -11,15 +11,15 @@ import styles from './CoachMark.module.css';
 
 export interface CoachMarkProps {
     readonly targetSelector: string;
-    readonly title:          string;
-    readonly description:    string;
-    readonly tryPrompt?:     string;
-    readonly placement:      OnboardingPlacement;
-    readonly stepLabel:      string;
-    readonly onNext:         () => void;
-    readonly onSkip:         () => void;
-    readonly nextLabel:      string;
-    readonly skipLabel:      string;
+    readonly title: string;
+    readonly description: string;
+    readonly tryPrompt?: string;
+    readonly placement: OnboardingPlacement;
+    readonly stepLabel: string;
+    readonly onNext: () => void;
+    readonly onSkip: () => void;
+    readonly nextLabel: string;
+    readonly skipLabel: string;
 }
 
 const PAD = 6;
@@ -27,16 +27,16 @@ const PAD = 6;
 function computePosition(rect: DOMRect, placement: OnboardingPlacement): React.CSSProperties {
     const gap = PAD + 12;
     switch (placement) {
-        case 'right':  return { position: 'fixed', left: rect.right + gap,                           top: rect.top };
-        case 'left':   return { position: 'fixed', right: window.innerWidth - rect.left + gap,       top: rect.top };
-        case 'bottom': return { position: 'fixed', left: rect.left,                                  top: rect.bottom + gap };
-        case 'top':    return { position: 'fixed', left: rect.left, bottom: window.innerHeight - rect.top + gap };
+        case 'right': return { position: 'fixed', left: rect.right + gap, top: rect.top };
+        case 'left': return { position: 'fixed', right: window.innerWidth - rect.left + gap, top: rect.top };
+        case 'bottom': return { position: 'fixed', left: rect.left, top: rect.bottom + gap };
+        case 'top': return { position: 'fixed', left: rect.left, bottom: window.innerHeight - rect.top + gap };
     }
 }
 
 export const CoachMark = React.memo(function CoachMark(props: CoachMarkProps) {
     const { targetSelector, title, description, tryPrompt, placement,
-            stepLabel, onNext, onSkip, nextLabel, skipLabel } = props;
+        stepLabel, onNext, onSkip, nextLabel, skipLabel } = props;
 
     const [rect, setRect] = useState<DOMRect | null>(null);
     const markRef = useRef<HTMLDivElement>(null);
@@ -46,7 +46,15 @@ export const CoachMark = React.memo(function CoachMark(props: CoachMarkProps) {
     useEffect(() => {
         const target = document.querySelector(targetSelector);
         if (!target) return;
-        const update = () => setRect(target.getBoundingClientRect());
+        const update = () => {
+            const newRect = target.getBoundingClientRect();
+            setRect(prev => {
+                if (prev && prev.x === newRect.x && prev.y === newRect.y && prev.width === newRect.width && prev.height === newRect.height) {
+                    return prev;
+                }
+                return newRect;
+            });
+        };
         update();
         const ro = new ResizeObserver(update);
         ro.observe(target);

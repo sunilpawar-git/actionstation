@@ -18,8 +18,10 @@ export function useNodeInput(options: UseNodeInputOptions): UseNodeInputReturn {
         isGenerating, isNewEmptyNode, focusHeading, shortcuts,
     } = options;
 
-    const draftContentStore = useCanvasStore((s) => s.draftContent);
-    const draftContent = isEditing ? draftContentStore : null;
+    // Scoped selector: only subscribe to draftContent when THIS node is editing.
+    // Unscoped `(s) => s.draftContent` caused O(N) re-renders per keystroke — all N
+    // IdeaCards would re-render on every keystroke even though only one is editing.
+    const draftContent = useCanvasStore((s) => s.editingNodeId === nodeId ? s.draftContent : null);
     const nodeData = useNodeData(nodeId);
     const nodeOutput = nodeData?.output;
     const detectedUrls = useMemo(
