@@ -279,6 +279,34 @@ describe('Zustand selector enforcement', () => {
         ).toBe(false);
     });
 
+    it('ReactFlow useStore must use scalar selectors for transform (not array)', () => {
+        // useStore((s) => s.transform) returns an array — new reference every viewport
+        // change → component re-renders at 60fps during pan/zoom.
+        // Fix: use scalar selectors like selectTx = (s) => s.transform[0]
+        const nonScalarPattern = /useStore\(\s*\(\s*\w+\s*\)\s*=>\s*\w+\.transform\s*\)/;
+        const violations: string[] = [];
+
+        for (const file of files) {
+            const relPath = rel(file);
+            if (relPath.includes('__tests__')) continue;
+            if (relPath.endsWith('.test.ts') || relPath.endsWith('.test.tsx')) continue;
+
+            const content = readFileSync(file, 'utf-8');
+            if (nonScalarPattern.test(content)) {
+                violations.push(relPath);
+            }
+        }
+
+        expect(
+            violations,
+            'Files using useStore((s) => s.transform) — returns array (new reference per frame).\n\n' +
+            '  Fix: use scalar selectors:\n' +
+            '    const selectTx = (s: ReactFlowState) => s.transform[0];\n' +
+            '    const tx = useStore(selectTx);\n\n' +
+            `  Violations:\n${violations.map((v) => `    - ${v}`).join('\n')}`,
+        ).toEqual([]);
+    });
+
     it('provides documentation on correct patterns', () => {
         const correctPatterns = [
             '// ✅ CORRECT: Selector pattern - only re-renders when value changes',

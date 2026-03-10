@@ -1,9 +1,14 @@
 /** ClusterBoundaries — renders translucent cluster boundaries as ReactFlow sibling */
 import React, { useMemo } from 'react';
-import { useStore } from '@xyflow/react';
+import { useStore, type ReactFlowState } from '@xyflow/react';
 import type { CanvasNode } from '@/features/canvas/types/node';
 import type { ClusterGroup, ClusterBounds } from '../types/cluster';
 import styles from './ClusterBoundaries.module.css';
+
+/** Scalar selectors — each returns a primitive, preventing object-reference churn during pan/zoom */
+const selectTx = (s: ReactFlowState) => s.transform[0];
+const selectTy = (s: ReactFlowState) => s.transform[1];
+const selectScale = (s: ReactFlowState) => s.transform[2];
 
 interface ClusterBoundariesProps {
     readonly clusters: readonly ClusterGroup[];
@@ -45,8 +50,9 @@ export const ClusterBoundaries = React.memo(function ClusterBoundaries({
     nodes,
     variant = 'committed',
 }: ClusterBoundariesProps) {
-    const transform = useStore((s) => s.transform);
-    const [tx, ty, scale] = transform;
+    const tx = useStore(selectTx);
+    const ty = useStore(selectTy);
+    const scale = useStore(selectScale);
     const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
     const clustersWithBounds = useMemo(
