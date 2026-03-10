@@ -65,15 +65,13 @@ describe('FindSimilar singleton enforcement (prevents O(n²) buildCorpusIDF)', (
     });
 
     it('useFindSimilar() is only called in FindSimilarContext.tsx — not in any component', () => {
-        // Matches any direct call: useFindSimilar()
-        const directCallPattern = /useFindSimilar\(\)/;
         const violations: string[] = [];
 
         for (const file of sourceFiles) {
             const r = rel(file);
             if (ALLOWLIST.has(r)) continue;
             const content = readFileSync(file, 'utf-8');
-            if (directCallPattern.test(content)) {
+            if (content.includes('useFindSimilar()')) {
                 violations.push(r);
             }
         }

@@ -49,10 +49,11 @@ export const CoachMark = React.memo(function CoachMark(props: CoachMarkProps) {
         const update = () => {
             const newRect = target.getBoundingClientRect();
             setRect(prev => {
-                if (prev && prev.x === newRect.x && prev.y === newRect.y && prev.width === newRect.width && prev.height === newRect.height) {
-                    return prev;
+                // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
+                if (!prev || prev.x !== newRect.x || prev.y !== newRect.y || prev.width !== newRect.width || prev.height !== newRect.height) {
+                    return newRect;
                 }
-                return newRect;
+                return prev;
             });
         };
         update();
