@@ -125,6 +125,27 @@ describe('LinkPreviewCard', () => {
             expect(screen.getByRole('img', { name: 'Example Article Title' }))
                 .toBeInTheDocument();
         });
+
+        it('shows fallback placeholder with accessible text when image fails to load', () => {
+            render(<LinkPreviewCard preview={fullPreview} />);
+            const image = screen.getByAltText('Example Article Title');
+
+            fireEvent.error(image);
+
+            const placeholder = screen.getByRole('img', { name: 'Example Article Title' });
+            expect(placeholder).toBeInTheDocument();
+            expect(placeholder.textContent).toContain(strings.linkPreview.imageFailed);
+        });
+
+        it('placeholder uses string resource, not hardcoded text', () => {
+            render(<LinkPreviewCard preview={fullPreview} />);
+            const image = screen.getByAltText('Example Article Title');
+
+            fireEvent.error(image);
+
+            const placeholder = screen.getByRole('img', { name: 'Example Article Title' });
+            expect(placeholder.textContent).toBe(strings.linkPreview.imageFailed);
+        });
     });
 
     describe('Minimal metadata rendering', () => {

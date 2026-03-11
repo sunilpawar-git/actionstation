@@ -107,6 +107,32 @@ describe('CSP Completeness (index.html)', () => {
         ).toContain('https://accounts.google.com');
     });
 
+    // ── worker-src: Sentry replay worker support ──────────
+
+    describe('worker-src allows blob: for Sentry replay workers', () => {
+        it('includes blob: (required for Sentry replayIntegration Web Worker)', () => {
+            const workerSrc = getDirective(csp, 'worker-src');
+            expect(
+                workerSrc,
+                'worker-src is missing "blob:". Sentry replayIntegration creates Web Workers ' +
+                'from blob: URLs. Without worker-src, the CSP falls back to script-src which blocks blob:.',
+            ).toContain('blob:');
+        });
+
+        it("includes 'self' as baseline", () => {
+            const workerSrc = getDirective(csp, 'worker-src');
+            expect(workerSrc).toContain("'self'");
+        });
+
+        it('does NOT contain unsafe-eval', () => {
+            const workerSrc = getDirective(csp, 'worker-src');
+            expect(
+                workerSrc,
+                "worker-src must NOT contain 'unsafe-eval'",
+            ).not.toContain("'unsafe-eval'");
+        });
+    });
+
     // ── Security guardrails (negative assertions) ────────
 
     describe('security guardrails remain in place', () => {

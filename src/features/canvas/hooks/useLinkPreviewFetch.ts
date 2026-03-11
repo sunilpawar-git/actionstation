@@ -48,7 +48,10 @@ export function useLinkPreviewFetch(nodeId: string, urls: string[]): void {
             const controller = new AbortController();
             abortRef.current = controller;
 
-            void processUrls(nodeId, stableUrls, controller.signal).catch((e: unknown) => captureError(e as Error));
+            void processUrls(nodeId, stableUrls, controller.signal).catch((e: unknown) => {
+                if (e instanceof DOMException && e.name === 'AbortError') return;
+                captureError(e);
+            });
         }, DEBOUNCE_MS);
 
         return () => {

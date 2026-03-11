@@ -36,8 +36,9 @@ describe('TipTapEditor CSS completeness', () => {
 });
 
 describe('TipTap Link extension', () => {
-    it('imports and registers Link extension in useTipTapEditor', () => {
-        expect(EDITOR_SRC).toContain('Link');
+    it('configures Link via StarterKit.configure (not as separate import)', () => {
+        expect(EDITOR_SRC).toContain('StarterKit.configure(');
+        expect(EDITOR_SRC).toContain('link:');
     });
 
     it('configures rel="noopener noreferrer" for security', () => {

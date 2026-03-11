@@ -70,6 +70,10 @@ export default defineConfig({
                     if (id.includes('firebase')) {
                         return 'vendor-firebase';
                     }
+                    // Analytics — lazy-loaded after first paint
+                    if (id.includes('posthog')) {
+                        return 'vendor-analytics';
+                    }
                     // State management libraries
                     if (id.includes('zustand') || id.includes('@tanstack')) {
                         return 'vendor-state';

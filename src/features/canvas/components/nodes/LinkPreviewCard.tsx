@@ -66,7 +66,9 @@ export const LinkPreviewCard = React.memo(({ preview, onRemove }: LinkPreviewCar
                 )}
                 {proxiedImage && imageError && (
                     <div className={styles.imagePlaceholder}
-                        role="img" aria-label={displayTitle} />
+                        role="img" aria-label={displayTitle}>
+                        {strings.linkPreview.imageFailed}
+                    </div>
                 )}
                 <div className={styles.body}>
                     <span className={styles.domainRow}>

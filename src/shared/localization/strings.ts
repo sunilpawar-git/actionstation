@@ -203,6 +203,7 @@ export const strings = {
         fetchError: 'Could not load link preview',
         proxyError: 'Link preview proxy unavailable',
         authRequired: 'Sign in to see link previews',
+        imageFailed: 'Image could not be loaded',
     },
     layout: {
         arrangeNodes: 'Auto Arrange',

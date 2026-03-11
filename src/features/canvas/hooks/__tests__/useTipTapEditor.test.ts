@@ -166,6 +166,23 @@ describe('useTipTapEditor', () => {
 });
 
 
+describe('useTipTapEditor — no duplicate extensions', () => {
+    it('should not produce duplicate link extension warnings', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        renderHook(() =>
+            useTipTapEditor({ initialContent: 'test', placeholder: '' })
+        );
+
+        const duplicateWarnings = warnSpy.mock.calls.filter(
+            (args) => typeof args[0] === 'string' && args[0].includes('Duplicate extension'),
+        );
+
+        expect(duplicateWarnings).toHaveLength(0);
+        warnSpy.mockRestore();
+    });
+});
+
 describe('useTipTapEditor — clipboardTextParser (paste fix)', () => {
     it('does NOT provide transformPastedText (replaced by clipboardTextParser)', () => {
         const { result } = renderHook(() =>

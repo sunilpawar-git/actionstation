@@ -10,10 +10,15 @@ import { initSentry } from '@/shared/services/sentryService';
 import { initAnalytics } from '@/shared/services/analyticsService';
 import { validateProductionEnv } from '@/config/envValidation';
 
-// Initialize observability before rendering so first errors are captured
+// Initialize error tracking before rendering so first errors are captured
 initSentry();
-initAnalytics();
 validateProductionEnv();
+
+// Schedule analytics after first paint (PostHog is lazy-loaded, non-critical)
+const scheduleIdle = typeof requestIdleCallback === 'function'
+    ? requestIdleCallback
+    : (cb: () => void) => setTimeout(cb, 1);
+scheduleIdle(() => { initAnalytics(); });
 
 const rootElement = document.getElementById('root');
 

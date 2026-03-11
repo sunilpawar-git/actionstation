@@ -7,7 +7,6 @@ import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
-import Link from '@tiptap/extension-link';
 import type { Extension } from '@tiptap/core';
 import { DOMParser as PMDOMParser } from '@tiptap/pm/model';
 import { NodeImage } from '../extensions/imageExtension';
@@ -56,17 +55,18 @@ export function useTipTapEditor(options: UseTipTapEditorOptions): UseTipTapEdito
 
     const editor = useEditor({
         extensions: [
-            StarterKit,
+            StarterKit.configure({
+                link: {
+                    openOnClick: false,
+                    HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
+                    protocols: ['https', 'http', 'mailto'],
+                },
+            }),
             Placeholder.configure({ placeholder: () => placeholderRef.current }),
             Table.configure({ resizable: false }),
             TableRow,
             TableCell,
             TableHeader,
-            Link.configure({
-                openOnClick: false,
-                HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
-                protocols: ['https', 'http', 'mailto'],
-            }),
             NodeImage,
             ...extraExtensions,
         ],
