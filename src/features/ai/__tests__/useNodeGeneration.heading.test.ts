@@ -18,8 +18,8 @@ vi.mock('@/features/knowledgeBank/hooks/useKnowledgeBankContext', () => ({
     useKnowledgeBankContext: () => ({ getKBContext: vi.fn(() => '') }),
 }));
 
-vi.mock('@/features/canvas/hooks/usePanToNode', () => ({
-    usePanToNode: () => ({ panToPosition: vi.fn() }),
+vi.mock('@/features/canvas/contexts/PanToNodeContext', () => ({
+    usePanToNodeContext: () => ({ panToPosition: vi.fn() }),
 }));
 
 vi.mock('../hooks/useNodePoolContext', () => ({

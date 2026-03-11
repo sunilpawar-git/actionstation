@@ -79,8 +79,8 @@ vi.mock('../NodeDivider', () => ({
     NodeDivider: () => <div data-testid="node-divider" />,
 }));
 
-vi.mock('@/features/canvas/hooks/usePanToNode', () => ({
-    usePanToNode: () => ({ panToPosition: vi.fn() }),
+vi.mock('@/features/canvas/contexts/PanToNodeContext', () => ({
+    usePanToNodeContext: () => ({ panToPosition: vi.fn() }),
 }));
 
 describe('IdeaCard Copy', () => {

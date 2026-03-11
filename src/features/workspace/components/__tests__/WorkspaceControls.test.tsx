@@ -213,7 +213,7 @@ describe('WorkspaceControls', () => {
                 { id: 'n1', position: { x: 0, y: 0 }, data: { prompt: '', output: '', tags: [], isPinned: true }, createdAt: new Date() } as unknown as CanvasNode,
                 { id: 'n2', position: { x: 0, y: 0 }, data: { prompt: '', output: '', tags: [] }, createdAt: new Date() } as unknown as CanvasNode,
             ];
-            useCanvasStore.setState({ nodes });
+            useCanvasStore.setState({ nodes, pinnedCount: 1 });
             render(<WorkspaceControls />);
 
             fireEvent.click(screen.getByTitle(strings.workspace.arrangeNodesTooltip));
@@ -228,7 +228,7 @@ describe('WorkspaceControls', () => {
                 { id: 'n1', position: { x: 0, y: 0 }, data: { prompt: '', output: '', tags: [], isPinned: true }, createdAt: new Date() } as unknown as CanvasNode,
                 { id: 'n2', position: { x: 0, y: 0 }, data: { prompt: '', output: '', tags: [], isPinned: true }, createdAt: new Date() } as unknown as CanvasNode,
             ];
-            useCanvasStore.setState({ nodes });
+            useCanvasStore.setState({ nodes, pinnedCount: 2 });
             render(<WorkspaceControls />);
 
             fireEvent.click(screen.getByTitle(strings.workspace.arrangeNodesTooltip));

@@ -21,10 +21,12 @@ import { buildRfEdges, type PrevRfEdges } from './buildRfEdges';
 import { applyPositionAndRemoveChanges } from './canvasChangeHelpers';
 import { nodeTypes, edgeTypes, DEFAULT_EDGE_OPTIONS, SNAP_GRID, NO_DRAG_CLASS, PAN_ACTIVATION_KEY, MULTI_SELECT_KEY, BACKGROUND_GAP, BACKGROUND_DOT_SIZE } from './canvasViewConstants';
 import { useCanvasHandlers } from '../hooks/useCanvasHandlers';
-import { useDragBatch } from '../hooks/useDragBatch';
+import { useCanvasDragHandlers } from '../hooks/useCanvasDragHandlers';
 import { useSemanticZoom } from '../hooks/useSemanticZoom';
 import '@/styles/semanticZoom.css';
 import { dragPositionReducer, INITIAL_DRAG_STATE } from '../hooks/dragPositionReducer';
+import { usePanToNode } from '../hooks/usePanToNode';
+import { PanToNodeContext } from '../contexts/PanToNodeContext';
 import styles from './CanvasView.module.css';
 
 function getContainerClassName(isSwitching: boolean): string {
@@ -66,59 +68,29 @@ function CanvasViewInner() {
     const isCanvasLocked = useSettingsStore((s) => s.isCanvasLocked);
     const isFocused = useFocusStore((s) => s.focusedNodeId !== null);
     const isInteractionDisabled = isCanvasLocked || isFocused;
+    const panCtx = usePanToNode();
     const isNavigateMode = canvasScrollMode === 'navigate';
     const prevRfNodesRef = useRef<PrevRfNodes>({ arr: [], map: new Map() });
     const prevRfEdgesRef = useRef<PrevRfEdges>({ arr: [], map: new Map() });
     const [dragState, dragDispatch] = useReducer(dragPositionReducer, INITIAL_DRAG_STATE);
     const handlers = useCanvasHandlers(currentWorkspaceId, isCanvasLocked, dragDispatch);
-    const { onNodeDragStart: historyDragStart, onNodeDragStop: historyDragStop } = useDragBatch();
     useSemanticZoom();
     const overridesRef = useRef(dragState.overrides);
     overridesRef.current = dragState.overrides;
-    const commitDragOverrides = useCallback(
-        () => commitOverridesToStore(overridesRef.current, dragDispatch),
-        [], // stable: reads only from overridesRef (a ref, not a reactive value)
-    );
-    const handleNodeDragStop = useCallback(
-        (...args: Parameters<typeof historyDragStop>) => {
-            commitDragOverrides();
-            historyDragStop(...args);
-        },
-        [commitDragOverrides, historyDragStop],
-    );
-    // Adapt NodeDragHandler (event, node, nodes) → SelectionDragHandler (event, nodes)
-    const handleSelectionDragStart = useCallback(
-        (event: React.MouseEvent, nodes: Node[]) => {
-            const dummy = nodes[0] ?? ({ id: '', position: { x: 0, y: 0 }, data: {} } as Node);
-            historyDragStart(event, dummy, nodes);
-        },
-        [historyDragStart],
-    );
-    const handleSelectionDragStopAdapted = useCallback(
-        (event: React.MouseEvent, nodes: Node[]) => {
-            const dummy = nodes[0] ?? ({ id: '', position: { x: 0, y: 0 }, data: {} } as Node);
-            commitDragOverrides();
-            historyDragStop(event, dummy, nodes);
-        },
-        [commitDragOverrides, historyDragStop],
-    );
+    const commitDragOverrides = useCallback(() => commitOverridesToStore(overridesRef.current, dragDispatch), []);
+    const drag = useCanvasDragHandlers(commitDragOverrides);
     const handleMoveEnd = useCallback(
-        (_event: unknown, newViewport: Viewport) => onMoveEndImpl(currentWorkspaceId, newViewport),
-        [currentWorkspaceId],
+        (_event: unknown, vp: Viewport) => onMoveEndImpl(currentWorkspaceId, vp), [currentWorkspaceId],
     );
-
     const rfNodes: Node[] = useMemo(
         () => buildRfNodes(nodes, selectedNodeIds, prevRfNodesRef, dragState.overrides),
         [nodes, selectedNodeIds, dragState.overrides],
     );
-
     const rfEdges = useMemo(() => buildRfEdges(edges, prevRfEdgesRef), [edges]);
-
-    useEffect(() => {
-        cleanupDataShells(new Set(nodes.map((n) => n.id)));
-    }, [nodes]);
+    useEffect(() => { cleanupDataShells(new Set(nodes.map((n) => n.id))); }, [nodes]);
 
     return (
+        <PanToNodeContext.Provider value={panCtx}>
         <div className={getContainerClassName(isSwitching)} data-canvas-container>
             <ReactFlow
                 nodes={rfNodes}
@@ -127,10 +99,10 @@ function CanvasViewInner() {
                 onEdgesChange={handlers.onEdgesChange}
                 onConnect={handlers.onConnect}
                 onSelectionChange={handlers.onSelectionChange}
-                onNodeDragStart={historyDragStart}
-                onNodeDragStop={handleNodeDragStop}
-                onSelectionDragStart={handleSelectionDragStart}
-                onSelectionDragStop={handleSelectionDragStopAdapted}
+                onNodeDragStart={drag.historyDragStart}
+                onNodeDragStop={drag.handleNodeDragStop}
+                onSelectionDragStart={drag.handleSelectionDragStart}
+                onSelectionDragStop={drag.handleSelectionDragStop}
                 onMoveEnd={handleMoveEnd}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
@@ -152,6 +124,7 @@ function CanvasViewInner() {
                 selectionMode={SelectionMode.Partial}
                 panActivationKeyCode={PAN_ACTIVATION_KEY}
                 multiSelectionKeyCode={MULTI_SELECT_KEY}
+                onlyRenderVisibleElements
             >
                 <ViewportSync viewport={viewport} />
                 {canvasGrid && <Background variant={BackgroundVariant.Dots} gap={BACKGROUND_GAP} size={BACKGROUND_DOT_SIZE} />}
@@ -161,6 +134,7 @@ function CanvasViewInner() {
             <SelectionToolbar />
             <FocusOverlay />
         </div>
+        </PanToNodeContext.Provider>
     );
 }
 

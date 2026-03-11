@@ -16,6 +16,20 @@ export const DEFAULT_INPUT_MODE: InputMode = 'note';
 let _cachedNodes: CanvasNode[] = [];
 let _cachedNodeMap: ReadonlyMap<string, CanvasNode> = new Map();
 
+/** Count nodes with includeInAIPool === true */
+export function countPooledNodes(nodes: CanvasNode[]): number {
+    let count = 0;
+    for (const n of nodes) if (n.data.includeInAIPool) count++;
+    return count;
+}
+
+/** Count pinned nodes */
+export function countPinnedNodes(nodes: CanvasNode[]): number {
+    let count = 0;
+    for (const n of nodes) if (n.data.isPinned) count++;
+    return count;
+}
+
 /** Memoized O(1) lookup map — only rebuilds when nodes array reference changes */
 export function getNodeMap(nodes: CanvasNode[]): ReadonlyMap<string, CanvasNode> {
     if (nodes !== _cachedNodes) {

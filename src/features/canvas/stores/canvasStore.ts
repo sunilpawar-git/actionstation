@@ -11,6 +11,7 @@ import type { InputMode } from '../types/slashCommand';
 import type { CanvasEdge } from '../types/edge';
 import {
     createNodeMutationActions,
+    createNodeDeletionActions,
     createNodeDataActions,
     createEdgeAndLayoutActions,
     createSelectionActions,
@@ -29,6 +30,12 @@ interface CanvasState {
     edges: CanvasEdge[];
     selectedNodeIds: Set<string>;
     viewport: Viewport;
+
+    /** Derived scalar: count of nodes with includeInAIPool === true.
+     *  Updated atomically in pool-mutating actions to avoid O(N) selectors. */
+    poolCount: number;
+    /** Derived scalar: count of pinned nodes. Same O(N) avoidance pattern. */
+    pinnedCount: number;
 
     // Editing state (SSOT — only one node editable at a time)
     editingNodeId: string | null;
@@ -110,6 +117,8 @@ const initialState: CanvasState = {
     edges: [],
     selectedNodeIds: EMPTY_SELECTED_IDS as Set<string>,
     viewport: DEFAULT_VIEWPORT,
+    poolCount: 0,
+    pinnedCount: 0,
     editingNodeId: null,
     draftContent: null,
     inputMode: DEFAULT_INPUT_MODE,
@@ -118,6 +127,7 @@ const initialState: CanvasState = {
 export const useCanvasStore = create<CanvasStore>()((set, get) => ({
     ...initialState,
     ...createNodeMutationActions(set, get),
+    ...createNodeDeletionActions(set),
     ...createNodeDataActions(set),
     ...createEdgeAndLayoutActions(set, get),
     ...createSelectionActions(set, get),

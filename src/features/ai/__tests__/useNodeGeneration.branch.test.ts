@@ -16,8 +16,8 @@ vi.mock('../services/geminiService', () => ({
 }));
 
 const mockPanToPosition = vi.fn();
-vi.mock('@/features/canvas/hooks/usePanToNode', () => ({
-    usePanToNode: () => ({ panToPosition: mockPanToPosition }),
+vi.mock('@/features/canvas/contexts/PanToNodeContext', () => ({
+    usePanToNodeContext: () => ({ panToPosition: mockPanToPosition }),
 }));
 
 const createTestIdeaNode = (id: string, prompt: string, output?: string) => ({

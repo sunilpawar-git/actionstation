@@ -56,10 +56,16 @@ export function useAutosave(workspaceId: string, isWorkspaceLoading: boolean = f
         if (!dirty) return;
 
         if (isWorkspaceLoading) {
-            const fp = buildFingerprint(nodes, edges, wsJson);
-            lastSavedRef.current = fp;
-            lastPersistedWorkspaceRef.current = fp.workspace;
-            return;
+            const loadTimer = setTimeout(() => {
+                const fp = buildFingerprint(
+                    prevNodesRef.current ?? [],
+                    prevEdgesRef.current ?? [],
+                    prevWorkspaceJsonRef.current,
+                );
+                lastSavedRef.current = fp;
+                lastPersistedWorkspaceRef.current = fp.workspace;
+            }, 0);
+            return () => clearTimeout(loadTimer);
         }
 
         if (timeoutRef.current) clearTimeout(timeoutRef.current);

@@ -5,12 +5,12 @@
  */
 import { useCallback } from 'react';
 import { useCanvasStore, getNodeMap } from '../stores/canvasStore';
-import { usePanToNode } from './usePanToNode';
+import { usePanToNodeContext } from '../contexts/PanToNodeContext';
 import { toast } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
 
 export function useIdeaCardDuplicateAction(nodeId: string) {
-    const { panToPosition } = usePanToNode();
+    const { panToPosition } = usePanToNodeContext();
 
     const handleDuplicate = useCallback(() => {
         const newId = useCanvasStore.getState().duplicateNode(nodeId);

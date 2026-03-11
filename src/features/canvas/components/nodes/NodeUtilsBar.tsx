@@ -14,8 +14,9 @@ import styles from './NodeUtilsBar.module.css';
 
 export const NodeUtilsBar = React.memo(forwardRef<HTMLDivElement, NodeUtilsBarProps>(
     function NodeUtilsBar(props, ref) {
-        const { disabled = false, registerProximityLostFn } = props;
+        const { disabled = false, registerProximityLostFn, onCopyClick } = props;
         const bar = useNodeUtilsBar();
+        const handleCopyClick = useCallback(() => { onCopyClick?.(); }, [onCopyClick]);
 
         useEffect(() => {
             registerProximityLostFn?.(bar.handleProximityLost);
@@ -52,18 +53,18 @@ export const NodeUtilsBar = React.memo(forwardRef<HTMLDivElement, NodeUtilsBarPr
                     />
                     <TooltipButton label={strings.nodeUtils.connect}
                         tooltipText={strings.nodeUtils.connect}
-                        icon="🔗" onClick={props.onConnectClick}
+                        icon={strings.nodeUtils.connectIcon} onClick={props.onConnectClick}
                         disabled={disabled} tooltipPlacement="right" />
                     <TooltipButton label={strings.nodeUtils.copy}
                         tooltipText={strings.nodeUtils.copy}
                         shortcut={strings.nodeUtils.copyShortcut}
-                        icon="📋" onClick={() => props.onCopyClick?.()}
+                        icon={strings.nodeUtils.copyIcon} onClick={handleCopyClick}
                         disabled={disabled || !(props.hasContent ?? false)}
                         tooltipPlacement="right" />
                     <TooltipButton label={strings.nodeUtils.delete}
                         tooltipText={strings.nodeUtils.delete}
                         shortcut={strings.nodeUtils.deleteShortcut}
-                        icon="🗑️" onClick={props.onDelete}
+                        icon={strings.nodeUtils.deleteIcon} onClick={props.onDelete}
                         disabled={disabled} className={buttonStyles.deleteButton}
                         tooltipPlacement="right" />
                     <TooltipButton label={strings.nodeUtils.more}

@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
-import { isNodePinned } from '@/features/canvas/types/node';
 import { PlusIcon, GridIcon, FreeFlowIcon, ClusterIcon, EraserIcon } from '@/shared/components/icons';
 import { toast } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
@@ -19,9 +18,7 @@ export function WorkspaceControls() {
     const handleAddNode = useAddNode();
     const canvasFreeFlow = useSettingsStore((s) => s.canvasFreeFlow);
     const nodeCount = useCanvasStore((s) => s.nodes.length);
-    const pinnedCount = useCanvasStore(
-        (s) => s.nodes.reduce((n, node) => n + (isNodePinned(node) ? 1 : 0), 0),
-    );
+    const pinnedCount = useCanvasStore((s) => s.pinnedCount);
 
     const arrangeNodes = useCallback(() => { useCanvasStore.getState().arrangeNodes(); }, []);
     const { animatedArrange } = useArrangeAnimation(null, arrangeNodes);

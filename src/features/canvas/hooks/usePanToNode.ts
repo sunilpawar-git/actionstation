@@ -3,7 +3,7 @@
  * Provides a utility to pan/zoom the canvas to a specific node or position.
  * Encapsulates ReactFlow interaction for cleaner components.
  */
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT } from '../types/node';
 
@@ -32,5 +32,5 @@ export function usePanToNode() {
         [setCenter]
     );
 
-    return { panToPosition };
+    return useMemo(() => ({ panToPosition }), [panToPosition]);
 }

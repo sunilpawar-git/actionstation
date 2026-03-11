@@ -122,8 +122,8 @@ vi.mock('@/features/tags', () => ({
     TagInput: vi.fn(() => null),
 }));
 
-vi.mock('@/features/canvas/hooks/usePanToNode', () => ({
-    usePanToNode: () => ({ panToPosition: vi.fn() }),
+vi.mock('@/features/canvas/contexts/PanToNodeContext', () => ({
+    usePanToNodeContext: () => ({ panToPosition: vi.fn() }),
 }));
 
 describe('IdeaCard - Proximity Hover (data-attribute driven)', () => {

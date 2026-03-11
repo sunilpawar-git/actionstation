@@ -12,7 +12,7 @@ import { createIdeaNode } from '@/features/canvas/types/node';
 import { createEdge } from '@/features/canvas/types/edge';
 import { calculateMasonryPosition } from '@/features/canvas/services/gridLayoutService';
 import { calculateBranchPlacement } from '@/features/canvas/services/freeFlowPlacementService';
-import { usePanToNode } from '@/features/canvas/hooks/usePanToNode';
+import { usePanToNodeContext } from '@/features/canvas/contexts/PanToNodeContext';
 import { buildContextChain } from '../services/contextChainBuilder';
 import { strings } from '@/shared/localization/strings';
 import { toast } from '@/shared/stores/toastStore';
@@ -26,7 +26,7 @@ import { processCalendarIntent } from '@/features/calendar/services/calendarInte
 export function useNodeGeneration() {
     const { getKBContext } = useKnowledgeBankContext();
     const { getPoolContext } = useNodePoolContext();
-    const { panToPosition } = usePanToNode();
+    const { panToPosition } = usePanToNodeContext();
 
     /**
      * Generate AI output from an IdeaCard node

@@ -37,8 +37,8 @@ vi.mock('@/shared/stores/toastStore', () => ({
     toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() },
 }));
 
-vi.mock('@/features/canvas/hooks/usePanToNode', () => ({
-    usePanToNode: () => ({ panToPosition: vi.fn() }),
+vi.mock('@/features/canvas/contexts/PanToNodeContext', () => ({
+    usePanToNodeContext: () => ({ panToPosition: vi.fn() }),
 }));
 
 vi.mock('../hooks/useNodePoolContext', () => ({

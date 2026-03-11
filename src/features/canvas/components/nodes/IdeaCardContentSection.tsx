@@ -15,6 +15,8 @@ import { LinkPreviewList } from './LinkPreviewCard';
 import type { IdeaNodeData } from '../../types/node';
 import styles from './IdeaCard.module.css';
 
+const EDITOR_HIDDEN_STYLE: React.CSSProperties = { display: 'none' };
+
 export interface IdeaCardContentSectionProps {
     contentRef: React.Ref<HTMLDivElement>;
     selected: boolean | undefined;
@@ -92,7 +94,7 @@ export const IdeaCardContentSection = React.memo((props: IdeaCardContentSectionP
                 onDoubleClick={!isEditing ? handleDoubleClick : undefined}
                 role={!isEditing ? 'button' : undefined}
                 tabIndex={!isEditing && hasContent ? 0 : undefined}
-                style={vs.editorHidden ? { display: 'none' } : undefined}
+                style={vs.editorHidden ? EDITOR_HIDDEN_STYLE : undefined}
             >
                 <TipTapEditor
                     editor={editor}

@@ -5,7 +5,7 @@
  *
  * @see Phase 1 of NodeUX Hover & Utilities plan
  */
-import { useId, type RefObject } from 'react';
+import { useId, useState, useLayoutEffect, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { strings } from '@/shared/localization/strings';
 import styles from './PortalTooltip.module.css';
@@ -61,11 +61,18 @@ export function PortalTooltip({
 }: PortalTooltipProps) {
     const autoId = useId();
     const tooltipId = externalId ?? autoId;
+    const [positionStyle, setPositionStyle] = useState<React.CSSProperties | null>(null);
 
-    if (!visible || !targetRef.current) return null;
+    useLayoutEffect(() => {
+        if (!visible || !targetRef.current) {
+            setPositionStyle(null);
+            return;
+        }
+        const rect = targetRef.current.getBoundingClientRect();
+        setPositionStyle(computePosition(rect, placement));
+    }, [visible, targetRef, placement]);
 
-    const rect = targetRef.current.getBoundingClientRect();
-    const positionStyle = computePosition(rect, placement);
+    if (!visible || !positionStyle) return null;
 
     const classNames = [
         styles.tooltip,

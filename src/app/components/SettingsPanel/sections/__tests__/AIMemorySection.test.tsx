@@ -25,7 +25,7 @@ function makeNode(id: string, inPool = false): CanvasNode {
 
 describe('AIMemorySection', () => {
     beforeEach(() => {
-        useCanvasStore.setState({ nodes: [], edges: [], selectedNodeIds: new Set() });
+        useCanvasStore.setState({ nodes: [], edges: [], selectedNodeIds: new Set(), poolCount: 0, pinnedCount: 0 });
         useWorkspaceStore.setState({ workspaces: [], currentWorkspaceId: null });
     });
 
@@ -48,6 +48,7 @@ describe('AIMemorySection', () => {
     it('shows correct count of individually pooled nodes', () => {
         useCanvasStore.setState({
             nodes: [makeNode('n1', true), makeNode('n2', false), makeNode('n3', true)],
+            poolCount: 2,
         });
         render(<AIMemorySection />);
         expect(screen.getByText(strings.nodePool.pooledNodeCount(2))).toBeInTheDocument();
@@ -71,7 +72,7 @@ describe('AIMemorySection', () => {
     });
 
     it('shows clear button when nodes are individually pooled', () => {
-        useCanvasStore.setState({ nodes: [makeNode('n1', true)] });
+        useCanvasStore.setState({ nodes: [makeNode('n1', true)], poolCount: 1 });
         render(<AIMemorySection />);
         expect(screen.getByText(strings.nodePool.clearAll)).toBeInTheDocument();
     });
@@ -83,7 +84,7 @@ describe('AIMemorySection', () => {
     });
 
     it('hides clear button when workspace pool is on', () => {
-        useCanvasStore.setState({ nodes: [makeNode('n1', true)] });
+        useCanvasStore.setState({ nodes: [makeNode('n1', true)], poolCount: 1 });
         useWorkspaceStore.setState({
             workspaces: [{
                 id: 'ws-1', userId: 'u1', name: 'Test',
@@ -100,6 +101,7 @@ describe('AIMemorySection', () => {
     it('clears all pooled nodes when clear button is clicked', () => {
         useCanvasStore.setState({
             nodes: [makeNode('n1', true), makeNode('n2', true)],
+            poolCount: 2,
         });
         render(<AIMemorySection />);
         fireEvent.click(screen.getByText(strings.nodePool.clearAll));

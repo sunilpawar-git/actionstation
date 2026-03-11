@@ -12,8 +12,8 @@ vi.mock('@/shared/stores/toastStore', () => ({
 }));
 
 const mockPanToPosition = vi.fn();
-vi.mock('../usePanToNode', () => ({
-    usePanToNode: () => ({ panToPosition: mockPanToPosition }),
+vi.mock('../../contexts/PanToNodeContext', () => ({
+    usePanToNodeContext: () => ({ panToPosition: mockPanToPosition }),
 }));
 
 const makeNode = () => ({

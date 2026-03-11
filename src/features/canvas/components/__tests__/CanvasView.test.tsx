@@ -21,6 +21,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
         useEdgesState: (initialEdges: unknown[]) => [initialEdges, vi.fn(), vi.fn()],
         useStore: (selector: (s: Record<string, unknown>) => unknown) =>
             selector({ transform: [0, 0, 1] }),
+        useReactFlow: () => ({ setCenter: vi.fn() }),
     };
 });
 

@@ -88,6 +88,7 @@ describe('useAutosave — workspace pool toggle persistence', () => {
             ({ loading }: { loading: boolean }) => useAutosave(WS_ID, loading),
             { initialProps: { loading: true } },
         );
+        await act(async () => { vi.advanceTimersByTime(1); });
         rerender({ loading: false });
 
         workspaceState.current = [makeWorkspace(false)];
@@ -107,6 +108,7 @@ describe('useAutosave — workspace pool toggle persistence', () => {
             ({ loading }: { loading: boolean }) => useAutosave(WS_ID, loading),
             { initialProps: { loading: true } },
         );
+        await act(async () => { vi.advanceTimersByTime(1); });
         rerender({ loading: false });
 
         workspaceState.current = [makeWorkspace(true)];
@@ -126,6 +128,10 @@ describe('useAutosave — workspace pool toggle persistence', () => {
             ({ loading }: { loading: boolean }) => useAutosave(WS_ID, loading),
             { initialProps: { loading: true } },
         );
+
+        // Flush the deferred fingerprint from the loading path (setTimeout(0))
+        await act(async () => { vi.advanceTimersByTime(1); });
+
         rerender({ loading: false });
 
         await act(async () => { vi.advanceTimersByTime(5000); });
@@ -139,6 +145,7 @@ describe('useAutosave — workspace pool toggle persistence', () => {
             ({ loading }: { loading: boolean }) => useAutosave(WS_ID, loading),
             { initialProps: { loading: true } },
         );
+        await act(async () => { vi.advanceTimersByTime(1); });
         rerender({ loading: false });
 
         workspaceState.current = [makeWorkspace(false)];
