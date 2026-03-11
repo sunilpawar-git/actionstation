@@ -33,9 +33,13 @@ vi.mock('../nodes/NodeHeading', async () => {
     const React = await import('react');
     return {
         NodeHeading: React.forwardRef(
-            ({ heading, onDoubleClick }: { heading: string; onDoubleClick?: () => void }, _ref: unknown) => (
-                React.createElement('div', { 'data-testid': 'focus-heading', onDoubleClick }, heading)
-            ),
+            (
+                { heading, onDoubleClick }: { heading: string; onDoubleClick?: () => void },
+                ref: React.ForwardedRef<{ focus: () => void; getHeading: () => string }>,
+            ) => {
+                React.useImperativeHandle(ref, () => ({ focus: () => {}, getHeading: () => 'Edited Title' }));
+                return React.createElement('div', { 'data-testid': 'focus-heading', onDoubleClick }, heading);
+            },
         ),
     };
 });
@@ -224,6 +228,22 @@ describe('FocusOverlay', () => {
             fireEvent.click(screen.getByTestId('focus-backdrop'));
             const node = useCanvasStore.getState().nodes.find(n => n.id === 'node-1');
             expect(node?.data.output).toBe('edited content');
+        });
+
+        it('saves heading to store when close button is clicked', () => {
+            useFocusStore.setState({ focusedNodeId: 'node-1' });
+            render(<FocusOverlay />);
+            fireEvent.click(screen.getByTestId('focus-close-button'));
+            const node = useCanvasStore.getState().nodes.find(n => n.id === 'node-1');
+            expect(node?.data.heading).toBe('Edited Title');
+        });
+
+        it('saves heading to store when backdrop is clicked', () => {
+            useFocusStore.setState({ focusedNodeId: 'node-1' });
+            render(<FocusOverlay />);
+            fireEvent.click(screen.getByTestId('focus-backdrop'));
+            const node = useCanvasStore.getState().nodes.find(n => n.id === 'node-1');
+            expect(node?.data.heading).toBe('Edited Title');
         });
     });
 

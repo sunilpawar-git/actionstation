@@ -16,6 +16,7 @@ export interface UseHeadingEditorOptions {
 
 export function useHeadingEditor(opts: UseHeadingEditorOptions): {
     editor: ReturnType<typeof useEditor>; suggestionActiveRef: React.RefObject<boolean>;
+    getHeading: () => string;
 } {
     const { heading, placeholder, isEditing, onHeadingChange, onBlur, onEnterKey, onSlashCommand, onSubmitAI } = opts;
     const suggestionActiveRef = useRef(false);
@@ -105,5 +106,5 @@ export function useHeadingEditor(opts: UseHeadingEditorOptions): {
         editor.view.dispatch(editor.state.tr.setMeta('placeholderUpdate', true));
     }, [editor, placeholder]);
 
-    return { editor, suggestionActiveRef };
+    return { editor, suggestionActiveRef, getHeading: getMarkdown };
 }

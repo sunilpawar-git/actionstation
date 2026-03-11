@@ -11,7 +11,7 @@ import { useHeadingEditor } from '../../hooks/useHeadingEditor';
 import { TipTapEditor } from './TipTapEditor';
 import styles from './NodeHeading.module.css';
 
-export interface NodeHeadingHandle { focus: () => void }
+export interface NodeHeadingHandle { focus: () => void; getHeading: () => string }
 
 interface NodeHeadingProps {
     heading: string;
@@ -31,14 +31,15 @@ export const NodeHeading = React.memo(React.forwardRef<NodeHeadingHandle, NodeHe
         const placeholder = inputMode === 'ai'
             ? strings.ideaCard.headingAiPlaceholder : strings.ideaCard.headingPlaceholder;
 
-        const { editor, suggestionActiveRef } = useHeadingEditor({
+        const { editor, suggestionActiveRef, getHeading } = useHeadingEditor({
             heading, placeholder, isEditing, onHeadingChange,
             onBlur, onEnterKey, onSlashCommand, onSubmitAI,
         });
 
         useImperativeHandle(ref, () => ({
             focus: () => { editor?.commands.focus(); },
-        }), [editor]);
+            getHeading,
+        }), [editor, getHeading]);
 
         const handleTabKey = useCallback((e: React.KeyboardEvent) => {
             if (e.key === 'Tab' && !e.shiftKey && !suggestionActiveRef.current) {

@@ -170,6 +170,21 @@ describe('useFocusOverlayActions — editing lifecycle', () => {
         expect(onExit).toHaveBeenCalledOnce();
     });
 
+    it('saveBeforeExit flushes pending heading change via getHeading callback', async () => {
+        const { useFocusOverlayActions } = await import('../useFocusOverlayActions');
+        const getHeading = vi.fn(() => 'Updated Heading');
+
+        const { result } = renderHook(() =>
+            useFocusOverlayActions({ nodeId: NODE_ID, output: INITIAL_OUTPUT, isEditing: true, onExit: vi.fn(), getHeading }),
+        );
+
+        act(() => { result.current.saveBeforeExit(); });
+
+        const node = useCanvasStore.getState().nodes.find(n => n.id === NODE_ID);
+        expect(node?.data.heading).toBe('Updated Heading');
+        expect(getHeading).toHaveBeenCalledOnce();
+    });
+
     it('handleDoubleClick calls startEditing to re-enter editing after a blur', async () => {
         const { useFocusOverlayActions } = await import('../useFocusOverlayActions');
 
@@ -211,6 +226,13 @@ describe('useFocusOverlayActions — structural contract', () => {
         expect(SRC).toContain('stopEditing');
         // And saveBeforeExit itself is defined
         expect(SRC).toContain('saveBeforeExit');
+    });
+
+    it('saveBeforeExit must flush heading via getHeading callback', () => {
+        // saveBeforeExit must call handleHeadingChange(getHeading()) to persist
+        // heading edits that have NOT yet been committed via blur in the heading editor.
+        expect(SRC).toContain('getHeading');
+        expect(SRC).toMatch(/handleHeadingChange\(getHeading\(\)/);
     });
 
     it('useIdeaCard onExitEditing must guard against stopEditing while focused', () => {

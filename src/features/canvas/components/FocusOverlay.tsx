@@ -4,14 +4,14 @@
  * Reuses NodeHeading and TagInput for consistent editing UX.
  * ViewModel logic extracted to useFocusOverlayActions.
  */
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { strings } from '@/shared/localization/strings';
 import { useFocusMode } from '../hooks/useFocusMode';
 import { useCanvasStore } from '../stores/canvasStore';
 import { useFocusOverlayActions } from '../hooks/useFocusOverlayActions';
 import { normalizeNodeColorKey } from '../types/node';
-import { NodeHeading } from './nodes/NodeHeading';
+import { NodeHeading, type NodeHeadingHandle } from './nodes/NodeHeading';
 import { TagInput } from '@/features/tags';
 import { TipTapEditor } from './nodes/TipTapEditor';
 import { LinkPreviewList } from './nodes/LinkPreviewCard';
@@ -33,8 +33,16 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
         [editingNodeId, nodeId],
     );
 
+    const headingRef = useRef<NodeHeadingHandle>(null);
+    const getHeading = useCallback(
+        () => headingRef.current?.getHeading() ?? heading,
+        // heading is the fallback when the ref isn't populated yet
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [],
+    );
+
     const { editor, handleDoubleClick, handleHeadingChange, handleTagsChange, saveBeforeExit } =
-        useFocusOverlayActions({ nodeId, output, isEditing, onExit: exitFocus });
+        useFocusOverlayActions({ nodeId, output, isEditing, onExit: exitFocus, getHeading });
 
     const handleExit = useCallback(() => {
         saveBeforeExit();
@@ -66,6 +74,7 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
                 </button>
                 <div className={styles.headingSection}>
                     <NodeHeading
+                        ref={headingRef}
                         heading={heading}
                         isEditing={isEditing}
                         onHeadingChange={handleHeadingChange}

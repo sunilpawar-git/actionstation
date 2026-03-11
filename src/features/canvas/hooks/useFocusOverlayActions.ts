@@ -16,9 +16,11 @@ interface UseFocusOverlayActionsOptions {
     output: string | undefined;
     isEditing: boolean;
     onExit: () => void;
+    /** Returns the current (possibly uncommitted) heading text from the heading editor. */
+    getHeading?: () => string;
 }
 
-export function useFocusOverlayActions({ nodeId, output, isEditing, onExit }: UseFocusOverlayActionsOptions) {
+export function useFocusOverlayActions({ nodeId, output, isEditing, onExit, getHeading }: UseFocusOverlayActionsOptions) {
     const handleDoubleClick = useCallback(() => {
         if (!nodeId) return;
         useCanvasStore.getState().startEditing(nodeId);
@@ -54,9 +56,10 @@ export function useFocusOverlayActions({ nodeId, output, isEditing, onExit }: Us
 
     const saveBeforeExit = useCallback(() => {
         if (!nodeId) return;
+        if (getHeading) handleHeadingChange(getHeading());
         saveContent(getMarkdown());
         useCanvasStore.getState().stopEditing();
-    }, [nodeId, getMarkdown, saveContent]);
+    }, [nodeId, getHeading, handleHeadingChange, getMarkdown, saveContent]);
 
     useEffect(() => {
         submitHandlerRef.current = {
