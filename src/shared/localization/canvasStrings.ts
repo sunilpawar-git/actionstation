@@ -27,6 +27,9 @@ export const canvasStrings = {
     docFormatNotSupported: 'This format is not yet supported. Use PDF, TXT, or CSV.',
     docAuthUnavailable: 'Authentication or workspace context unavailable.',
     docReadHeaderFailed: 'Failed to read file header.',
+    doubleClickToCreate: {
+        tooltip: 'Double-click to add a note',
+    },
     zoomControls: {
         zoomIn: 'Zoom In',
         zoomOut: 'Zoom Out',

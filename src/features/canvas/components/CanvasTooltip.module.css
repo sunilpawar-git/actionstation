@@ -1,0 +1,33 @@
+/**
+ * CanvasTooltip — Styles for the discoverability tooltip.
+ * Bottom-center positioning, subtle appearance, fade-in animation.
+ * Uses design tokens from variables.css — no hardcoded values.
+ */
+
+.tooltip {
+    position: absolute;
+    bottom: var(--space-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    pointer-events: none;
+    z-index: var(--z-tooltip);
+    animation: tooltipFadeIn 0.3s ease-out;
+    white-space: nowrap;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(var(--space-sm));
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}

@@ -7,10 +7,9 @@ import { DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT, isNodePinned } from '../types/
 import type { ColumnStack, NodePlacement } from '../types/masonryLayout';
 import { checkVerticalOverlap, getDefaultColumnX } from '../types/masonryLayout';
 
-// Constants (matches canvasStoreHelpers.ts)
-export const GRID_COLUMNS = 4;
-export const GRID_GAP = 40;
-export const GRID_PADDING = 32;
+// Re-export from SSOT so existing importers keep working
+export { GRID_COLUMNS, GRID_GAP, GRID_PADDING } from './gridConstants';
+import { GRID_COLUMNS, GRID_GAP, GRID_PADDING } from './gridConstants';
 
 /**
  * Finds the index of the shortest column.

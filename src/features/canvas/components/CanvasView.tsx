@@ -26,6 +26,8 @@ import { useSemanticZoom } from '../hooks/useSemanticZoom';
 import '@/styles/semanticZoom.css';
 import { dragPositionReducer, INITIAL_DRAG_STATE } from '../hooks/dragPositionReducer';
 import { usePanToNode } from '../hooks/usePanToNode';
+import { useDoubleClickToCreate } from '../hooks/useDoubleClickToCreate';
+import { CanvasTooltip } from './CanvasTooltip';
 import { PanToNodeContext } from '../contexts/PanToNodeContext';
 import styles from './CanvasView.module.css';
 
@@ -75,6 +77,7 @@ function CanvasViewInner() {
     const [dragState, dragDispatch] = useReducer(dragPositionReducer, INITIAL_DRAG_STATE);
     const handlers = useCanvasHandlers(currentWorkspaceId, isCanvasLocked, dragDispatch);
     useSemanticZoom();
+    const paneHandlers = useDoubleClickToCreate();
     const overridesRef = useRef(dragState.overrides);
     overridesRef.current = dragState.overrides;
     const commitDragOverrides = useCallback(() => commitOverridesToStore(overridesRef.current, dragDispatch), []);
@@ -91,7 +94,7 @@ function CanvasViewInner() {
 
     return (
         <PanToNodeContext.Provider value={panCtx}>
-        <div className={getContainerClassName(isSwitching)} data-canvas-container>
+        <div className={getContainerClassName(isSwitching)} data-canvas-container onDoubleClick={paneHandlers.onDoubleClick} onTouchEnd={paneHandlers.onTouchEnd}>
             <ReactFlow
                 nodes={rfNodes}
                 edges={rfEdges}
@@ -112,6 +115,9 @@ function CanvasViewInner() {
                 snapGrid={SNAP_GRID}
                 minZoom={0.1}
                 maxZoom={2}
+                /* Double-click creates a new node — disable ReactFlow's default zoom.
+                   Users zoom via pinch, scroll-wheel, or ZoomControls toolbar. */
+                zoomOnDoubleClick={false}
                 zoomOnScroll={!isInteractionDisabled && !isNavigateMode}
                 panOnScroll={!isInteractionDisabled && isNavigateMode}
                 panOnDrag={isInteractionDisabled ? false : [1, 2]}
@@ -133,6 +139,7 @@ function CanvasViewInner() {
             <ClusterOverlay />
             <SelectionToolbar />
             <FocusOverlay />
+            <CanvasTooltip />
         </div>
         </PanToNodeContext.Provider>
     );
