@@ -11,8 +11,9 @@ import type { ContentMode } from '@/features/canvas/types/contentMode';
 import {
     SYSTEM_PROMPTS, TRANSFORMATION_PROMPTS, TEXT_TO_MINDMAP_PROMPT, MINDMAP_TRANSFORM_SUFFIX,
 } from './geminiPrompts';
-export type { TransformationType } from '../types/transformation';
 import type { TransformationType } from '../types/transformation';
+
+export type { TransformationType } from '../types/transformation';
 
 // ── Generation Config Constants ──────────────────────────
 

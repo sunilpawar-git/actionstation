@@ -35,6 +35,7 @@ vi.mock('../components/nodes/LinkPreviewCard', () => ({
     LinkPreviewList: () => <div data-testid="link-preview-list" />,
 }));
 
+// eslint-disable-next-line import-x/first
 import { IdeaCardContentSection, type IdeaCardContentSectionProps } from '../components/nodes/IdeaCardContentSection';
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -252,7 +253,7 @@ describe('Mindmap edge cases', () => {
     it('node without contentMode field defaults correctly after store action', () => {
         // Simulate legacy node without contentMode
         const legacyNode = createNode('legacy-1');
-        delete (legacyNode.data as Record<string, unknown>)['contentMode'];
+        delete (legacyNode.data as Record<string, unknown>).contentMode;
         useCanvasStore.getState().addNode(legacyNode);
 
         const node = useCanvasStore.getState().nodes.find(n => n.id === 'legacy-1');

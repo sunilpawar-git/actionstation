@@ -64,7 +64,6 @@ export function useHeadingEditor(opts: UseHeadingEditorOptions): {
             }));
         }
         return base;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasSlashHandler]);
 
     const { editor, getMarkdown, setContent } = useTipTapEditor({

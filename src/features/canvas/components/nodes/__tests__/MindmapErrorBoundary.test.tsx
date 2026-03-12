@@ -4,6 +4,7 @@
  * Validates that a rendering crash inside MindmapRenderer shows
  * a graceful error fallback instead of crashing the parent node.
  */
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { strings } from '@/shared/localization/strings';
@@ -13,7 +14,7 @@ vi.mock('@/shared/services/sentryService', () => ({
     captureError: vi.fn(),
 }));
 
-function ThrowOnRender(): JSX.Element {
+function ThrowOnRender(): React.JSX.Element {
     throw new Error('markmap boom');
 }
 

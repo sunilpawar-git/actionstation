@@ -19,6 +19,7 @@ vi.mock('@/features/workspace/stores/workspaceStore', () => ({
     }),
 }));
 
+// eslint-disable-next-line import-x/first
 import { NodeContextMenu } from '../components/nodes/NodeContextMenu';
 
 function makeMenuProps(overrides: Record<string, unknown> = {}) {
@@ -79,6 +80,7 @@ describe('NodeContextMenu — mindmap toggle', () => {
 
 // ── 2. Slash command registry ─────────────────────────────────────────
 
+// eslint-disable-next-line import-x/first
 import { slashCommands, filterCommands, getCommandById } from '../services/slashCommands';
 
 describe('Slash commands — toggle-mindmap', () => {

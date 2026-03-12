@@ -32,6 +32,7 @@ vi.mock('../LinkPreviewCard', () => ({
     LinkPreviewList: () => <div data-testid="link-preview-list" />,
 }));
 
+// eslint-disable-next-line import-x/first
 import { IdeaCardContentSection, type IdeaCardContentSectionProps } from '../IdeaCardContentSection';
 
 // ── Helpers ───────────────────────────────────────────────────────────

@@ -21,6 +21,7 @@ export function toggleContentModeWithUndo(nodeId: string): ContentMode | null {
         return null;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const prevMode = node.data?.contentMode;
     const prevWidth = node.width;
     const prevHeight = node.height;
@@ -66,12 +67,14 @@ export async function convertToMindmapWithAI(nodeId: string): Promise<void> {
         return;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const originalOutput = node.data?.output;
     if (!originalOutput?.trim()) {
         toast.warning(strings.canvas.mindmap.convertEmpty);
         return;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const prevMode = node.data?.contentMode;
     const prevWidth = node.width;
     const prevHeight = node.height;
