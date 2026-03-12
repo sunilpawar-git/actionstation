@@ -89,9 +89,14 @@
     margin: var(--space-md) auto;
 }
 
-/* When showing mindmap, turn contentArea into a flex column so the
-   wrapper can fill all available height.  Disable scroll — the
-   mindmap SVG has its own pan / zoom. */
+/* Mindmap needs the panel to stretch to full allowed height so the
+   SVG has space.  Text mode keeps shrink-to-content behaviour. */
+.panelMindmap {
+    height: min(80vh, calc(100vh - var(--focus-panel-inset) * 2));
+}
+
+/* Turn contentArea into a flex column so mindmapWrapper fills all
+   remaining height.  Disable scroll — mindmap has its own pan/zoom. */
 .contentAreaMindmap {
     display: flex;
     flex-direction: column;

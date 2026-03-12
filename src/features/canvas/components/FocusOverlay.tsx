@@ -71,7 +71,7 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
             onClick={handleExit}
         >
             <div data-testid="focus-panel" data-color={colorKey}
-                className={`${styles.panel} ${colorStyles.colorContainer}`} onClick={handlePanelClick}>
+                className={`${styles.panel} ${colorStyles.colorContainer} ${showMindmap ? styles.panelMindmap : ''}`} onClick={handlePanelClick}>
                 <button
                     data-testid="focus-close-button"
                     className={styles.closeButton}
