@@ -90,9 +90,12 @@
 }
 
 /* Mindmap needs the panel to stretch to full allowed height so the
-   SVG has space.  Text mode keeps shrink-to-content behaviour. */
+   SVG has space.  Text mode keeps shrink-to-content behaviour.
+   ~90% width × 92vh gives ~25-30 % more area for an immersive view. */
 .panelMindmap {
-    height: min(80vh, calc(100vh - var(--focus-panel-inset) * 2));
+    width: min(90%, var(--focus-panel-max-width, 1200px));
+    max-height: none;
+    height: min(92vh, calc(100vh - var(--space-lg) * 2));
 }
 
 /* Turn contentArea into a flex column so mindmapWrapper fills all
