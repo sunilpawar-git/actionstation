@@ -3,6 +3,7 @@ import { render, screen, act, waitFor, fireEvent } from '@testing-library/react'
 import { OnboardingWalkthrough } from '../OnboardingWalkthrough';
 import { WELCOME_STORAGE_KEY, STORAGE_KEY } from '../../types/onboarding';
 import { seedDemoNodes } from '../../utils/seedDemoNodes';
+import { useOnboardingSignalStore } from '../../stores/onboardingSignalStore';
 import {
     trackOnboardingWelcomeShown,
     trackOnboardingWelcomeDismissed,
@@ -60,6 +61,7 @@ describe('OnboardingWalkthrough', () => {
     beforeEach(() => {
         localStorage.clear();
         vi.clearAllMocks();
+        useOnboardingSignalStore.setState({ replayRequestCount: 0 });
     });
 
     it('renders WelcomeScreen on first visit (welcome_shown absent)', async () => {
@@ -120,12 +122,12 @@ describe('OnboardingWalkthrough', () => {
         });
     });
 
-    it('dispatching onboarding:replay event triggers replay (no welcome, step 1)', async () => {
+    it('onboarding signal store requestReplay triggers replay (no welcome, step 1)', async () => {
         localStorage.setItem(WELCOME_STORAGE_KEY, 'true');
         localStorage.setItem(STORAGE_KEY, 'true');
         render(<OnboardingWalkthrough />);
         // Initially shows nothing (completed). Replay should start step 1.
-        act(() => { window.dispatchEvent(new CustomEvent('onboarding:replay')); });
+        act(() => { useOnboardingSignalStore.getState().requestReplay(); });
         await waitFor(() => {
             expect(trackOnboardingStepViewed).toHaveBeenCalledWith('createNode', 0);
         });

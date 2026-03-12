@@ -39,7 +39,9 @@ function pushCommand(state: HistoryState, command: CanvasCommand): HistoryState 
 
 function undoCommand(state: HistoryState): HistoryState {
     if (state.undoStack.length === 0) return state;
-    const cmd = state.undoStack[state.undoStack.length - 1]!;
+    const lastIdx = state.undoStack.length - 1;
+    const cmd: CanvasCommand | undefined = state.undoStack[lastIdx];
+    if (!cmd) return state;
     return {
         undoStack: state.undoStack.slice(0, -1),
         redoStack: [...state.redoStack, cmd],
@@ -48,7 +50,9 @@ function undoCommand(state: HistoryState): HistoryState {
 
 function redoCommand(state: HistoryState): HistoryState {
     if (state.redoStack.length === 0) return state;
-    const cmd = state.redoStack[state.redoStack.length - 1]!;
+    const lastIdx = state.redoStack.length - 1;
+    const cmd: CanvasCommand | undefined = state.redoStack[lastIdx];
+    if (!cmd) return state;
     return {
         undoStack: [...state.undoStack, cmd],
         redoStack: state.redoStack.slice(0, -1),

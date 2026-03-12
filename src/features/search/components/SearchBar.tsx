@@ -47,10 +47,55 @@ function matchTypeLabel(matchType: SearchResult['matchType']): string {
     }
 }
 
-export const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(function SearchBar(
-    { onResultClick },
-    ref,
-) {
+/** Hook: close dropdown when clicking outside container */
+function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () => void): void {
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (!(e.target instanceof Node)) return;
+            if (ref.current && !ref.current.contains(e.target)) onClose();
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [ref, onClose]);
+}
+
+interface SearchResultsListProps {
+    readonly results: SearchResult[];
+    readonly activeIndex: number;
+    readonly listboxId: string;
+    readonly onSelect: (result: SearchResult) => void;
+    readonly onHover: (index: number) => void;
+}
+
+function SearchResultsList({ results, activeIndex, listboxId, onSelect, onHover }: SearchResultsListProps) {
+    return (
+        <ul className={styles.resultsDropdown} role="listbox" id={listboxId} aria-label={searchStrings.resultsCount}>
+            {results.map((result, index) => (
+                <li
+                    key={`${result.nodeId}-${result.matchType}-${index}`}
+                    id={`search-result-${index}`}
+                    role="option"
+                    aria-selected={index === activeIndex}
+                    className={`${styles.resultItem} ${index === activeIndex ? styles.resultItemActive : ''}`}
+                    onClick={() => onSelect(result)}
+                    onMouseEnter={() => onHover(index)}
+                >
+                    <span className={styles.resultContent}>
+                        <HighlightedText text={result.matchedContent} ranges={result.highlightRanges} />
+                    </span>
+                    <span className={styles.resultMeta}>
+                        {matchTypeLabel(result.matchType)}
+                        {' \u00B7 '}
+                        {result.workspaceName}
+                    </span>
+                </li>
+            ))}
+            <li className={styles.keyboardHint}>{searchStrings.keyboardHint}</li>
+        </ul>
+    );
+}
+
+function useSearchBarState(onResultClick?: (nodeId: string, workspaceId: string) => void) {
     const [inputValue, setInputValue] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -59,12 +104,6 @@ export const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(function Se
         results, search, clear, activeIndex, setActiveIndex,
         filters, setFilters, clearFilters, isFilterBarOpen, toggleFilterBar,
     } = useSearch();
-
-    // Expose focus/select to parent via useImperativeHandle (⌘+K hotkey)
-    useImperativeHandle(ref, () => ({
-        focus: () => { inputRef.current?.focus(); },
-        select: () => { inputRef.current?.select(); },
-    }), []);
 
     const handleInputChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,22 +148,36 @@ export const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(function Se
         [activeIndex, results, setActiveIndex, handleResultSelect, clear],
     );
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    const closeDropdown = useCallback(() => setIsOpen(false), []);
+    useClickOutside(containerRef, closeDropdown);
 
     const hasResults = results.length > 0;
     const showDropdown = isOpen && (hasResults || inputValue.length > 0);
     const activeDescendant = activeIndex >= 0 ? `search-result-${activeIndex}` : undefined;
     const uniqueId = useId();
     const listboxId = `search-results-listbox-${uniqueId}`;
+
+    return {
+        inputValue, inputRef, containerRef, handleInputChange, handleKeyDown, handleResultSelect,
+        results, filters, setFilters, clearFilters, isFilterBarOpen, toggleFilterBar,
+        hasResults, showDropdown, activeDescendant, listboxId, activeIndex, setActiveIndex, setIsOpen,
+    };
+}
+
+export const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(function SearchBar(
+    { onResultClick },
+    ref,
+) {
+    const {
+        inputValue, inputRef, containerRef, handleInputChange, handleKeyDown, handleResultSelect,
+        results, filters, setFilters, clearFilters, isFilterBarOpen, toggleFilterBar,
+        hasResults, showDropdown, activeDescendant, listboxId, activeIndex, setActiveIndex, setIsOpen,
+    } = useSearchBarState(onResultClick);
+
+    useImperativeHandle(ref, () => ({
+        focus: () => { inputRef.current?.focus(); },
+        select: () => { inputRef.current?.select(); },
+    }), [inputRef]);
 
     return (
         <div className={styles.searchContainer} ref={containerRef}>
@@ -165,29 +218,8 @@ export const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(function Se
             />
 
             {showDropdown && hasResults && (
-                <ul className={styles.resultsDropdown} role="listbox" id={listboxId} aria-label={searchStrings.resultsCount}>
-                    {results.map((result, index) => (
-                        <li
-                            key={`${result.nodeId}-${result.matchType}-${index}`}
-                            id={`search-result-${index}`}
-                            role="option"
-                            aria-selected={index === activeIndex}
-                            className={`${styles.resultItem} ${index === activeIndex ? styles.resultItemActive : ''}`}
-                            onClick={() => handleResultSelect(result)}
-                            onMouseEnter={() => setActiveIndex(index)}
-                        >
-                            <span className={styles.resultContent}>
-                                <HighlightedText text={result.matchedContent} ranges={result.highlightRanges} />
-                            </span>
-                            <span className={styles.resultMeta}>
-                                {matchTypeLabel(result.matchType)}
-                                {' · '}
-                                {result.workspaceName}
-                            </span>
-                        </li>
-                    ))}
-                    <li className={styles.keyboardHint}>{searchStrings.keyboardHint}</li>
-                </ul>
+                <SearchResultsList results={results} activeIndex={activeIndex}
+                    listboxId={listboxId} onSelect={handleResultSelect} onHover={setActiveIndex} />
             )}
 
             {showDropdown && inputValue.length > 0 && !hasResults && (

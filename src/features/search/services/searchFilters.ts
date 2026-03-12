@@ -5,6 +5,7 @@
 import type { CanvasNode } from '@/features/canvas/types/node';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
 import type { SearchFilters, ContentTypeFilter } from '../types/search';
+import { toEpochMs } from '@/shared/utils/dateUtils';
 
 export function matchesTags(node: CanvasNode, tags: string[]): boolean {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defense-in-depth: node.data may be undefined in Firestore
@@ -16,8 +17,8 @@ export function matchesDateRange(node: CanvasNode, from: Date | null, to: Date |
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defense-in-depth: Firestore may omit updatedAt/createdAt despite the type saying otherwise
     const updated = node.updatedAt ?? node.createdAt;
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defense-in-depth: runtime guard for Firestore documents missing this field
-    if (!updated) return true; // Missing timestamp: include the node (safe default)
-    const time = updated instanceof Date ? updated.getTime() : new Date(updated as string | number).getTime();
+    if (updated == null) return true; // Missing timestamp: include the node (safe default)
+    const time = toEpochMs(updated);
     if (isNaN(time)) return true; // Security: invalid dates don't crash
     if (from && !isNaN(from.getTime()) && time < from.getTime()) return false;
     if (to && !isNaN(to.getTime()) && time > to.getTime()) return false;
@@ -30,7 +31,6 @@ export function matchesContentType(
     edges: CanvasEdge[],
 ): boolean {
     switch (filter) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defense-in-depth
         case 'all': return true;
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defense-in-depth
         case 'hasOutput': return Boolean(node.data?.output?.trim());

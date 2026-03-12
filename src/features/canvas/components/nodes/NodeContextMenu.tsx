@@ -5,6 +5,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { strings } from '@/shared/localization/strings';
+import { getPortalRoot } from '@/shared/utils/portalRoot';
 import { useEscapeLayer } from '@/shared/hooks/useEscapeLayer';
 import { ESCAPE_PRIORITY } from '@/shared/hooks/escapePriorities';
 import { MenuItem, ExpandToggle, MenuSeparator, GroupLabel } from './ContextMenuItems';
@@ -40,6 +41,29 @@ export interface NodeContextMenuProps {
     readonly hasContent?: boolean;
 }
 
+interface OrganizeItemsProps {
+    readonly isPinned: boolean;
+    readonly isCollapsed: boolean;
+    readonly onPin?: () => void;
+    readonly onDuplicate?: () => void;
+    readonly onCollapse?: () => void;
+    readonly onFocus?: () => void;
+    readonly action: (fn?: () => void) => () => void;
+}
+
+function OrganizeMenuItems({ isPinned, isCollapsed, onPin, onDuplicate, onCollapse, onFocus, action }: OrganizeItemsProps) {
+    const pinLabel = isPinned ? strings.nodeUtils.unpin : strings.nodeUtils.pin;
+    const collapseLabel = isCollapsed ? strings.nodeUtils.expand : strings.nodeUtils.collapse;
+    return (
+        <>
+            {onPin && <MenuItem icon="📌" label={pinLabel} onClick={action(onPin)} />}
+            {onDuplicate && <MenuItem icon="📑" label={strings.nodeUtils.duplicate} onClick={action(onDuplicate)} />}
+            {onCollapse && <MenuItem icon={isCollapsed ? '🔽' : '🔼'} label={collapseLabel} onClick={action(onCollapse)} />}
+            {onFocus && <MenuItem icon="🔍" label={strings.nodeUtils.focus} onClick={action(onFocus)} />}
+        </>
+    );
+}
+
 export const NodeContextMenu = React.memo(function NodeContextMenu(props: NodeContextMenuProps) {
     const { position, onClose } = props;
     const menuRef = useRef<HTMLDivElement>(null);
@@ -55,17 +79,13 @@ export const NodeContextMenu = React.memo(function NodeContextMenu(props: NodeCo
         setExpandedPanel((prev) => (prev === panel ? null : panel));
     }, []);
 
-    const pinLabel = props.isPinned ? strings.nodeUtils.unpin : strings.nodeUtils.pin;
-    const collapseLabel = props.isCollapsed ? strings.nodeUtils.expand : strings.nodeUtils.collapse;
-
     return createPortal(
         <div className={styles.menu} ref={menuRef} role="menu"
             style={{ top: clampedPos.y, left: clampedPos.x }}>
             <GroupLabel>{strings.contextMenu.organize}</GroupLabel>
-            {props.onPinToggle && <MenuItem icon="📌" label={pinLabel} onClick={action(props.onPinToggle)} />}
-            {props.onDuplicateClick && <MenuItem icon="📑" label={strings.nodeUtils.duplicate} onClick={action(props.onDuplicateClick)} />}
-            {props.onCollapseToggle && <MenuItem icon={props.isCollapsed ? '🔽' : '🔼'} label={collapseLabel} onClick={action(props.onCollapseToggle)} />}
-            {props.onFocusClick && <MenuItem icon="🔍" label={strings.nodeUtils.focus} onClick={action(props.onFocusClick)} />}
+            <OrganizeMenuItems isPinned={props.isPinned} isCollapsed={props.isCollapsed}
+                onPin={props.onPinToggle} onDuplicate={props.onDuplicateClick}
+                onCollapse={props.onCollapseToggle} onFocus={props.onFocusClick} action={action} />
             <MenuSeparator />
             <GroupLabel>{strings.contextMenu.appearance}</GroupLabel>
             <MenuItem icon="🏷️" label={strings.nodeUtils.tags} onClick={action(props.onTagClick)} />
@@ -114,7 +134,7 @@ export const NodeContextMenu = React.memo(function NodeContextMenu(props: NodeCo
                     onClick={action(props.onPoolToggle)} />
             )}
         </div>,
-        document.body,
+        getPortalRoot(),
     );
 });
 
@@ -152,7 +172,8 @@ function useContextMenuOutsideClick(
 ) {
     useEffect(() => {
         const handler = (e: PointerEvent) => {
-            if (menuRef.current?.contains(e.target as Node)) return;
+            if (!(e.target instanceof Node)) return;
+            if (menuRef.current?.contains(e.target)) return;
             onClose();
         };
         document.addEventListener('pointerdown', handler, true);

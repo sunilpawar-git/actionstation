@@ -103,9 +103,9 @@ describe('Phase 3: Node simplification structural tests', () => {
             expect(content).toContain('createPortal');
         });
 
-        it('NodeContextMenu renders to document.body', () => {
+        it('NodeContextMenu renders to portal-root', () => {
             const content = readSrc('features/canvas/components/nodes/NodeContextMenu.tsx');
-            expect(content).toContain('document.body');
+            expect(content).toContain('getPortalRoot()');
         });
     });
 

@@ -9,11 +9,31 @@ import type { SearchFilters, ContentTypeFilter } from '../types/search';
 import { TagFilterChips } from './TagFilterChips';
 import styles from './SearchFilterBar.module.css';
 
+const VALID_CONTENT_TYPES = new Set<ContentTypeFilter>(['all', 'hasOutput', 'hasAttachments', 'hasConnections', 'noOutput']);
+
 interface SearchFilterBarProps {
     readonly filters: SearchFilters;
     readonly isOpen: boolean;
     readonly onSetFilter: (f: Partial<SearchFilters>) => void;
     readonly onClearFilters: () => void;
+}
+
+function parseDateInput(value: string): Date | null {
+    if (!value) return null;
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? null : date;
+}
+
+function formatDateForInput(date: Date | null | undefined): string {
+    return date && !isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : '';
+}
+
+function countActiveFilters(filters: SearchFilters): number {
+    return [
+        (filters.tags?.length ?? 0) > 0,
+        filters.dateRange?.from != null || filters.dateRange?.to != null,
+        filters.contentType != null && filters.contentType !== 'all',
+    ].filter(Boolean).length;
 }
 
 export function SearchFilterBar({ filters, isOpen, onSetFilter, onClearFilters }: SearchFilterBarProps) {
@@ -39,34 +59,29 @@ export function SearchFilterBar({ filters, isOpen, onSetFilter, onClearFilters }
 
     const handleContentType = useCallback(
         (e: React.ChangeEvent<HTMLSelectElement>) => {
-            onSetFilter({ contentType: e.target.value as ContentTypeFilter });
+            const value = e.target.value;
+            if (VALID_CONTENT_TYPES.has(value as ContentTypeFilter)) {
+                onSetFilter({ contentType: value as ContentTypeFilter });
+            }
         },
         [onSetFilter],
     );
 
     const handleDateFrom = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
-            const val = e.target.value ? new Date(e.target.value) : null;
-            if (val && isNaN(val.getTime())) return; // NaN guard
-            onSetFilter({ dateRange: { from: val, to: filters.dateRange?.to ?? null } });
+            onSetFilter({ dateRange: { from: parseDateInput(e.target.value), to: filters.dateRange?.to ?? null } });
         },
         [filters.dateRange, onSetFilter],
     );
 
     const handleDateTo = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
-            const val = e.target.value ? new Date(e.target.value) : null;
-            if (val && isNaN(val.getTime())) return; // NaN guard
-            onSetFilter({ dateRange: { from: filters.dateRange?.from ?? null, to: val } });
+            onSetFilter({ dateRange: { from: filters.dateRange?.from ?? null, to: parseDateInput(e.target.value) } });
         },
         [filters.dateRange, onSetFilter],
     );
 
-    const activeCount = [
-        (filters.tags?.length ?? 0) > 0,
-        filters.dateRange?.from != null || filters.dateRange?.to != null,
-        filters.contentType != null && filters.contentType !== 'all',
-    ].filter(Boolean).length;
+    const activeCount = countActiveFilters(filters);
 
     if (!isOpen) return null;
 
@@ -81,14 +96,10 @@ export function SearchFilterBar({ filters, isOpen, onSetFilter, onClearFilters }
             <div className={styles.filterGroup}>
                 <label className={styles.filterLabel}>{searchStrings.filterDateFrom}</label>
                 <input type="date" className={styles.dateInput} onChange={handleDateFrom}
-                    value={filters.dateRange?.from && !isNaN(filters.dateRange.from.getTime())
-                        ? filters.dateRange.from.toISOString().slice(0, 10)
-                        : ''} />
+                    value={formatDateForInput(filters.dateRange?.from)} />
                 <label className={styles.filterLabel}>{searchStrings.filterDateTo}</label>
                 <input type="date" className={styles.dateInput} onChange={handleDateTo}
-                    value={filters.dateRange?.to && !isNaN(filters.dateRange.to.getTime())
-                        ? filters.dateRange.to.toISOString().slice(0, 10)
-                        : ''} />
+                    value={formatDateForInput(filters.dateRange?.to)} />
             </div>
 
             <div className={styles.filterGroup}>

@@ -59,7 +59,7 @@ function commitOverridesToStore(
     dispatch({ type: 'RESET' });
 }
 
-function CanvasViewInner() {
+function useCanvasViewState() {
     const nodes = useCanvasStore((s) => s.nodes);
     const edges = useCanvasStore((s) => s.edges);
     const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
@@ -70,8 +70,13 @@ function CanvasViewInner() {
     const isCanvasLocked = useSettingsStore((s) => s.isCanvasLocked);
     const isFocused = useFocusStore((s) => s.focusedNodeId !== null);
     const isInteractionDisabled = isCanvasLocked || isFocused;
-    const panCtx = usePanToNode();
     const isNavigateMode = canvasScrollMode === 'navigate';
+    return { nodes, edges, selectedNodeIds, viewport, currentWorkspaceId, isSwitching, canvasGrid, isCanvasLocked, isInteractionDisabled, isNavigateMode };
+}
+
+function CanvasViewInner() {
+    const { nodes, edges, selectedNodeIds, viewport, currentWorkspaceId, isSwitching, canvasGrid, isCanvasLocked, isInteractionDisabled, isNavigateMode } = useCanvasViewState();
+    const panCtx = usePanToNode();
     const prevRfNodesRef = useRef<PrevRfNodes>({ arr: [], map: new Map() });
     const prevRfEdgesRef = useRef<PrevRfEdges>({ arr: [], map: new Map() });
     const [dragState, dragDispatch] = useReducer(dragPositionReducer, INITIAL_DRAG_STATE);

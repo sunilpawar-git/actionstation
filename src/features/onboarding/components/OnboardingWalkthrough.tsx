@@ -17,6 +17,7 @@ import { CoachMark } from './CoachMark';
 import { HelpButton } from './HelpButton';
 import { seedDemoNodes } from '../utils/seedDemoNodes';
 import { DEMO_NODE_1_ID, DEMO_NODE_2_ID } from '../types/onboarding';
+import { useOnboardingSignalStore } from '../stores/onboardingSignalStore';
 import type { CoachMarkConfig } from '../types/onboarding';
 
 // Defined outside component — stable reference, strings are const
@@ -87,11 +88,12 @@ export function OnboardingWalkthrough() {
         replay();
     }, [replay]);
 
-    // Bridge window event → replay() (fired by AboutSection “Replay walkthrough”)
+    // Bridge Zustand signal → replay() (fired by AboutSection "Replay walkthrough")
+    const replayRequestCount = useOnboardingSignalStore((s) => s.replayRequestCount);
     useEffect(() => {
-        window.addEventListener('onboarding:replay', handleReplay);
-        return () => window.removeEventListener('onboarding:replay', handleReplay);
-    }, [handleReplay]);
+        if (replayRequestCount > 0) handleReplay();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- react only to counter bumps, not handleReplay identity
+    }, [replayRequestCount]);
 
     const handleNext = useCallback(() => {
         if (stepIndex === totalSteps - 1) trackOnboardingCompleted(totalSteps);
@@ -112,7 +114,8 @@ export function OnboardingWalkthrough() {
     if (activeStep == null) return helpButton;
     if (stepIndex === null) return helpButton;
 
-    const config    = COACH_MARKS.find((c) => c.step === activeStep)!;
+    const config    = COACH_MARKS.find((c) => c.step === activeStep);
+    if (!config) return helpButton;
     const stepLabel = strings.onboarding.stepLabel(stepIndex + 1, totalSteps);
     const isLast    = stepIndex === totalSteps - 1;
     const stepStrings = {

@@ -10,7 +10,7 @@ import { IdeaCardHeadingSection } from './IdeaCardHeadingSection';
 import { IdeaCardContentSection } from './IdeaCardContentSection';
 import { IdeaCardTagsSection } from './IdeaCardTagsSection';
 import { MIN_NODE_WIDTH, MAX_NODE_WIDTH, MIN_NODE_HEIGHT, MAX_NODE_HEIGHT, MINDMAP_MIN_WIDTH, MINDMAP_MIN_HEIGHT, normalizeNodeColorKey, type IdeaNodeData } from '../../types/node';
-import { isContentModeMindmap } from '../../types/contentMode';
+import { isContentModeMindmap, type ContentMode } from '../../types/contentMode';
 import { toggleContentModeWithUndo, convertToMindmapWithAI } from '../../services/contentModeToggleService';
 import { MemoryChipIcon } from '@/shared/components/icons';
 import { captureError } from '@/shared/services/sentryService';
@@ -22,6 +22,33 @@ import handleStyles from './IdeaCardHandles.module.css';
 import './NodeImage.module.css';
 
 const RF_NO_DRAG = 'nodrag';
+
+function getResizerBounds(contentMode: ContentMode | undefined): { minWidth: number; minHeight: number } {
+    return {
+        minWidth: isContentModeMindmap(contentMode) ? MINDMAP_MIN_WIDTH : MIN_NODE_WIDTH,
+        minHeight: isContentModeMindmap(contentMode) ? MINDMAP_MIN_HEIGHT : MIN_NODE_HEIGHT,
+    };
+}
+
+function useIdeaCardMenuActions(
+    id: string,
+    barContainerRef: React.RefObject<HTMLDivElement | null>,
+    openAtElement: (el: HTMLElement) => void,
+) {
+    const handleMoreClick = React.useCallback(() => {
+        if (barContainerRef.current) openAtElement(barContainerRef.current);
+    }, [barContainerRef, openAtElement]);
+
+    const handleContentModeToggle = React.useCallback(() => {
+        toggleContentModeWithUndo(id);
+    }, [id]);
+
+    const handleConvertToMindmap = React.useCallback(() => {
+        void convertToMindmapWithAI(id).catch((e: unknown) => captureError(e as Error));
+    }, [id]);
+
+    return { handleMoreClick, handleContentModeToggle, handleConvertToMindmap };
+}
 
 export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selected }: NodeProps) {
     const api = useIdeaCard({ id, rfData: rfData as unknown as IdeaNodeData, selected });
@@ -35,21 +62,9 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
         hasContent, isEditing, calendar, focusBody, registerProximityLostFn,
     } = api;
     const nodeColorKey = normalizeNodeColorKey(resolvedData.colorKey);
-    const isSynthesisNode = nodeColorKey === 'synthesis';
     const contextMenu = useNodeContextMenu();
-    const { openAtElement } = contextMenu;
-
-    const handleMoreClick = React.useCallback(() => {
-        if (barContainerRef.current) openAtElement(barContainerRef.current);
-    }, [barContainerRef, openAtElement]);
-
-    const handleContentModeToggle = React.useCallback(() => {
-        toggleContentModeWithUndo(id);
-    }, [id]);
-
-    const handleConvertToMindmap = React.useCallback(() => {
-        void convertToMindmapWithAI(id).catch((e: unknown) => captureError(e as Error));
-    }, [id]);
+    const { handleMoreClick, handleContentModeToggle, handleConvertToMindmap } = useIdeaCardMenuActions(id, barContainerRef, contextMenu.openAtElement);
+    const resizerBounds = getResizerBounds(resolvedData.contentMode);
 
     return (
         <div ref={cardWrapperRef}
@@ -58,9 +73,9 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
             onTouchStart={contextMenu.onTouchStart} onTouchMove={contextMenu.onTouchMove}
             onTouchEnd={contextMenu.onTouchEnd}>
             <NodeResizer
-                minWidth={isContentModeMindmap(resolvedData.contentMode) ? MINDMAP_MIN_WIDTH : MIN_NODE_WIDTH}
+                minWidth={resizerBounds.minWidth}
                 maxWidth={MAX_NODE_WIDTH}
-                minHeight={isContentModeMindmap(resolvedData.contentMode) ? MINDMAP_MIN_HEIGHT : MIN_NODE_HEIGHT}
+                minHeight={resizerBounds.minHeight}
                 maxHeight={MAX_NODE_HEIGHT}
                 isVisible={selected && !isCollapsed} />
             <NodeResizeButtons nodeId={id} />
@@ -91,7 +106,7 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
                 )}
                 <IdeaCardTagsSection tagIds={tagIds} onChange={onTagsChange}
                     visible={!isCollapsed && (showTagInput || tagIds.length > 0)} />
-                {isSynthesisNode && !isCollapsed && <SynthesisFooterWrapper nodeId={id} />}
+                {nodeColorKey === 'synthesis' && !isCollapsed && <SynthesisFooterWrapper nodeId={id} />}
             </div>
             <NodeUtilsBar ref={barContainerRef} registerProximityLostFn={registerProximityLostFn}
                 onConnectClick={handleConnectClick} onCopyClick={handleCopy}

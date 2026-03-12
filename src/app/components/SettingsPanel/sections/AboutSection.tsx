@@ -2,12 +2,13 @@
  * AboutSection — App version, changelog, bug report links, and walkthrough replay.
  */
 import { strings } from '@/shared/localization/strings';
+import { useOnboardingSignalStore } from '@/features/onboarding/stores/onboardingSignalStore';
 import panelStyles from '../SettingsPanel.module.css';
 import styles from './AccountSection.module.css';
 
 export function AboutSection() {
     function handleReplay() {
-        window.dispatchEvent(new CustomEvent('onboarding:replay'));
+        useOnboardingSignalStore.getState().requestReplay();
     }
 
     return (

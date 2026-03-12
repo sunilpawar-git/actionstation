@@ -7,6 +7,7 @@
 import React, { useCallback, useMemo, useRef, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { strings } from '@/shared/localization/strings';
+import { getPortalRoot } from '@/shared/utils/portalRoot';
 import { useFocusMode } from '../hooks/useFocusMode';
 import { useCanvasStore } from '../stores/canvasStore';
 import { useFocusOverlayActions } from '../hooks/useFocusOverlayActions';
@@ -25,9 +26,8 @@ const LazyMindmapRenderer = React.lazy(() =>
     import('./nodes/MindmapRenderer').then((m) => ({ default: m.MindmapRenderer })),
 );
 
-export const FocusOverlay = React.memo(function FocusOverlay() {
+function useFocusOverlayDerived() {
     const { focusedNode, isFocused, exitFocus } = useFocusMode();
-
     const nodeId = focusedNode?.id ?? '';
     const heading = focusedNode?.data.heading ?? '';
     const output = focusedNode?.data.output;
@@ -43,6 +43,11 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
     const hasMindmapContent = Boolean(output?.trim());
     const showMindmap = isContentModeMindmap(contentMode) && !isEditing && hasMindmapContent;
     const showMindmapEmpty = isContentModeMindmap(contentMode) && !isEditing && !hasMindmapContent;
+    return { focusedNode, isFocused, exitFocus, nodeId, heading, output, tagIds, linkPreviews, colorKey, contentMode, isEditing, showMindmap, showMindmapEmpty };
+}
+
+export const FocusOverlay = React.memo(function FocusOverlay() {
+    const { focusedNode, isFocused, exitFocus, nodeId, heading, output, tagIds, linkPreviews, colorKey, contentMode, isEditing, showMindmap, showMindmapEmpty } = useFocusOverlayDerived();
 
     const headingRef = useRef<NodeHeadingHandle>(null);
     const getHeading = useCallback(
@@ -56,14 +61,10 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
         useFocusOverlayActions({ nodeId, output, isEditing, onExit: exitFocus, getHeading });
 
     const handleDoubleClick = useCallback(() => {
-        if (isContentModeMindmap(contentMode)) return;
-        rawDoubleClick();
+        if (!isContentModeMindmap(contentMode)) rawDoubleClick();
     }, [contentMode, rawDoubleClick]);
 
-    const handleExit = useCallback(() => {
-        saveBeforeExit();
-        exitFocus();
-    }, [saveBeforeExit, exitFocus]);
+    const handleExit = useCallback(() => { saveBeforeExit(); exitFocus(); }, [saveBeforeExit, exitFocus]);
 
     const handlePanelClick = useCallback((e: React.MouseEvent) => { e.stopPropagation(); }, []);
     const handleSwitchToText = useCallback(() => {
@@ -131,6 +132,6 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
                 )}
             </div>
         </div>,
-        document.body,
+        getPortalRoot(),
     );
 });

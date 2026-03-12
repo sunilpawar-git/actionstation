@@ -8,6 +8,55 @@ import { useTipTapEditor } from './useTipTapEditor';
 import { SlashCommandSuggestion, createSlashSuggestionRender } from '../extensions/slashCommandSuggestion';
 import { SubmitKeymap, type SubmitKeymapHandler } from '../extensions/submitKeymap';
 
+function buildHeadingExtensions(
+    hasSlashHandler: boolean,
+    submitHandlerRef: React.MutableRefObject<SubmitKeymapHandler | null>,
+    slashCommandRef: React.MutableRefObject<((id: string) => void) | undefined>,
+    suggestionActiveRef: React.MutableRefObject<boolean>,
+    slashJustSelectedRef: React.MutableRefObject<boolean>,
+): Extension[] {
+    const base: Extension[] = [SubmitKeymap.configure({ handlerRef: submitHandlerRef })];
+    if (hasSlashHandler) {
+        base.push(SlashCommandSuggestion.configure({
+            suggestion: {
+                render: createSlashSuggestionRender({
+                    onSelect: (id) => { slashCommandRef.current?.(id); },
+                    onActiveChange: (active) => {
+                        suggestionActiveRef.current = active;
+                        if (!active) slashJustSelectedRef.current = true;
+                    },
+                })
+            }
+        }));
+    }
+    return base;
+}
+
+function createSubmitHandler(
+    suggestionActiveRef: React.RefObject<boolean>,
+    getMarkdown: () => string,
+    commitHeading: (h: string) => void,
+    onSubmitAI?: (prompt: string) => void,
+    onEnterKey?: () => void,
+): SubmitKeymapHandler {
+    return {
+        onEnter: () => {
+            if (suggestionActiveRef.current) return true;
+            const currentHeading = getMarkdown().trim();
+            commitHeading(currentHeading);
+            const mode = useCanvasStore.getState().inputMode;
+            if (mode === 'ai') onSubmitAI?.(currentHeading);
+            else onEnterKey?.();
+            return true;
+        },
+        onEscape: () => {
+            if (suggestionActiveRef.current) return true;
+            onEnterKey?.();
+            return true;
+        },
+    };
+}
+
 export interface UseHeadingEditorOptions {
     heading: string; placeholder: string; isEditing: boolean;
     onHeadingChange: (h: string) => void; onBlur?: (h: string) => void;
@@ -48,23 +97,10 @@ export function useHeadingEditor(opts: UseHeadingEditorOptions): {
     useEffect(() => { slashCommandRef.current = onSlashCommand; }, [onSlashCommand]);
 
     const hasSlashHandler = Boolean(onSlashCommand);
-    const extensions = useMemo(() => {
-        const base: Extension[] = [SubmitKeymap.configure({ handlerRef: submitHandlerRef })];
-        if (hasSlashHandler) {
-            base.push(SlashCommandSuggestion.configure({
-                suggestion: {
-                    render: createSlashSuggestionRender({
-                        onSelect: (id) => { slashCommandRef.current?.(id); },
-                        onActiveChange: (active) => {
-                            suggestionActiveRef.current = active;
-                            if (!active) slashJustSelectedRef.current = true;
-                        },
-                    })
-                }
-            }));
-        }
-        return base;
-    }, [hasSlashHandler]);
+    const extensions = useMemo(
+        () => buildHeadingExtensions(hasSlashHandler, submitHandlerRef, slashCommandRef, suggestionActiveRef, slashJustSelectedRef),
+        [hasSlashHandler],
+    );
 
     const { editor, getMarkdown, setContent } = useTipTapEditor({
         initialContent: heading, placeholder, editable: isEditing,
@@ -85,24 +121,9 @@ export function useHeadingEditor(opts: UseHeadingEditorOptions): {
     }, [heading, isEditing, setContent]);
 
     useEffect(() => {
-        submitHandlerRef.current = {
-            onEnter: () => {
-                if (suggestionActiveRef.current) return true;
-                const currentHeading = getMarkdown().trim();
-                commitHeading(currentHeading);
-                const mode = useCanvasStore.getState().inputMode;
-                if (mode === 'ai') onSubmitAI?.(currentHeading);
-                else onEnterKey?.();
-                return true;
-            },
-            onEscape: () => {
-                // When suggestion popup is open, let the Suggestion plugin
-                // handle Escape (close popup) — don't move focus to body.
-                if (suggestionActiveRef.current) return true;
-                onEnterKey?.();
-                return true;
-            },
-        };
+        submitHandlerRef.current = createSubmitHandler(
+            suggestionActiveRef, getMarkdown, commitHeading, onSubmitAI, onEnterKey,
+        );
         return () => { submitHandlerRef.current = null; };
     }, [getMarkdown, onEnterKey, onSubmitAI, commitHeading]);
 

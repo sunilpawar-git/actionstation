@@ -6,7 +6,7 @@ import { useKeyboardShortcuts } from '@/app/hooks/useKeyboardShortcuts';
 import { useAddNode } from '../hooks/useAddNode';
 import { useQuickCapture, isNodeCreationLocked } from '../hooks/useQuickCapture';
 import { useUndoableActions } from '../hooks/useUndoableActions';
-import { useSearchInputRef } from '@/features/search/context/SearchInputRefContext';
+import { useSearchInputRef } from '@/features/search/hooks/useSearchInputRef';
 
 interface KeyboardShortcutsProviderProps {
     onOpenSettings: () => void;

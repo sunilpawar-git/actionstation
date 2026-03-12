@@ -80,6 +80,32 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
     useEscapeLayer(ESCAPE_PRIORITY.CLEAR_SELECTION, escapeActive, handleClearSelection);
 }
 
+/** Undo/Redo shortcuts (z, z+shift, y). Returns true if handled. */
+function handleUndoRedoShortcuts(e: KeyboardEvent): boolean {
+    if (e.key === 'z' && !e.shiftKey) {
+        if (isEditableTarget(e)) return false;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        useHistoryStore.getState().dispatch({ type: 'UNDO' });
+        return true;
+    }
+    if (e.key === 'z' && e.shiftKey) {
+        if (isEditableTarget(e)) return false;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        useHistoryStore.getState().dispatch({ type: 'REDO' });
+        return true;
+    }
+    if (e.key === 'y') {
+        if (isEditableTarget(e)) return false;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        useHistoryStore.getState().dispatch({ type: 'REDO' });
+        return true;
+    }
+    return false;
+}
+
 /** Modifier shortcuts (Cmd/Ctrl+key). Returns true if handled. */
 function handleModifierShortcuts(
     e: KeyboardEvent,
@@ -114,34 +140,7 @@ function handleModifierShortcuts(
         return true;
     }
 
-    // Undo: Ctrl+Z / Cmd+Z (skip if editing text — let TipTap handle its own undo)
-    if (e.key === 'z' && !e.shiftKey) {
-        if (isEditableTarget(e)) return false;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        useHistoryStore.getState().dispatch({ type: 'UNDO' });
-        return true;
-    }
-
-    // Redo: Ctrl+Shift+Z / Cmd+Shift+Z
-    if (e.key === 'z' && e.shiftKey) {
-        if (isEditableTarget(e)) return false;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        useHistoryStore.getState().dispatch({ type: 'REDO' });
-        return true;
-    }
-
-    // Redo: Ctrl+Y (Windows convention)
-    if (e.key === 'y') {
-        if (isEditableTarget(e)) return false;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        useHistoryStore.getState().dispatch({ type: 'REDO' });
-        return true;
-    }
-
-    return false;
+    return handleUndoRedoShortcuts(e);
 }
 
 /**

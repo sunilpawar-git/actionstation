@@ -42,7 +42,6 @@ describe('seedDemoNodes', () => {
         seedDemoNodes(WS);
         const { edges } = useCanvasStore.getState();
         expect(edges).toHaveLength(1);
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         expect(edges[0]!.sourceNodeId).toBe(DEMO_NODE_1_ID);
         expect(edges[0]!.targetNodeId).toBe(DEMO_NODE_2_ID);
     });

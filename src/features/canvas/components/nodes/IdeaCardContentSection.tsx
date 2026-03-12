@@ -88,6 +88,25 @@ const AIPromptHeader = React.memo(({ prompt, onDoubleClick }: AIPromptHeaderProp
             aria-label={strings.ideaCard.aiDividerLabel} />
     </>
 ));
+AIPromptHeader.displayName = 'AIPromptHeader';
+
+function MindmapBlock({ output, onToggle }: { output: string | undefined; onToggle?: () => void }) {
+    return (
+        <>
+            {onToggle && (
+                <button className={styles.mindmapBadge} onClick={onToggle}
+                    aria-label={strings.nodeUtils.textView}>
+                    {strings.nodeUtils.textView}
+                </button>
+            )}
+            <MindmapErrorBoundary onSwitchToText={onToggle}>
+                <Suspense fallback={<div className={styles.mindmapLoading}>{strings.canvas.mindmap.loading}</div>}>
+                    <LazyMindmapRenderer markdown={output ?? ''} />
+                </Suspense>
+            </MindmapErrorBoundary>
+        </>
+    );
+}
 
 export const IdeaCardContentSection = React.memo((props: IdeaCardContentSectionProps) => {
     const {
@@ -112,19 +131,7 @@ export const IdeaCardContentSection = React.memo((props: IdeaCardContentSectionP
             )}
 
             {vs.showMindmap && (
-                <>
-                    {props.onContentModeToggle && (
-                        <button className={styles.mindmapBadge} onClick={props.onContentModeToggle}
-                            aria-label={strings.nodeUtils.textView}>
-                            {strings.nodeUtils.textView}
-                        </button>
-                    )}
-                    <MindmapErrorBoundary onSwitchToText={props.onContentModeToggle}>
-                        <Suspense fallback={<div className={styles.mindmapLoading}>{strings.canvas.mindmap.loading}</div>}>
-                            <LazyMindmapRenderer markdown={props.output ?? ''} />
-                        </Suspense>
-                    </MindmapErrorBoundary>
-                </>
+                <MindmapBlock output={props.output} onToggle={props.onContentModeToggle} />
             )}
 
             {/* Stable tree position — never unmounts during editing transitions */}
@@ -154,3 +161,4 @@ export const IdeaCardContentSection = React.memo((props: IdeaCardContentSectionP
         </div>
     );
 });
+IdeaCardContentSection.displayName = 'IdeaCardContentSection';

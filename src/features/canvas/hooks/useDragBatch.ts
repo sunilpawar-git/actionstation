@@ -55,7 +55,7 @@ export function useDragBatch() {
         const frozenEnd = endPositions.map((p) => ({ ...p }));
 
         // entityId for coalescing: single node → its ID, multi → undefined (no coalescing)
-        const entityId = frozenStart.length === 1 ? frozenStart[0]!.id : undefined;
+        const entityId = frozenStart.length === 1 ? frozenStart[0]?.id : undefined;
 
         useHistoryStore.getState().dispatch({
             type: 'PUSH',

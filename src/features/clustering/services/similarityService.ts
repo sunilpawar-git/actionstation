@@ -3,6 +3,7 @@ import { tokenizeRaw } from '@/features/knowledgeBank/services/relevanceScorer';
 import type { CanvasNode } from '@/features/canvas/types/node';
 import type { ClusterGroup } from '../types/cluster';
 import { stripHtmlTags } from '@/shared/utils/htmlUtils';
+import { generateUUID } from '@/shared/utils/uuid';
 
 const MAX_NODES = 500;
 const DEFAULT_THRESHOLD = 0.15;
@@ -104,7 +105,10 @@ function agglomerativeClustering(
 
         for (let i = 0; i < clusters.length; i++) {
             for (let j = i + 1; j < clusters.length; j++) {
-                const sim = avgLinkage(clusters[i]!, clusters[j]!, simMatrix, indexMap);
+                const ci = clusters[i];
+                const cj = clusters[j];
+                if (!ci || !cj) continue;
+                const sim = avgLinkage(ci, cj, simMatrix, indexMap);
                 if (sim > bestSim) {
                     bestSim = sim;
                     bestI = i;
@@ -114,7 +118,10 @@ function agglomerativeClustering(
         }
 
         if (bestSim < threshold) break;
-        clusters[bestI] = [...clusters[bestI]!, ...clusters[bestJ]!];
+        const bestClusterI = clusters[bestI];
+        const bestClusterJ = clusters[bestJ];
+        if (!bestClusterI || !bestClusterJ) break;
+        clusters[bestI] = [...bestClusterI, ...bestClusterJ];
         clusters.splice(bestJ, 1);
     }
 
@@ -132,8 +139,15 @@ function avgLinkage(
 ): number {
     let total = 0;
     for (const ai of a) {
-        const ia = idx.get(ai)!;
-        for (const bi of b) total += sim[ia]![idx.get(bi)!]!;
+        const ia = idx.get(ai);
+        if (ia === undefined) continue;
+        const simRow = sim[ia];
+        if (!simRow) continue;
+        for (const bi of b) {
+            const ib = idx.get(bi);
+            if (ib === undefined) continue;
+            total += simRow[ib] ?? 0;
+        }
     }
     return total / (a.length * b.length);
 }
@@ -163,11 +177,17 @@ export function computeClusters(
     const n = nonEmpty.length;
     const simMatrix: number[][] = Array.from({ length: n }, () => new Array<number>(n).fill(0));
     for (let i = 0; i < n; i++) {
-        simMatrix[i]![i] = 1;
+        const rowI = simMatrix[i];
+        if (!rowI) continue;
+        rowI[i] = 1;
         for (let j = i + 1; j < n; j++) {
-            const s = cosineSimilarity(vectors[i]!, vectors[j]!);
-            simMatrix[i]![j] = s;
-            simMatrix[j]![i] = s;
+            const vecI = vectors[i];
+            const vecJ = vectors[j];
+            if (!vecI || !vecJ) continue;
+            const s = cosineSimilarity(vecI, vecJ);
+            rowI[j] = s;
+            const rowJ = simMatrix[j];
+            if (rowJ) rowJ[i] = s;
         }
     }
 
@@ -175,7 +195,7 @@ export function computeClusters(
     const { groups, unclustered } = agglomerativeClustering(simMatrix, nodeIds, threshold, minSize);
 
     const clusters: ClusterGroup[] = groups.map((group, index) => ({
-        id: `cluster-${crypto.randomUUID()}`,
+        id: `cluster-${generateUUID()}`,
         nodeIds: group,
         label: `Cluster ${index + 1}`,
         colorIndex: index % MAX_COLOR_INDEX,

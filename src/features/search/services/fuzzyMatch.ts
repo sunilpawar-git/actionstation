@@ -110,7 +110,8 @@ export function extractSnippet(
     contextChars = SNIPPET_CONTEXT_CHARS,
 ): string {
     if (ranges.length === 0 || text.length <= contextChars * 2) return text;
-    const first = ranges[0]!;
+    const first = ranges[0];
+    if (!first) return text;
     const windowStart = Math.max(0, first.start - contextChars);
     const windowEnd = Math.min(text.length, first.end + contextChars);
     const prefix = windowStart > 0 ? '…' : '';

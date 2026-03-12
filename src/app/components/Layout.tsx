@@ -8,7 +8,7 @@ import { Sidebar } from '@/shared/components/Sidebar';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { OfflineBanner } from './OfflineBanner';
 import { SearchBar } from '@/features/search';
-import { useSearchInputRef } from '@/features/search/context/SearchInputRefContext';
+import { useSearchInputRef } from '@/features/search/hooks/useSearchInputRef';
 import { WorkspaceControls } from '@/features/workspace/components/WorkspaceControls';
 import { KnowledgeBankAddButton } from '@/features/knowledgeBank/components/KnowledgeBankAddButton';
 import { KnowledgeBankPanel } from '@/features/knowledgeBank/components/KnowledgeBankPanel';

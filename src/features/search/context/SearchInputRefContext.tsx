@@ -7,17 +7,13 @@
  *   - Wrap siblings with <SearchInputRefProvider>
  *   - Layout.tsx: const ref = useSearchInputRef(); <SearchBar ref={ref} />
  *   - KeyboardShortcutsProvider.tsx: const ref = useSearchInputRef(); pass to useKeyboardShortcuts
+ *
+ * Note: useSearchInputRef hook is in hooks/useSearchInputRef.ts to satisfy
+ * react-refresh/only-export-components (this file only exports components).
  */
-import { createContext, useContext, useRef, type ReactNode } from 'react';
-import type React from 'react';
+import { useRef, type ReactNode } from 'react';
 import type { SearchBarHandle } from '../components/SearchBar';
-
-type SearchInputRef = React.RefObject<SearchBarHandle>;
-
-const SearchInputRefContext = createContext<SearchInputRef | null>(null);
-
-/** Stable fallback ref used when SearchInputRefProvider is absent (e.g. in unit tests). */
-const FALLBACK_REF: SearchInputRef = { current: null } as React.RefObject<SearchBarHandle>;
+import { SearchInputRefContext } from './searchInputRefDefs';
 
 export function SearchInputRefProvider({ children }: { children: ReactNode }) {
     const ref = useRef<SearchBarHandle>(null);
@@ -26,13 +22,4 @@ export function SearchInputRefProvider({ children }: { children: ReactNode }) {
             {children}
         </SearchInputRefContext.Provider>
     );
-}
-
-/**
- * Returns the shared SearchBar ref.
- * Gracefully returns a null fallback ref when used outside SearchInputRefProvider
- * (e.g. in unit tests that render Layout directly).
- */
-export function useSearchInputRef(): SearchInputRef {
-    return useContext(SearchInputRefContext) ?? FALLBACK_REF;
 }

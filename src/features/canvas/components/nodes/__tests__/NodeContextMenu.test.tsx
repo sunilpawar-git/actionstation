@@ -90,10 +90,10 @@ describe('NodeContextMenu', () => {
         expect(items.length).toBeGreaterThanOrEqual(7);
     });
 
-    it('renders in portal (document.body)', () => {
+    it('renders in portal (portal-root)', () => {
         const { baseElement } = render(<NodeContextMenu {...defaultProps} />);
-        const menu = baseElement.querySelector('[role="menu"]');
-        expect(menu?.parentElement).toBe(document.body);
+        const menu = baseElement.ownerDocument.getElementById('portal-root')?.querySelector('[role="menu"]');
+        expect(menu).toBeTruthy();
     });
 
     it('groups separated by dividers', () => {
