@@ -114,6 +114,28 @@ describe('MindmapRenderer', () => {
             container.dispatchEvent(event);
             expect(stopSpy).toHaveBeenCalled();
         });
+
+        it('focuses nearest [tabindex="0"] ancestor on pointerDown so Escape reaches the canvas', () => {
+            // Regression test: clicking a mindmap node must route keyboard focus
+            // to the card's contentArea div so Escape can bubble to document
+            // and trigger useEscapeLayer's clearSelection handler.
+            const focusSpy = vi.fn();
+            const { container: wrapper } = render(
+                <div tabIndex={0} onFocus={focusSpy}>
+                    <MindmapRenderer markdown="# Topic" />
+                </div>,
+            );
+            // Attach a spy to the focusable ancestor's focus method
+            const focusable = wrapper.querySelector<HTMLElement>('[tabindex="0"]')!;
+            const focusMethod = vi.spyOn(focusable, 'focus');
+
+            const mindmapContainer = screen.getByTestId('mindmap-renderer');
+            const event = new MouseEvent('pointerdown', { bubbles: true });
+            mindmapContainer.dispatchEvent(event);
+
+            // The nearest [tabindex="0"] ancestor should have received .focus()
+            expect(focusMethod).toHaveBeenCalledWith({ preventScroll: true });
+        });
     });
 
     describe('empty / fallback handling', () => {

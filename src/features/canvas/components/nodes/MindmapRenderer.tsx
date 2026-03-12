@@ -41,9 +41,21 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
     const svgRef = useRef<SVGSVGElement>(null);
     const markmapRef = useRef<Markmap | null>(null);
 
-    // Pointer isolation — prevent ReactFlow canvas pan/zoom hijack
+    // Wheel isolation — prevent ReactFlow canvas zoom hijack
     const stopPropagation = useCallback((e: React.SyntheticEvent) => {
         e.stopPropagation();
+    }, []);
+
+    // Pointer isolation — prevent ReactFlow canvas pan/zoom hijack.
+    // We also focus the nearest focusable ancestor so Escape / keyboard shortcuts
+    // reach the card's onKeyDown and the document-level useEscapeLayer handler.
+    // Without this, markmap-view's internal D3 zoom captures keyboard events and
+    // swallows Escape before it can bubble to `document`.
+    const handlePointerDown = useCallback((e: React.PointerEvent) => {
+        e.stopPropagation();
+        const focusable = (e.currentTarget as HTMLElement)
+            .closest<HTMLElement>('[tabindex="0"]');
+        focusable?.focus({ preventScroll: true });
     }, []);
 
     // Initialize markmap instance once on mount
@@ -87,7 +99,7 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
             data-testid="mindmap-renderer"
             role="figure"
             aria-label={strings.canvas.mindmap.ariaLabel}
-            onPointerDown={stopPropagation}
+            onPointerDown={handlePointerDown}
             onWheel={stopPropagation}
         >
             <svg ref={svgRef} className={styles.svg} role="img"
