@@ -12,7 +12,7 @@ import { useCanvasStore } from '../stores/canvasStore';
 import { useHistoryStore } from '../stores/historyStore';
 import { toggleContentModeWithUndo } from '../services/contentModeToggleService';
 import { slashCommands, getCommandById } from '../services/slashCommands';
-import { createIdeaNode } from '../types/node';
+import { createIdeaNode, MINDMAP_MIN_WIDTH, MINDMAP_MIN_HEIGHT } from '../types/node';
 
 const WS_ID = 'ws-test';
 
@@ -91,8 +91,8 @@ describe('Mindmap resize floor enforcement', () => {
         addNodeWithMode('n1', 'mindmap');
         useCanvasStore.getState().updateNodeDimensions('n1', 100, 100);
         const node = useCanvasStore.getState().nodes.find(n => n.id === 'n1');
-        expect(node?.width).toBeGreaterThanOrEqual(500);
-        expect(node?.height).toBeGreaterThanOrEqual(400);
+        expect(node?.width).toBeGreaterThanOrEqual(MINDMAP_MIN_WIDTH);
+        expect(node?.height).toBeGreaterThanOrEqual(MINDMAP_MIN_HEIGHT);
     });
 
     it('allows normal sizing when contentMode is text', () => {
