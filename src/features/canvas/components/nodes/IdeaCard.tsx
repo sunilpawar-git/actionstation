@@ -9,7 +9,7 @@ import { NodeResizeButtons } from './NodeResizeButtons';
 import { IdeaCardHeadingSection } from './IdeaCardHeadingSection';
 import { IdeaCardContentSection } from './IdeaCardContentSection';
 import { IdeaCardTagsSection } from './IdeaCardTagsSection';
-import { MIN_NODE_WIDTH, MAX_NODE_WIDTH, MIN_NODE_HEIGHT, MAX_NODE_HEIGHT, normalizeNodeColorKey, type IdeaNodeData } from '../../types/node';
+import { MIN_NODE_WIDTH, MAX_NODE_WIDTH, MIN_NODE_HEIGHT, MAX_NODE_HEIGHT, MINDMAP_MIN_WIDTH, MINDMAP_MIN_HEIGHT, normalizeNodeColorKey, type IdeaNodeData } from '../../types/node';
 import { isContentModeMindmap } from '../../types/contentMode';
 import { toggleContentModeWithUndo, convertToMindmapWithAI } from '../../services/contentModeToggleService';
 import { MemoryChipIcon } from '@/shared/components/icons';
@@ -57,8 +57,12 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
             onContextMenu={contextMenu.openAtCursor}
             onTouchStart={contextMenu.onTouchStart} onTouchMove={contextMenu.onTouchMove}
             onTouchEnd={contextMenu.onTouchEnd}>
-            <NodeResizer minWidth={MIN_NODE_WIDTH} maxWidth={MAX_NODE_WIDTH}
-                minHeight={MIN_NODE_HEIGHT} maxHeight={MAX_NODE_HEIGHT} isVisible={selected && !isCollapsed} />
+            <NodeResizer
+                minWidth={isContentModeMindmap(resolvedData.contentMode) ? MINDMAP_MIN_WIDTH : MIN_NODE_WIDTH}
+                maxWidth={MAX_NODE_WIDTH}
+                minHeight={isContentModeMindmap(resolvedData.contentMode) ? MINDMAP_MIN_HEIGHT : MIN_NODE_HEIGHT}
+                maxHeight={MAX_NODE_HEIGHT}
+                isVisible={selected && !isCollapsed} />
             <NodeResizeButtons nodeId={id} />
             <Handle type="target" position={Position.Top} id={`${id}-target`}
                 isConnectable className={`${handleStyles.handle} ${handleStyles.handleTop}`} />

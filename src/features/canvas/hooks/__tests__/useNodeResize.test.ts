@@ -12,6 +12,8 @@ import {
     MAX_NODE_HEIGHT,
     DEFAULT_NODE_WIDTH,
     DEFAULT_NODE_HEIGHT,
+    MINDMAP_MIN_WIDTH,
+    MINDMAP_MIN_HEIGHT,
     createIdeaNode,
 } from '../../types/node';
 
@@ -172,6 +174,62 @@ describe('useNodeResize', () => {
                     result.current.expandWidth();
                 });
             }).not.toThrow();
+        });
+    });
+
+    describe('mindmap mode — canShrink respects MINDMAP_MIN dimensions', () => {
+        beforeEach(() => {
+            const node = createIdeaNode(TEST_NODE_ID, TEST_WORKSPACE_ID, { x: 0, y: 0 });
+            useCanvasStore.getState().addNode(node);
+            // Switch to mindmap mode and set to exactly the mindmap minimum size
+            useCanvasStore.getState().updateNodeContentMode(TEST_NODE_ID, 'mindmap');
+            useCanvasStore.getState().updateNodeDimensions(TEST_NODE_ID, MINDMAP_MIN_WIDTH, MINDMAP_MIN_HEIGHT);
+        });
+
+        it('canShrinkWidth is false at MINDMAP_MIN_WIDTH (cannot shrink below mindmap floor)', () => {
+            const { result } = renderHook(() => useNodeResize(TEST_NODE_ID));
+            expect(result.current.canShrinkWidth).toBe(false);
+        });
+
+        it('canShrinkHeight is false at MINDMAP_MIN_HEIGHT (cannot shrink below mindmap floor)', () => {
+            const { result } = renderHook(() => useNodeResize(TEST_NODE_ID));
+            expect(result.current.canShrinkHeight).toBe(false);
+        });
+
+        it('canShrinkWidth is true when wider than MINDMAP_MIN_WIDTH', () => {
+            useCanvasStore.getState().updateNodeDimensions(
+                TEST_NODE_ID, MINDMAP_MIN_WIDTH + RESIZE_INCREMENT_PX, MINDMAP_MIN_HEIGHT,
+            );
+            const { result } = renderHook(() => useNodeResize(TEST_NODE_ID));
+            expect(result.current.canShrinkWidth).toBe(true);
+        });
+
+        it('canShrinkHeight is true when taller than MINDMAP_MIN_HEIGHT', () => {
+            useCanvasStore.getState().updateNodeDimensions(
+                TEST_NODE_ID, MINDMAP_MIN_WIDTH, MINDMAP_MIN_HEIGHT + RESIZE_INCREMENT_PX,
+            );
+            const { result } = renderHook(() => useNodeResize(TEST_NODE_ID));
+            expect(result.current.canShrinkHeight).toBe(true);
+        });
+
+        it('shrinkWidth does not go below MINDMAP_MIN_WIDTH', () => {
+            useCanvasStore.getState().updateNodeDimensions(
+                TEST_NODE_ID, MINDMAP_MIN_WIDTH + RESIZE_INCREMENT_PX, MINDMAP_MIN_HEIGHT,
+            );
+            const { result } = renderHook(() => useNodeResize(TEST_NODE_ID));
+            act(() => { result.current.shrinkWidth(); });
+            const node = useCanvasStore.getState().nodes.find(n => n.id === TEST_NODE_ID);
+            expect(node?.width).toBeGreaterThanOrEqual(MINDMAP_MIN_WIDTH);
+        });
+
+        it('shrinkHeight does not go below MINDMAP_MIN_HEIGHT', () => {
+            useCanvasStore.getState().updateNodeDimensions(
+                TEST_NODE_ID, MINDMAP_MIN_WIDTH, MINDMAP_MIN_HEIGHT + RESIZE_INCREMENT_PX,
+            );
+            const { result } = renderHook(() => useNodeResize(TEST_NODE_ID));
+            act(() => { result.current.shrinkHeight(); });
+            const node = useCanvasStore.getState().nodes.find(n => n.id === TEST_NODE_ID);
+            expect(node?.height).toBeGreaterThanOrEqual(MINDMAP_MIN_HEIGHT);
         });
     });
 

@@ -15,6 +15,8 @@ import {
     MAX_NODE_HEIGHT,
     DEFAULT_NODE_WIDTH,
     DEFAULT_NODE_HEIGHT,
+    MINDMAP_MIN_WIDTH,
+    MINDMAP_MIN_HEIGHT,
 } from '../../../types/node';
 import { defaultData, defaultProps, setupResizeTests } from './IdeaCard.resize.shared';
 
@@ -92,7 +94,7 @@ describe('IdeaCard Resize Integration', () => {
         await setupResizeTests();
     });
 
-    describe('NodeResizer constraint integration', () => {
+    describe('NodeResizer constraint integration — text mode', () => {
         it('NodeResizer minWidth matches MIN_NODE_WIDTH constant', () => {
             render(<IdeaCard {...defaultProps} />);
             const resizer = screen.getByTestId('node-resizer');
@@ -113,6 +115,37 @@ describe('IdeaCard Resize Integration', () => {
 
         it('NodeResizer maxHeight matches MAX_NODE_HEIGHT constant', () => {
             render(<IdeaCard {...defaultProps} />);
+            const resizer = screen.getByTestId('node-resizer');
+            expect(Number(resizer.getAttribute('data-max-height'))).toBe(MAX_NODE_HEIGHT);
+        });
+    });
+
+    describe('NodeResizer constraint integration — mindmap mode', () => {
+        const mindmapProps = {
+            ...defaultProps,
+            data: { ...defaultData, contentMode: 'mindmap' as const },
+        };
+
+        it('NodeResizer minWidth uses MINDMAP_MIN_WIDTH when contentMode is mindmap', () => {
+            render(<IdeaCard {...mindmapProps} />);
+            const resizer = screen.getByTestId('node-resizer');
+            expect(Number(resizer.getAttribute('data-min-width'))).toBe(MINDMAP_MIN_WIDTH);
+        });
+
+        it('NodeResizer minHeight uses MINDMAP_MIN_HEIGHT when contentMode is mindmap', () => {
+            render(<IdeaCard {...mindmapProps} />);
+            const resizer = screen.getByTestId('node-resizer');
+            expect(Number(resizer.getAttribute('data-min-height'))).toBe(MINDMAP_MIN_HEIGHT);
+        });
+
+        it('NodeResizer maxWidth remains MAX_NODE_WIDTH in mindmap mode', () => {
+            render(<IdeaCard {...mindmapProps} />);
+            const resizer = screen.getByTestId('node-resizer');
+            expect(Number(resizer.getAttribute('data-max-width'))).toBe(MAX_NODE_WIDTH);
+        });
+
+        it('NodeResizer maxHeight remains MAX_NODE_HEIGHT in mindmap mode', () => {
+            render(<IdeaCard {...mindmapProps} />);
             const resizer = screen.getByTestId('node-resizer');
             expect(Number(resizer.getAttribute('data-max-height'))).toBe(MAX_NODE_HEIGHT);
         });

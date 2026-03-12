@@ -6,12 +6,16 @@ import { useCallback } from 'react';
 import { useCanvasStore } from '../stores/canvasStore';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useNodeDimensions } from './useNodeDimensions';
+import { useNode } from './useNode';
+import { isContentModeMindmap } from '../types/contentMode';
 import {
     RESIZE_INCREMENT_PX,
     MAX_NODE_WIDTH,
     MAX_NODE_HEIGHT,
     DEFAULT_NODE_WIDTH,
     DEFAULT_NODE_HEIGHT,
+    MINDMAP_MIN_WIDTH,
+    MINDMAP_MIN_HEIGHT,
 } from '../types/node';
 
 export interface UseNodeResizeResult {
@@ -33,11 +37,16 @@ export interface UseNodeResizeResult {
 export function useNodeResize(nodeId: string): UseNodeResizeResult {
     const { width: currentWidth, height: currentHeight } = useNodeDimensions(nodeId);
     const canvasFreeFlow = useSettingsStore((s) => s.canvasFreeFlow);
+    const node = useNode(nodeId);
+    const isMindmap = isContentModeMindmap(node?.data.contentMode);
+
+    const minShrinkWidth = isMindmap ? MINDMAP_MIN_WIDTH : DEFAULT_NODE_WIDTH;
+    const minShrinkHeight = isMindmap ? MINDMAP_MIN_HEIGHT : DEFAULT_NODE_HEIGHT;
 
     const canExpandWidth = currentWidth < MAX_NODE_WIDTH;
     const canExpandHeight = currentHeight < MAX_NODE_HEIGHT;
-    const canShrinkWidth = currentWidth > DEFAULT_NODE_WIDTH;
-    const canShrinkHeight = currentHeight > DEFAULT_NODE_HEIGHT;
+    const canShrinkWidth = currentWidth > minShrinkWidth;
+    const canShrinkHeight = currentHeight > minShrinkHeight;
 
     const expandWidth = useCallback(() => {
         if (canExpandWidth) {
