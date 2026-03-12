@@ -74,6 +74,7 @@ export const canvasStrings = {
     mindmap: {
         ariaLabel: 'Mindmap visualization',
         emptyFallback: 'Empty',
+        emptyHint: 'Double-click to add content, then view as mindmap',
         errorFallback: 'Unable to render mindmap',
     },
 };

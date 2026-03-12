@@ -152,6 +152,6 @@ describe('IdeaCardContentSection – mindmap integration', () => {
                 {...makeProps({ contentMode: 'mindmap', hasContent: false })}
             />,
         );
-        expect(screen.getByText(strings.ideaCard.inputPlaceholder)).toBeInTheDocument();
+        expect(screen.getByText(strings.canvas.mindmap.emptyHint)).toBeInTheDocument();
     });
 });

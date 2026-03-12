@@ -57,7 +57,10 @@ function deriveViewState(
     isAICard: boolean, heading: string | undefined,
     contentMode: ContentMode | undefined,
 ): ContentViewState {
-    const showMindmap = isContentModeMindmap(contentMode) && !isEditing && !isGenerating;
+    const isMindmap = isContentModeMindmap(contentMode);
+    // Only render the mindmap SVG when there is actual content to visualize.
+    // Empty nodes show a helpful placeholder instead of a barren "Empty" root node.
+    const showMindmap = isMindmap && hasContent && !isEditing && !isGenerating;
     return {
         showAIPrompt: !isEditing && !isGenerating && hasContent && isAICard && !heading?.trim(),
         showLinkPreviews: !isEditing && !isGenerating && hasContent,
@@ -133,7 +136,9 @@ export const IdeaCardContentSection = React.memo((props: IdeaCardContentSectionP
             {vs.showPlaceholder && (
                 <div className={styles.placeholder} onDoubleClick={handleDoubleClick}
                     role="button" tabIndex={0}>
-                    {strings.ideaCard.inputPlaceholder}
+                    {isContentModeMindmap(props.contentMode)
+                        ? strings.canvas.mindmap.emptyHint
+                        : strings.ideaCard.inputPlaceholder}
                 </div>
             )}
         </div>

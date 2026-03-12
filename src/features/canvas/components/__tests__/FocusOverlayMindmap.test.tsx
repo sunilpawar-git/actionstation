@@ -211,7 +211,7 @@ describe('FocusOverlay — mindmap rendering', () => {
         expect(content).toContain('Branch B');
     });
 
-    it('renders empty mindmap fallback when output is undefined', async () => {
+    it('renders empty state when output is undefined', async () => {
         const noOutputMindmap: CanvasNode = {
             ...mindmapNode,
             id: 'no-output-mindmap',
@@ -222,6 +222,7 @@ describe('FocusOverlay — mindmap rendering', () => {
         await act(async () => {
             render(<FocusOverlay />);
         });
-        expect(screen.getByTestId('mindmap-renderer')).toHaveTextContent('Mindmap:');
+        expect(screen.queryByTestId('mindmap-renderer')).not.toBeInTheDocument();
+        expect(screen.getByTestId('mindmap-empty-state')).toBeInTheDocument();
     });
 });

@@ -39,7 +39,9 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
         () => editingNodeId === nodeId && nodeId !== '',
         [editingNodeId, nodeId],
     );
-    const showMindmap = isContentModeMindmap(contentMode) && !isEditing;
+    const hasMindmapContent = Boolean(output?.trim());
+    const showMindmap = isContentModeMindmap(contentMode) && !isEditing && hasMindmapContent;
+    const showMindmapEmpty = isContentModeMindmap(contentMode) && !isEditing && !hasMindmapContent;
 
     const headingRef = useRef<NodeHeadingHandle>(null);
     const getHeading = useCallback(
@@ -100,6 +102,12 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
                                     <LazyMindmapRenderer markdown={output ?? ''} />
                                 </Suspense>
                             </MindmapErrorBoundary>
+                        </div>
+                    ) : null}
+                    {showMindmapEmpty ? (
+                        <div className={styles.mindmapEmptyState} data-testid="mindmap-empty-state">
+                            <span className={styles.mindmapEmptyIcon}>🧠</span>
+                            <p>{strings.canvas.mindmap.emptyHint}</p>
                         </div>
                     ) : null}
                     <div style={showMindmap ? { display: 'none' } : undefined}>
