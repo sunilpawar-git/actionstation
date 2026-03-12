@@ -90,7 +90,8 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
                     />
                 </div>
                 <div className={styles.divider} />
-                <div className={styles.contentArea} data-testid="focus-content-area"
+                <div className={`${styles.contentArea} ${showMindmap ? styles.contentAreaMindmap : ''}`}
+                    data-testid="focus-content-area"
                     onDoubleClick={!isEditing ? handleDoubleClick : undefined}>
                     {showMindmap ? (
                         <div className={styles.mindmapWrapper}>

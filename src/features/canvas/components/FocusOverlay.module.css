@@ -89,9 +89,18 @@
     margin: var(--space-md) auto;
 }
 
+/* When showing mindmap, turn contentArea into a flex column so the
+   wrapper can fill all available height.  Disable scroll — the
+   mindmap SVG has its own pan / zoom. */
+.contentAreaMindmap {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 .mindmapWrapper {
     flex: 1;
-    min-height: 400px;
+    min-height: 0;
     width: 100%;
     overflow: hidden;
 }
