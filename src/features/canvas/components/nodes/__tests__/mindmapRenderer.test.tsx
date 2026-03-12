@@ -147,6 +147,38 @@ describe('MindmapRenderer', () => {
         });
     });
 
+    describe('theme-aware text color (dark mode fix)', () => {
+        it('passes a style function to Markmap.create', () => {
+            render(<MindmapRenderer markdown="# Topic" />);
+            const [, options] = mockCreate.mock.calls[0] as [unknown, Record<string, unknown>];
+            expect(typeof options.style).toBe('function');
+        });
+
+        it('style function returns CSS that sets --markmap-text-color to app variable', () => {
+            render(<MindmapRenderer markdown="# Topic" />);
+            const [, options] = mockCreate.mock.calls[0] as [unknown, Record<string, unknown>];
+            const css = (options.style as (id: string) => string)('test-id');
+            expect(css).toContain('--markmap-text-color');
+            expect(css).toContain('--color-text-primary');
+        });
+
+        it('style function returns CSS that sets --markmap-code-bg to surface variable', () => {
+            render(<MindmapRenderer markdown="# Topic" />);
+            const [, options] = mockCreate.mock.calls[0] as [unknown, Record<string, unknown>];
+            const css = (options.style as (id: string) => string)('test-id');
+            expect(css).toContain('--markmap-code-bg');
+            expect(css).toContain('--color-surface');
+        });
+
+        it('style function scopes rules to the markmap instance id', () => {
+            render(<MindmapRenderer markdown="# Topic" />);
+            const [, options] = mockCreate.mock.calls[0] as [unknown, Record<string, unknown>];
+            const css = (options.style as (id: string) => string)('my-instance');
+            // Must scope to the specific SVG instance to avoid cross-contamination
+            expect(css).toContain('my-instance');
+        });
+    });
+
     it('disconnects ResizeObserver on unmount', () => {
         const disconnect = vi.fn();
         vi.stubGlobal(

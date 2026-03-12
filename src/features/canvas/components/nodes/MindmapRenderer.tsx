@@ -64,6 +64,22 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
         markmapRef.current = Markmap.create(svgRef.current, {
             autoFit: true,
             duration: 250,
+            // Override markmap's hardcoded light-mode defaults with CSS custom
+            // properties from the app theme.  The `style` callback is injected
+            // after markmap's own global CSS, so these declarations win for
+            // every theme (light, dark, sepia, grey, darkBlack) without any
+            // JS-side theme detection.
+            style: (id: string) => `
+                .markmap.${id} {
+                    --markmap-text-color: var(--color-text-primary);
+                    --markmap-code-color: var(--color-text-secondary);
+                    --markmap-code-bg: var(--color-surface);
+                    --markmap-a-color: var(--color-primary);
+                    --markmap-a-hover-color: var(--color-primary-hover);
+                    --markmap-circle-open-bg: var(--color-surface-elevated);
+                    --markmap-font: 300 14px/18px var(--font-sans, sans-serif);
+                }
+            `,
         });
         return () => {
             markmapRef.current?.destroy();
