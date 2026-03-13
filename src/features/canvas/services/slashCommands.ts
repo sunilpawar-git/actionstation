@@ -46,16 +46,8 @@ export const slashCommands: SlashCommand[] = [
         labelKey: 'slashCommands.toggleMindmap.label',
         descriptionKey: 'slashCommands.toggleMindmap.description',
         icon: '🗺️',
-        keywords: ['mindmap', 'mind', 'map', 'visualize', 'tree'],
+        keywords: ['mindmap', 'mind', 'map', 'visualize', 'tree', 'convert', 'transform'],
         prefix: 'mindmap',
-    },
-    {
-        id: 'convert-to-mindmap',
-        labelKey: 'slashCommands.convertToMindmap.label',
-        descriptionKey: 'slashCommands.convertToMindmap.description',
-        icon: '🔄',
-        keywords: ['convert', 'transform', 'restructure', 'hierarchy'],
-        prefix: 'convert',
     },
 ];
 

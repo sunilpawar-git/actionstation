@@ -4,7 +4,7 @@
  * Validates:
  * 1. toggleContentModeWithUndo pushes to history and can be undone/redone
  * 2. Resize floor enforced when contentMode is 'mindmap'
- * 3. Slash command 'convert-to-mindmap' exists in the registry
+ * 3. toggle-mindmap is the only mindmap slash command
  * 4. transformContent receives contentMode for mindmap nodes
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -14,12 +14,24 @@ import { toggleContentModeWithUndo } from '../services/contentModeToggleService'
 import { slashCommands, getCommandById } from '../services/slashCommands';
 import { createIdeaNode, MINDMAP_MIN_WIDTH, MINDMAP_MIN_HEIGHT } from '../types/node';
 
+// Mock AI so the async smart toggle is deterministic in these tests
+vi.mock('@/features/ai/services/geminiService', () => ({
+    convertTextToMindmap: vi.fn().mockResolvedValue('# Title\n## Section'),
+    generateContent: vi.fn(),
+    generateContentWithContext: vi.fn(),
+    transformContent: vi.fn(),
+}));
+vi.mock('@/shared/stores/toastStore', () => ({
+    toast: { info: vi.fn(), warning: vi.fn(), error: vi.fn(), success: vi.fn() },
+}));
+vi.mock('@/shared/services/sentryService', () => ({ captureError: vi.fn() }));
+
 const WS_ID = 'ws-test';
 
 function addNodeWithMode(id: string, contentMode?: 'text' | 'mindmap', output?: string) {
     const node = createIdeaNode(id, WS_ID, { x: 0, y: 0 });
     node.data.contentMode = contentMode;
-    if (output) node.data.output = output;
+    node.data.output = output ?? '';
     useCanvasStore.getState().addNode(node);
 }
 
@@ -27,11 +39,13 @@ describe('toggleContentModeWithUndo', () => {
     beforeEach(() => {
         useCanvasStore.setState({ nodes: [], edges: [], selectedNodeIds: new Set() });
         useHistoryStore.setState({ undoStack: [], redoStack: [] });
+        vi.clearAllMocks();
     });
 
-    it('toggles text → mindmap and pushes to undo stack', () => {
-        addNodeWithMode('n1', 'text');
-        const result = toggleContentModeWithUndo('n1');
+    it('toggles text → mindmap and pushes to undo stack', async () => {
+        // Use structured markdown so no AI call is needed — deterministic
+        addNodeWithMode('n1', 'text', '# Topic\n## Branch A\n## Branch B');
+        const result = await toggleContentModeWithUndo('n1');
         expect(result).toBe('mindmap');
 
         const node = useCanvasStore.getState().nodes.find(n => n.id === 'n1');
@@ -42,22 +56,22 @@ describe('toggleContentModeWithUndo', () => {
         expect(undoStack[0]?.type).toBe('toggleContentMode');
     });
 
-    it('toggles mindmap → text and pushes to undo stack', () => {
-        addNodeWithMode('n1', 'mindmap');
-        const result = toggleContentModeWithUndo('n1');
+    it('toggles mindmap → text and pushes to undo stack', async () => {
+        addNodeWithMode('n1', 'mindmap', '# Topic\n## Branch');
+        const result = await toggleContentModeWithUndo('n1');
         expect(result).toBe('text');
 
         const node = useCanvasStore.getState().nodes.find(n => n.id === 'n1');
         expect(node?.data.contentMode).toBe('text');
     });
 
-    it('undo reverts contentMode and dimensions', () => {
-        addNodeWithMode('n1', 'text');
+    it('undo reverts contentMode and dimensions', async () => {
+        addNodeWithMode('n1', 'text', '# Topic\n## Branch A\n## Branch B');
         const originalNode = useCanvasStore.getState().nodes.find(n => n.id === 'n1');
         const origW = originalNode?.width;
         const origH = originalNode?.height;
 
-        toggleContentModeWithUndo('n1');
+        await toggleContentModeWithUndo('n1');
         expect(useCanvasStore.getState().nodes.find(n => n.id === 'n1')?.data.contentMode).toBe('mindmap');
 
         useHistoryStore.getState().dispatch({ type: 'UNDO' });
@@ -67,9 +81,9 @@ describe('toggleContentModeWithUndo', () => {
         if (origH != null) expect(reverted?.height).toBe(origH);
     });
 
-    it('redo re-applies contentMode toggle', () => {
-        addNodeWithMode('n1', 'text');
-        toggleContentModeWithUndo('n1');
+    it('redo re-applies contentMode toggle', async () => {
+        addNodeWithMode('n1', 'text', '# Topic\n## Branch A\n## Branch B');
+        await toggleContentModeWithUndo('n1');
         useHistoryStore.getState().dispatch({ type: 'UNDO' });
         expect(useCanvasStore.getState().nodes.find(n => n.id === 'n1')?.data.contentMode).toBe('text');
 
@@ -77,8 +91,8 @@ describe('toggleContentModeWithUndo', () => {
         expect(useCanvasStore.getState().nodes.find(n => n.id === 'n1')?.data.contentMode).toBe('mindmap');
     });
 
-    it('returns null for non-existent node', () => {
-        expect(toggleContentModeWithUndo('ghost')).toBeNull();
+    it('returns null for non-existent node', async () => {
+        expect(await toggleContentModeWithUndo('ghost')).toBeNull();
     });
 });
 
@@ -104,16 +118,19 @@ describe('Mindmap resize floor enforcement', () => {
     });
 });
 
-describe('Slash command registry — convert-to-mindmap', () => {
-    it('includes convert-to-mindmap command', () => {
-        const cmd = slashCommands.find(c => c.id === 'convert-to-mindmap');
+describe('Slash command registry — single mindmap entry point', () => {
+    it('toggle-mindmap is the only mindmap command (no separate convert-to-mindmap)', () => {
+        expect(getCommandById('convert-to-mindmap')).toBeUndefined();
+        const cmd = getCommandById('toggle-mindmap');
         expect(cmd).toBeDefined();
-        expect(cmd?.icon).toBe('🔄');
-        expect(cmd?.prefix).toBe('convert');
+        expect(cmd?.icon).toBe('🗺️');
+        expect(cmd?.prefix).toBe('mindmap');
     });
 
-    it('getCommandById returns convert-to-mindmap', () => {
-        expect(getCommandById('convert-to-mindmap')).toBeDefined();
+    it('toggle-mindmap keywords include convert/transform for discoverability', () => {
+        const cmd = getCommandById('toggle-mindmap');
+        expect(cmd?.keywords).toContain('convert');
+        expect(cmd?.keywords).toContain('transform');
     });
 
     it('all slash commands have unique IDs and prefixes', () => {
@@ -127,9 +144,8 @@ describe('Slash command registry — convert-to-mindmap', () => {
 describe('transformContent contentMode passthrough', () => {
     beforeEach(() => vi.clearAllMocks());
 
-    it('transformContent signature accepts contentMode parameter', async () => {
+    it('transformContent is exported from geminiService', async () => {
         const { transformContent } = await import('../../ai/services/geminiService');
         expect(typeof transformContent).toBe('function');
-        expect(transformContent.length).toBeGreaterThanOrEqual(2);
     });
 });

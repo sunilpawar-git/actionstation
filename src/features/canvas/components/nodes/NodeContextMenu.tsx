@@ -36,9 +36,7 @@ export interface NodeContextMenuProps {
     readonly isCollapsed: boolean;
     readonly isInPool: boolean;
     readonly onContentModeToggle?: () => void;
-    readonly onConvertToMindmap?: () => void;
     readonly isMindmapMode?: boolean;
-    readonly hasContent?: boolean;
 }
 
 interface OrganizeItemsProps {
@@ -93,11 +91,6 @@ export const NodeContextMenu = React.memo(function NodeContextMenu(props: NodeCo
                 <MenuItem icon="🗺️"
                     label={props.isMindmapMode ? strings.nodeUtils.textView : strings.nodeUtils.mindmapView}
                     onClick={action(props.onContentModeToggle)} />
-            )}
-            {props.onConvertToMindmap && !props.isMindmapMode && props.hasContent && (
-                <MenuItem icon="🔄"
-                    label={strings.canvas.mindmap.convertToMindmap}
-                    onClick={action(props.onConvertToMindmap)} />
             )}
             {props.onColorChange && (
                 <>

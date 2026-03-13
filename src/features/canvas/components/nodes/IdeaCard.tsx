@@ -11,7 +11,7 @@ import { IdeaCardContentSection } from './IdeaCardContentSection';
 import { IdeaCardTagsSection } from './IdeaCardTagsSection';
 import { MIN_NODE_WIDTH, MAX_NODE_WIDTH, MIN_NODE_HEIGHT, MAX_NODE_HEIGHT, MINDMAP_MIN_WIDTH, MINDMAP_MIN_HEIGHT, normalizeNodeColorKey, type IdeaNodeData } from '../../types/node';
 import { isContentModeMindmap, type ContentMode } from '../../types/contentMode';
-import { toggleContentModeWithUndo, convertToMindmapWithAI } from '../../services/contentModeToggleService';
+import { toggleContentModeWithUndo } from '../../services/contentModeToggleService';
 import { MemoryChipIcon } from '@/shared/components/icons';
 import { captureError } from '@/shared/services/sentryService';
 import { strings } from '@/shared/localization/strings';
@@ -40,14 +40,10 @@ function useIdeaCardMenuActions(
     }, [barContainerRef, openAtElement]);
 
     const handleContentModeToggle = React.useCallback(() => {
-        toggleContentModeWithUndo(id);
+        void toggleContentModeWithUndo(id).catch((e: unknown) => captureError(e as Error));
     }, [id]);
 
-    const handleConvertToMindmap = React.useCallback(() => {
-        void convertToMindmapWithAI(id).catch((e: unknown) => captureError(e as Error));
-    }, [id]);
-
-    return { handleMoreClick, handleContentModeToggle, handleConvertToMindmap };
+    return { handleMoreClick, handleContentModeToggle };
 }
 
 export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selected }: NodeProps) {
@@ -63,7 +59,7 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
     } = api;
     const nodeColorKey = normalizeNodeColorKey(resolvedData.colorKey);
     const contextMenu = useNodeContextMenu();
-    const { handleMoreClick, handleContentModeToggle, handleConvertToMindmap } = useIdeaCardMenuActions(id, barContainerRef, contextMenu.openAtElement);
+    const { handleMoreClick, handleContentModeToggle } = useIdeaCardMenuActions(id, barContainerRef, contextMenu.openAtElement);
     const resizerBounds = getResizerBounds(resolvedData.contentMode);
 
     return (
@@ -122,8 +118,6 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
                     isPinned={isPinned ?? false} isCollapsed={isCollapsed ?? false}
                     isInPool={resolvedData.includeInAIPool ?? false}
                     onContentModeToggle={handleContentModeToggle}
-                    onConvertToMindmap={handleConvertToMindmap}
-                    hasContent={hasContent}
                     isMindmapMode={isContentModeMindmap(resolvedData.contentMode)} />
             )}
             <Handle type="source" position={Position.Bottom} id={`${id}-source`}

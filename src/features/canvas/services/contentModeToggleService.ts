@@ -1,7 +1,19 @@
 /**
- * contentModeToggleService — Toggles contentMode with undo/redo support.
- * Captures pre-toggle state (mode + dimensions) so Ctrl+Z fully reverts.
- * Also exposes convertToMindmapWithAI for prose-to-hierarchical conversion.
+ * contentModeToggleService — Single smart toggle for mindmap/text mode.
+ *
+ * One public entry point: toggleContentModeWithUndo().
+ *
+ * Behaviour when switching text → mindmap:
+ *   • If output already looks like hierarchical markdown (has ## sub-headings)
+ *     → flip render mode instantly (no AI call, no latency)
+ *   • If output is prose (or structured with only one heading level)
+ *     → call Gemini to convert prose → hierarchy, then flip mode
+ *   • If output is empty → show warning toast, do nothing
+ *
+ * Behaviour when switching mindmap → text:
+ *   • Always instant — just flip the render mode flag.
+ *
+ * Every state transition is fully undoable/redoable via the history stack.
  */
 import { useCanvasStore, getNodeMap } from '../stores/canvasStore';
 import { useHistoryStore } from '../stores/historyStore';
@@ -12,8 +24,67 @@ import { strings } from '@/shared/localization/strings';
 import { captureError } from '@/shared/services/sentryService';
 import type { ContentMode } from '../types/contentMode';
 
-/** Toggle contentMode on a node and push an undo command to the history stack. */
-export function toggleContentModeWithUndo(nodeId: string): ContentMode | null {
+// ── Heuristic ────────────────────────────────────────────────────────
+
+/**
+ * Returns true when the text is already hierarchical markdown suitable
+ * for rendering as a mindmap (has a # root AND at least one ## branch).
+ * Prose, empty strings, or single-heading text all return false.
+ */
+export function looksLikeMindmapMarkdown(text: string): boolean {
+    if (!text.trim()) return false;
+    const hasRoot = /^#\s/m.test(text);
+    const hasBranch = /^##\s/m.test(text);
+    return hasRoot && hasBranch;
+}
+
+// ── Internal helpers ─────────────────────────────────────────────────
+
+function pushToggleHistory(
+    nodeId: string,
+    prevMode: ContentMode | undefined,
+    nextMode: ContentMode,
+    prevWidth: number | undefined,
+    prevHeight: number | undefined,
+    prevOutput: string | undefined,
+    nextOutput: string | undefined,
+) {
+    useHistoryStore.getState().dispatch({
+        type: 'PUSH',
+        command: {
+            type: 'toggleContentMode',
+            timestamp: Date.now(),
+            entityId: nodeId,
+            undo: () => {
+                const s = useCanvasStore.getState();
+                if (prevOutput !== undefined) s.updateNodeOutput(nodeId, prevOutput);
+                s.updateNodeContentMode(nodeId, prevMode ?? 'text');
+                if (prevWidth != null && prevHeight != null) {
+                    s.updateNodeDimensions(nodeId, prevWidth, prevHeight);
+                }
+            },
+            redo: () => {
+                const s = useCanvasStore.getState();
+                if (nextOutput !== undefined) s.updateNodeOutput(nodeId, nextOutput);
+                s.updateNodeContentMode(nodeId, nextMode);
+            },
+        },
+    });
+}
+
+// ── Public API ───────────────────────────────────────────────────────
+
+/**
+ * The single smart mindmap toggle.
+ *
+ * - Returns immediately (synchronous) when toggling mindmap→text or when
+ *   content is already structured markdown.
+ * - Returns a Promise that resolves after the AI call when content is prose.
+ *
+ * Callers should always await the result so any AI work completes before
+ * assuming the mode has changed.
+ */
+export async function toggleContentModeWithUndo(nodeId: string): Promise<ContentMode | null> {
     const store = useCanvasStore.getState();
     const node = getNodeMap(store.nodes).get(nodeId);
     if (!node) {
@@ -25,95 +96,51 @@ export function toggleContentModeWithUndo(nodeId: string): ContentMode | null {
     const prevMode = node.data?.contentMode;
     const prevWidth = node.width;
     const prevHeight = node.height;
-    const nextMode: ContentMode = isContentModeMindmap(prevMode) ? 'text' : 'mindmap';
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const currentOutput = node.data?.output ?? '';
 
-    store.updateNodeContentMode(nodeId, nextMode);
-
-    toast.info(nextMode === 'mindmap'
-        ? strings.canvas.mindmap.switchedToMindmap
-        : strings.canvas.mindmap.switchedToText);
-
-    useHistoryStore.getState().dispatch({
-        type: 'PUSH',
-        command: {
-            type: 'toggleContentMode',
-            timestamp: Date.now(),
-            entityId: nodeId,
-            undo: () => {
-                const s = useCanvasStore.getState();
-                s.updateNodeContentMode(nodeId, prevMode ?? 'text');
-                if (prevWidth != null && prevHeight != null) {
-                    s.updateNodeDimensions(nodeId, prevWidth, prevHeight);
-                }
-            },
-            redo: () => {
-                useCanvasStore.getState().updateNodeContentMode(nodeId, nextMode);
-            },
-        },
-    });
-
-    return nextMode;
-}
-
-/**
- * Convert a node's prose content to hierarchical mindmap markdown via AI,
- * then switch to mindmap mode. Captures original output for undo.
- */
-export async function convertToMindmapWithAI(nodeId: string): Promise<void> {
-    const store = useCanvasStore.getState();
-    const node = getNodeMap(store.nodes).get(nodeId);
-    if (!node) {
-        captureError(new Error(`convertToMindmapWithAI: node ${nodeId} not found`));
-        return;
+    // ── Toggling OFF (mindmap → text): always instant ────────────────
+    if (isContentModeMindmap(prevMode)) {
+        store.updateNodeContentMode(nodeId, 'text');
+        toast.info(strings.canvas.mindmap.switchedToText);
+        pushToggleHistory(nodeId, prevMode, 'text', prevWidth, prevHeight, undefined, undefined);
+        return 'text';
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    const originalOutput = node.data?.output;
-    if (!originalOutput?.trim()) {
+    // ── Toggling ON (text → mindmap) ─────────────────────────────────
+
+    // Guard: nothing to show
+    if (!currentOutput.trim()) {
         toast.warning(strings.canvas.mindmap.convertEmpty);
-        return;
+        return null;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    const prevMode = node.data?.contentMode;
-    const prevWidth = node.width;
-    const prevHeight = node.height;
+    // Fast path: content is already hierarchical markdown
+    if (looksLikeMindmapMarkdown(currentOutput)) {
+        store.updateNodeContentMode(nodeId, 'mindmap');
+        toast.info(strings.canvas.mindmap.switchedToMindmap);
+        pushToggleHistory(nodeId, prevMode, 'mindmap', prevWidth, prevHeight, undefined, undefined);
+        return 'mindmap';
+    }
 
+    // Slow path: prose → AI conversion → mindmap
     store.setNodeGenerating(nodeId, true);
     try {
-        const converted = await convertTextToMindmap(originalOutput);
+        const converted = await convertTextToMindmap(currentOutput);
         if (!converted.trim() || !converted.includes('#')) {
             toast.error(strings.errors.aiError);
-            return;
+            return null;
         }
         const s = useCanvasStore.getState();
         s.updateNodeOutput(nodeId, converted);
         s.updateNodeContentMode(nodeId, 'mindmap');
-
-        useHistoryStore.getState().dispatch({
-            type: 'PUSH',
-            command: {
-                type: 'toggleContentMode',
-                timestamp: Date.now(),
-                entityId: nodeId,
-                undo: () => {
-                    const us = useCanvasStore.getState();
-                    us.updateNodeOutput(nodeId, originalOutput);
-                    us.updateNodeContentMode(nodeId, prevMode ?? 'text');
-                    if (prevWidth != null && prevHeight != null) {
-                        us.updateNodeDimensions(nodeId, prevWidth, prevHeight);
-                    }
-                },
-                redo: () => {
-                    const rs = useCanvasStore.getState();
-                    rs.updateNodeOutput(nodeId, converted);
-                    rs.updateNodeContentMode(nodeId, 'mindmap');
-                },
-            },
-        });
+        toast.info(strings.canvas.mindmap.switchedToMindmap);
+        pushToggleHistory(nodeId, prevMode, 'mindmap', prevWidth, prevHeight, currentOutput, converted);
+        return 'mindmap';
     } catch (error) {
         const message = error instanceof Error ? error.message : strings.errors.aiError;
         toast.error(message);
+        return null;
     } finally {
         useCanvasStore.getState().setNodeGenerating(nodeId, false);
     }

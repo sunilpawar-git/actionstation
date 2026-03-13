@@ -81,7 +81,6 @@ export const canvasStrings = {
         convertEmpty: 'Add content first, then convert to mindmap',
         switchedToMindmap: 'Switched to Mindmap View',
         switchedToText: 'Switched to Text View',
-        convertToMindmap: 'Convert to Mindmap',
         loading: 'Loading mindmap...',
     },
 };

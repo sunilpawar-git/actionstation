@@ -17,11 +17,7 @@ export const slashCommandStrings = {
     },
     toggleMindmap: {
         label: 'Mindmap View',
-        description: 'Toggle between text and mindmap visualization',
-    },
-    convertToMindmap: {
-        label: 'Convert to Mindmap',
-        description: 'Restructure existing text into a mindmap with AI',
+        description: 'View as mindmap — AI converts prose automatically',
     },
     noResults: 'No commands found',
     menuLabel: 'Slash commands',
