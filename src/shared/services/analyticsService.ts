@@ -116,9 +116,11 @@ type SettingKey =
     | 'theme' | 'canvasGrid' | 'autoSave' | 'autoSaveInterval'
     | 'compactMode' | 'canvasScrollMode' | 'connectorStyle'
     | 'isCanvasLocked' | 'canvasFreeFlow' | 'autoAnalyzeDocuments' | 'data_export'
-    | 'branch_export' | 'canvas_undo' | 'canvas_redo';
+    | 'branch_export' | 'canvas_undo' | 'canvas_redo'
+    | 'toolbarButtonOrder' | 'toolbarHiddenButtons' | 'toolbarReset'
+    | 'utilsBarIcons' | 'contextMenuIcons' | 'iconPlacementReset';
 
-export function trackSettingsChanged(setting: SettingKey, value: string | boolean | number): void {
+export function trackSettingsChanged(setting: SettingKey, value: string | boolean | number | readonly string[]): void {
     track('settings_changed', { setting, value });
 }
 

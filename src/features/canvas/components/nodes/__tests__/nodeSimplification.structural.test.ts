@@ -6,6 +6,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { describe, it, expect } from 'vitest';
 import { CONTEXT_MENU_GROUPS, PRIMARY_ACTIONS } from '../../../types/utilsBarLayout';
+import { ACTION_REGISTRY, DEFAULT_UTILS_BAR, DEFAULT_CONTEXT_MENU, UTILS_BAR_MAX, CONTEXT_MENU_MAX } from '@/shared/stores/iconRegistry';
 
 const SRC_DIR = join(process.cwd(), 'src');
 
@@ -20,8 +21,6 @@ describe('Phase 3: Node simplification structural tests', () => {
             'features/canvas/components/nodes/Deck2Actions.tsx',
             'features/canvas/components/nodes/deckActionTypes.ts',
             'features/canvas/components/nodes/NodeUtilsBarDeckButtons.tsx',
-            'app/components/SettingsPanel/sections/ToolbarSection.tsx',
-            'app/components/SettingsPanel/sections/ToolbarSection.module.css',
             'app/components/SettingsPanel/sections/DeckColumn.tsx',
             'app/components/SettingsPanel/sections/useToolbarDrag.ts',
             'shared/stores/utilsBarLayoutSlice.ts',
@@ -42,7 +41,6 @@ describe('Phase 3: Node simplification structural tests', () => {
             'Deck2Actions',
             'deckActionTypes',
             'NodeUtilsBarDeckButtons',
-            'ToolbarSection',
             'DeckColumn',
             'useToolbarDrag',
             'utilsBarLayoutSlice',
@@ -69,11 +67,6 @@ describe('Phase 3: Node simplification structural tests', () => {
     });
 
     describe('no utilsBarLayout in settingsStore state', () => {
-        it('settingsStore does not contain utilsBarLayout', () => {
-            const content = readSrc('shared/stores/settingsStore.ts');
-            expect(content).not.toContain('utilsBarLayout');
-        });
-
         it('settingsStore does not contain setUtilsBarActionDeck', () => {
             const content = readSrc('shared/stores/settingsStore.ts');
             expect(content).not.toContain('setUtilsBarActionDeck');
@@ -90,10 +83,10 @@ describe('Phase 3: Node simplification structural tests', () => {
         });
     });
 
-    describe('SettingsPanel has 5 tabs (not 6)', () => {
-        it('does not contain toolbar tab', () => {
+    describe('SettingsPanel has 6 tabs (including toolbar)', () => {
+        it('contains toolbar tab', () => {
             const content = readSrc('app/components/SettingsPanel/SettingsPanel.tsx');
-            expect(content).not.toContain("'toolbar'");
+            expect(content).toContain("'toolbar'");
         });
     });
 
@@ -152,8 +145,8 @@ describe('Phase 3: Node simplification structural tests', () => {
             expect(PRIMARY_ACTIONS).toEqual(['ai', 'connect', 'copy', 'delete']);
         });
 
-        it('CONTEXT_MENU_GROUPS has 4 groups', () => {
-            expect(Object.keys(CONTEXT_MENU_GROUPS)).toEqual(['organize', 'appearance', 'insert', 'sharing']);
+        it('CONTEXT_MENU_GROUPS has 5 groups', () => {
+            expect(Object.keys(CONTEXT_MENU_GROUPS)).toEqual(['primary', 'organize', 'appearance', 'insert', 'sharing']);
         });
 
         it('all context menu group actions are strings', () => {
@@ -174,6 +167,59 @@ describe('Phase 3: Node simplification structural tests', () => {
         it('IdeaCard does not reference pinOpenHandlers', () => {
             const content = readSrc('features/canvas/components/nodes/IdeaCard.tsx');
             expect(content).not.toContain('pinOpenHandlers');
+        });
+    });
+
+    describe('icon registry and dual-zone placement', () => {
+        it('ACTION_REGISTRY has 15 actions', () => {
+            expect(ACTION_REGISTRY.size).toBe(15);
+        });
+
+        it('DEFAULT_UTILS_BAR has at most UTILS_BAR_MAX icons', () => {
+            expect(DEFAULT_UTILS_BAR.length).toBeLessThanOrEqual(UTILS_BAR_MAX);
+        });
+
+        it('DEFAULT_CONTEXT_MENU has at most CONTEXT_MENU_MAX icons', () => {
+            expect(DEFAULT_CONTEXT_MENU.length).toBeLessThanOrEqual(CONTEXT_MENU_MAX);
+        });
+
+        it('UTILS_BAR_MAX is 6', () => {
+            expect(UTILS_BAR_MAX).toBe(6);
+        });
+
+        it('CONTEXT_MENU_MAX is 11', () => {
+            expect(CONTEXT_MENU_MAX).toBe(11);
+        });
+
+        it('settingsStore has utilsBarIcons and contextMenuIcons', () => {
+            const content = readSrc('shared/stores/settingsStore.ts');
+            expect(content).toContain('utilsBarIcons');
+            expect(content).toContain('contextMenuIcons');
+        });
+
+        it('settingsStore imports from iconRegistry not toolbarConfig', () => {
+            const content = readSrc('shared/stores/settingsStore.ts');
+            expect(content).toContain('iconRegistry');
+            expect(content).not.toContain('toolbarConfig');
+        });
+
+        it('NodeContextMenu reads contextMenuIcons from store', () => {
+            const content = readSrc('features/canvas/components/nodes/NodeContextMenu.tsx');
+            expect(content).toContain('contextMenuIcons');
+        });
+
+        it('NodeUtilsBar reads utilsBarIcons from store', () => {
+            const content = readSrc('features/canvas/components/nodes/NodeUtilsBar.tsx');
+            expect(content).toContain('utilsBarIcons');
+        });
+
+        it('no default/required actions are missing from defaults', () => {
+            const allPlaced = new Set([...DEFAULT_UTILS_BAR, ...DEFAULT_CONTEXT_MENU]);
+            for (const [id, meta] of ACTION_REGISTRY) {
+                if (meta.required) {
+                    expect(allPlaced.has(id)).toBe(true);
+                }
+            }
         });
     });
 });

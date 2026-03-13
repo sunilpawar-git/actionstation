@@ -9,6 +9,8 @@ import type {
     CanvasScrollMode,
     SettingsTabId,
 } from '@/shared/stores/settingsStore';
+import type { ActionId } from '@/shared/stores/iconRegistry';
+import { DEFAULT_UTILS_BAR, DEFAULT_CONTEXT_MENU } from '@/shared/stores/iconRegistry';
 
 /** Strongly-typed overrides — only valid SettingsState keys accepted */
 export interface MockSettingsOverrides {
@@ -36,6 +38,11 @@ export interface MockSettingsOverrides {
     loadFromStorage?: ReturnType<typeof vi.fn>;
     autoAnalyzeDocuments?: boolean;
     toggleAutoAnalyzeDocuments?: ReturnType<typeof vi.fn>;
+    utilsBarIcons?: ActionId[];
+    contextMenuIcons?: ActionId[];
+    setUtilsBarIcons?: ReturnType<typeof vi.fn>;
+    setContextMenuIcons?: ReturnType<typeof vi.fn>;
+    resetIconPlacement?: ReturnType<typeof vi.fn>;
 }
 
 /** Creates a complete mock SettingsState with optional type-safe overrides */
@@ -65,6 +72,11 @@ export function createMockSettingsState(overrides: MockSettingsOverrides = {}) {
         loadFromStorage: vi.fn(),
         autoAnalyzeDocuments: true,
         toggleAutoAnalyzeDocuments: vi.fn(),
+        utilsBarIcons: [...DEFAULT_UTILS_BAR] as ActionId[],
+        contextMenuIcons: [...DEFAULT_CONTEXT_MENU] as ActionId[],
+        setUtilsBarIcons: vi.fn(),
+        setContextMenuIcons: vi.fn(),
+        resetIconPlacement: vi.fn(),
         ...overrides,
     };
 }

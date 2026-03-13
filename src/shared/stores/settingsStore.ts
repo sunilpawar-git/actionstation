@@ -3,8 +3,17 @@
  * SSOT for theme, canvas settings, and user preferences
  */
 import { create } from 'zustand';
-import { getStorageItem, getValidatedStorageItem, setStorageItem } from '@/shared/utils/storage';
+import { getStorageItem, getValidatedStorageItem, setStorageItem, getStorageJson, setStorageJson } from '@/shared/utils/storage';
 import { trackSettingsChanged } from '@/shared/services/analyticsService';
+import {
+    type ActionId,
+    DEFAULT_UTILS_BAR,
+    DEFAULT_CONTEXT_MENU,
+    UTILS_BAR_MAX,
+    CONTEXT_MENU_MAX,
+    validatePlacement,
+    validateActionList,
+} from './iconRegistry';
 
 export type ThemeOption = 'light' | 'dark' | 'system' | 'sepia' | 'grey' | 'darkBlack';
 type ResolvedTheme = 'light' | 'dark' | 'sepia' | 'grey' | 'darkBlack';
@@ -14,13 +23,13 @@ const DIRECT_THEMES: ReadonlySet<string> = new Set(['light', 'dark', 'sepia', 'g
 
 export type CanvasScrollMode = 'zoom' | 'navigate';
 export type ConnectorStyle = 'solid' | 'subtle' | 'thick' | 'dashed' | 'dotted';
-export type SettingsTabId = 'appearance' | 'canvas' | 'account' | 'keyboard' | 'about';
+export type SettingsTabId = 'appearance' | 'canvas' | 'toolbar' | 'account' | 'keyboard' | 'about';
 
 /** Allow-lists for validated storage reads (defense-in-depth) */
 const VALID_THEMES: readonly ThemeOption[] = ['light', 'dark', 'system', 'sepia', 'grey', 'darkBlack'];
 const VALID_SCROLL_MODES: readonly CanvasScrollMode[] = ['zoom', 'navigate'];
 const VALID_CONNECTOR_STYLES: readonly ConnectorStyle[] = ['solid', 'subtle', 'thick', 'dashed', 'dotted'];
-const VALID_SETTINGS_TABS: readonly SettingsTabId[] = ['appearance', 'canvas', 'account', 'keyboard', 'about'];
+const VALID_SETTINGS_TABS: readonly SettingsTabId[] = ['appearance', 'canvas', 'toolbar', 'account', 'keyboard', 'about'];
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -35,6 +44,8 @@ const STORAGE_KEYS = {
     canvasFreeFlow: 'settings-canvasFreeFlow',
     autoAnalyzeDocuments: 'settings-autoAnalyzeDocuments',
     lastSettingsTab: 'settings-lastSettingsTab',
+    utilsBarIcons: 'settings-utilsBarIcons',
+    contextMenuIcons: 'settings-contextMenuIcons',
 } as const;
 
 // Constants
@@ -54,6 +65,8 @@ interface SettingsState {
     canvasFreeFlow: boolean;
     autoAnalyzeDocuments: boolean;
     lastSettingsTab: SettingsTabId;
+    utilsBarIcons: ActionId[];
+    contextMenuIcons: ActionId[];
     setTheme: (theme: ThemeOption) => void;
     toggleCanvasGrid: () => void;
     setAutoSave: (enabled: boolean) => void;
@@ -65,6 +78,9 @@ interface SettingsState {
     toggleCanvasFreeFlow: () => void;
     toggleAutoAnalyzeDocuments: () => void;
     setLastSettingsTab: (tab: SettingsTabId) => void;
+    setUtilsBarIcons: (icons: ActionId[]) => void;
+    setContextMenuIcons: (icons: ActionId[]) => void;
+    resetIconPlacement: () => void;
     getResolvedTheme: () => ResolvedTheme;
     loadFromStorage: () => void;
 }
@@ -77,7 +93,14 @@ function getClampedStorageItem(key: string, defaultVal: number, min: number, max
     return clamp(getStorageItem<number>(key, defaultVal), min, max);
 }
 
-export const useSettingsStore = create<SettingsState>()((set, get) => ({
+export const useSettingsStore = create<SettingsState>()((set, get) => {
+    // Load and validate icon placement from localStorage
+    const initialPlacement = validatePlacement(
+        getStorageJson<unknown>(STORAGE_KEYS.utilsBarIcons, null),
+        getStorageJson<unknown>(STORAGE_KEYS.contextMenuIcons, null),
+    );
+
+    return {
     theme: getValidatedStorageItem(STORAGE_KEYS.theme, 'system', VALID_THEMES),
     canvasGrid: getStorageItem<boolean>(STORAGE_KEYS.canvasGrid, true),
     autoSave: getStorageItem<boolean>(STORAGE_KEYS.autoSave, true),
@@ -89,6 +112,8 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     canvasFreeFlow: getStorageItem<boolean>(STORAGE_KEYS.canvasFreeFlow, false),
     autoAnalyzeDocuments: getStorageItem<boolean>(STORAGE_KEYS.autoAnalyzeDocuments, true),
     lastSettingsTab: getValidatedStorageItem(STORAGE_KEYS.lastSettingsTab, 'appearance', VALID_SETTINGS_TABS),
+    utilsBarIcons: initialPlacement.utilsBar,
+    contextMenuIcons: initialPlacement.contextMenu,
     setTheme: (theme: ThemeOption) => { set({ theme }); setStorageItem(STORAGE_KEYS.theme, theme); trackSettingsChanged('theme', theme); },
     toggleCanvasGrid: () => {
         const v = !get().canvasGrid; set({ canvasGrid: v }); setStorageItem(STORAGE_KEYS.canvasGrid, v); trackSettingsChanged('canvasGrid', v);
@@ -112,6 +137,26 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     toggleAutoAnalyzeDocuments: () => {
         const v = !get().autoAnalyzeDocuments; set({ autoAnalyzeDocuments: v }); setStorageItem(STORAGE_KEYS.autoAnalyzeDocuments, v); trackSettingsChanged('autoAnalyzeDocuments', v);
     },
+    setUtilsBarIcons: (icons: ActionId[]) => {
+        const validated = validateActionList(icons, UTILS_BAR_MAX);
+        set({ utilsBarIcons: validated });
+        setStorageJson(STORAGE_KEYS.utilsBarIcons, validated);
+        trackSettingsChanged('utilsBarIcons', validated);
+    },
+    setContextMenuIcons: (icons: ActionId[]) => {
+        const validated = validateActionList(icons, CONTEXT_MENU_MAX);
+        set({ contextMenuIcons: validated });
+        setStorageJson(STORAGE_KEYS.contextMenuIcons, validated);
+        trackSettingsChanged('contextMenuIcons', validated);
+    },
+    resetIconPlacement: () => {
+        const utilsBar = [...DEFAULT_UTILS_BAR];
+        const contextMenu = [...DEFAULT_CONTEXT_MENU];
+        set({ utilsBarIcons: utilsBar, contextMenuIcons: contextMenu });
+        setStorageJson(STORAGE_KEYS.utilsBarIcons, utilsBar);
+        setStorageJson(STORAGE_KEYS.contextMenuIcons, contextMenu);
+        trackSettingsChanged('iconPlacementReset', true);
+    },
     setLastSettingsTab: (tab: SettingsTabId) => { set({ lastSettingsTab: tab }); setStorageItem(STORAGE_KEYS.lastSettingsTab, tab); },
     getResolvedTheme: (): ResolvedTheme => {
         const { theme } = get();
@@ -122,6 +167,10 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         return 'light';
     },
     loadFromStorage: () => {
+        const placement = validatePlacement(
+            getStorageJson<unknown>(STORAGE_KEYS.utilsBarIcons, null),
+            getStorageJson<unknown>(STORAGE_KEYS.contextMenuIcons, null),
+        );
         set({
             theme: getValidatedStorageItem(STORAGE_KEYS.theme, 'system', VALID_THEMES),
             canvasGrid: getStorageItem<boolean>(STORAGE_KEYS.canvasGrid, true),
@@ -134,6 +183,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
             canvasFreeFlow: getStorageItem<boolean>(STORAGE_KEYS.canvasFreeFlow, false),
             autoAnalyzeDocuments: getStorageItem<boolean>(STORAGE_KEYS.autoAnalyzeDocuments, true),
             lastSettingsTab: getValidatedStorageItem(STORAGE_KEYS.lastSettingsTab, 'appearance', VALID_SETTINGS_TABS),
+            utilsBarIcons: placement.utilsBar,
+            contextMenuIcons: placement.contextMenu,
         });
     },
-}));
+    };
+});

@@ -1,4 +1,5 @@
 export const contextMenuStrings = {
+    primary: 'Actions',
     organize: 'Organize',
     appearance: 'Appearance',
     insert: 'Insert',

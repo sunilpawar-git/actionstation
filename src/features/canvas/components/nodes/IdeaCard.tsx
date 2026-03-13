@@ -108,7 +108,15 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
                 onConnectClick={handleConnectClick} onCopyClick={handleCopy}
                 onDelete={handleDelete} onTransform={handleTransform} onRegenerate={handleRegenerate}
                 hasContent={hasContent} isTransforming={isTransforming} disabled={isGenerating ?? false}
-                onMoreClick={handleMoreClick} onAIClick={handleDoubleClick} />
+                onMoreClick={handleMoreClick} onAIClick={handleDoubleClick}
+                onPinToggle={handlePinToggle} onDuplicateClick={handleDuplicate}
+                onCollapseToggle={handleCollapseToggle} onFocusClick={handleFocusClick}
+                onTagClick={handleTagOpen} onImageClick={handleImageClick}
+                onAttachmentClick={handleAttachmentClick} onPoolToggle={handlePoolToggle}
+                onContentModeToggle={handleContentModeToggle}
+                isPinned={isPinned ?? false} isCollapsed={isCollapsed ?? false}
+                isInPool={resolvedData.includeInAIPool ?? false}
+                isMindmapMode={isContentModeMindmap(resolvedData.contentMode)} />
             {contextMenu.isOpen && contextMenu.position && (
                 <IdeaCardContextMenuSection nodeId={id} position={contextMenu.position} onClose={contextMenu.close}
                     onTagClick={handleTagOpen} onImageClick={handleImageClick} onAttachmentClick={handleAttachmentClick}
@@ -118,7 +126,10 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
                     isPinned={isPinned ?? false} isCollapsed={isCollapsed ?? false}
                     isInPool={resolvedData.includeInAIPool ?? false}
                     onContentModeToggle={handleContentModeToggle}
-                    isMindmapMode={isContentModeMindmap(resolvedData.contentMode)} />
+                    isMindmapMode={isContentModeMindmap(resolvedData.contentMode)}
+                    onDeleteClick={handleDelete} onCopyClick={handleCopy}
+                    onConnectClick={handleConnectClick} onAIClick={handleDoubleClick}
+                    hasContent={hasContent} />
             )}
             <Handle type="source" position={Position.Bottom} id={`${id}-source`}
                 isConnectable className={`${handleStyles.handle} ${handleStyles.handleBottom}`} />

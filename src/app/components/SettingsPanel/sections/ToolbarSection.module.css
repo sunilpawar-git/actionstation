@@ -1,0 +1,278 @@
+/**
+ * ToolbarSection Styles — Dual-zone icon placement UI
+ */
+
+.description {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-sm) 0;
+    line-height: 1.5;
+}
+
+.zoneHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: var(--space-md);
+    margin-bottom: 0;
+}
+
+.subheading {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+}
+
+.capacityBadge {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-muted);
+    background: var(--color-surface-elevated);
+    border-radius: var(--radius-sm);
+    padding: 2px 8px;
+    border: 1px solid var(--color-border);
+}
+
+.capacityBadge[data-full="true"] {
+    color: var(--color-warning);
+    border-color: var(--color-warning);
+    background: var(--color-warning-bg);
+}
+
+.zoneHint {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    margin: 2px 0 var(--space-xs) 0;
+    font-style: italic;
+}
+
+.moreNote {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    margin: var(--space-xs) 0 0 0;
+    padding: var(--space-xs) var(--space-sm);
+    background: var(--color-surface-elevated);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--color-border);
+}
+
+/* === Icon lists (shared for both zones) === */
+.buttonList {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    padding: var(--space-xs);
+    min-height: 48px;
+    transition: border-color var(--transition-fast);
+}
+
+.dropZoneActive {
+    border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 1px var(--color-primary-light);
+}
+
+.buttonItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-sm);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-elevated);
+    border: 1px solid transparent;
+    cursor: grab;
+    transition: all var(--transition-fast);
+    user-select: none;
+}
+
+.buttonItem:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border);
+}
+
+.buttonItem:active {
+    cursor: grabbing;
+}
+
+.dragging {
+    opacity: 0.4;
+    transform: scale(0.98);
+}
+
+.dropTarget {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.dragHandle {
+    font-size: 14px;
+    color: var(--color-text-muted);
+    cursor: grab;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+}
+
+.buttonIcon {
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+}
+
+.buttonLabel {
+    flex: 1;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-medium);
+}
+
+.buttonActions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.actionBtn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--color-text-muted);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.actionBtn:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+}
+
+.actionBtn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.removeBtn:hover:not(:disabled) {
+    background: var(--color-error-hover-bg);
+    color: var(--color-error);
+}
+
+/* === Unplaced / hidden zone === */
+.hiddenZone {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-radius: var(--radius-md);
+    border: 2px dashed var(--color-border);
+    background: var(--color-surface);
+    padding: var(--space-sm);
+    min-height: 48px;
+    transition: all var(--transition-fast);
+}
+
+.hiddenZoneActive {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+.emptyHint {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    text-align: center;
+    padding: var(--space-sm);
+    font-style: italic;
+}
+
+.hiddenItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-elevated);
+    opacity: 0.7;
+    cursor: grab;
+    transition: all var(--transition-fast);
+    user-select: none;
+}
+
+.hiddenItem:hover {
+    opacity: 1;
+    background: var(--color-surface-hover);
+}
+
+.addButtons {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.addBtn {
+    padding: var(--space-xs) var(--space-sm);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    color: var(--color-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.addBtn:hover:not(:disabled) {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+}
+
+.addBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    color: var(--color-text-muted);
+}
+
+/* === Reset button === */
+.resetBtn {
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    align-self: flex-start;
+}
+
+.resetBtn:hover {
+    border-color: var(--color-text-muted);
+    color: var(--color-text-primary);
+    background: var(--color-surface-hover);
+}
+
+/* === Reduced motion === */
+@media (prefers-reduced-motion: reduce) {
+    .buttonItem,
+    .hiddenItem,
+    .hiddenZone,
+    .buttonList {
+        transition: none;
+    }
+}
