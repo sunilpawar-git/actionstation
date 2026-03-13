@@ -97,11 +97,29 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
         void mm.setData(root).then(() => mm.fit().catch(catchRenderError)).catch(catchRenderError);
     }, [markdown]);
 
-    // Re-fit on container resize (node resize handles, collapse toggle)
+    // Re-fit on genuine container resize (node resize handles, collapse toggle).
+    //
+    // BUG FIX: ReactFlow pans the canvas by applying a CSS transform to a
+    // wrapper div. On HiDPI/Retina displays this causes sub-pixel fluctuations
+    // in ResizeObserver's borderBoxSize (±1px) even though the node div itself
+    // never changed size. The old implementation called fit() on every
+    // observation, making markmap rescale its SVG ~60 times/sec during any pan
+    // gesture — the visible "jumping mindmap" glitch.
+    //
+    // Fix: track the last meaningful size; only call fit() when width or height
+    // changes by MORE than 2px (the subpixel noise threshold).
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return;
-        const ro = new ResizeObserver(() => {
+        let lastW = el.offsetWidth;
+        let lastH = el.offsetHeight;
+        const ro = new ResizeObserver((entries) => {
+            const entry = entries[0];
+            if (!entry) return;
+            const { inlineSize: w, blockSize: h } = entry.contentBoxSize[0] ?? { inlineSize: lastW, blockSize: lastH };
+            if (Math.abs(w - lastW) < 2 && Math.abs(h - lastH) < 2) return;
+            lastW = w;
+            lastH = h;
             void markmapRef.current?.fit().catch(catchRenderError);
         });
         ro.observe(el);

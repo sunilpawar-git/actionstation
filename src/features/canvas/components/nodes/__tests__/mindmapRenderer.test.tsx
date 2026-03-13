@@ -179,6 +179,70 @@ describe('MindmapRenderer', () => {
         });
     });
 
+    describe('ResizeObserver — scroll jitter suppression (canvas pan bug fix)', () => {
+        it('does NOT call fit() when ResizeObserver fires with the same dimensions (scroll jitter)', () => {
+            // Simulate: ResizeObserver fires during canvas pan but the node div
+            // hasn't actually changed size — only sub-pixel transform jitter.
+            // fit() must NOT be called in this case.
+            //
+            // Strategy: seed lastW/lastH via the FIRST observation (establishes
+            // baseline), then fire a second identical observation — no fit() call.
+            let capturedCallback: ((entries: ResizeObserverEntry[]) => void) | null = null;
+            vi.stubGlobal('ResizeObserver', vi.fn((cb: (entries: ResizeObserverEntry[]) => void) => {
+                capturedCallback = cb;
+                return { observe: vi.fn(), disconnect: vi.fn() };
+            }));
+
+            render(<MindmapRenderer markdown="# Topic" />);
+            vi.clearAllMocks();
+
+            // First observation: establishes baseline 400×300 (triggers fit — ok)
+            capturedCallback!([{ contentBoxSize: [{ inlineSize: 400, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
+            vi.clearAllMocks(); // reset after baseline
+
+            // Second observation: same size — scroll jitter scenario
+            capturedCallback!([{ contentBoxSize: [{ inlineSize: 400, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
+
+            expect(mockFit).not.toHaveBeenCalled();
+        });
+
+        it('calls fit() when ResizeObserver fires with genuinely different dimensions (user resize)', () => {
+            let capturedCallback: ((entries: ResizeObserverEntry[]) => void) | null = null;
+            vi.stubGlobal('ResizeObserver', vi.fn((cb: (entries: ResizeObserverEntry[]) => void) => {
+                capturedCallback = cb;
+                return { observe: vi.fn(), disconnect: vi.fn() };
+            }));
+
+            render(<MindmapRenderer markdown="# Topic" />);
+            // Establish baseline
+            capturedCallback!([{ contentBoxSize: [{ inlineSize: 400, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
+            vi.clearAllMocks();
+
+            // Fire with meaningfully larger dimensions — user dragged resize handle
+            capturedCallback!([{ contentBoxSize: [{ inlineSize: 600, blockSize: 450 }] }] as unknown as ResizeObserverEntry[]);
+
+            expect(mockFit).toHaveBeenCalledTimes(1);
+        });
+
+        it('ignores sub-pixel jitter (within 2px tolerance) without calling fit()', () => {
+            let capturedCallback: ((entries: ResizeObserverEntry[]) => void) | null = null;
+            vi.stubGlobal('ResizeObserver', vi.fn((cb: (entries: ResizeObserverEntry[]) => void) => {
+                capturedCallback = cb;
+                return { observe: vi.fn(), disconnect: vi.fn() };
+            }));
+
+            render(<MindmapRenderer markdown="# Topic" />);
+            // Establish baseline at 400×300
+            capturedCallback!([{ contentBoxSize: [{ inlineSize: 400, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
+            vi.clearAllMocks();
+
+            // Sub-pixel jitter: 1px change on inlineSize only — within 2px tolerance
+            capturedCallback!([{ contentBoxSize: [{ inlineSize: 401, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
+
+            expect(mockFit).not.toHaveBeenCalled();
+        });
+    });
+
     it('disconnects ResizeObserver on unmount', () => {
         const disconnect = vi.fn();
         vi.stubGlobal(
