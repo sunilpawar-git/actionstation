@@ -109,24 +109,42 @@ describe('MindmapRenderer', () => {
         expect(vi.mocked(cancelAnimationFrame)).toHaveBeenCalled();
     });
 
-    describe('D3 zoom disabled (prevents scroll-induced mindmap jumping)', () => {
-        it('disables ALL D3 zoom event listeners on the SVG after create', () => {
+    describe('D3 zoom — canvas node (disableZoom defaults to true)', () => {
+        it('disables ALL D3 zoom event listeners on the SVG by default', () => {
             render(<MindmapRenderer markdown="# Topic" />);
             expect(mockSvgOn).toHaveBeenCalledWith('.zoom', null);
         });
 
-        it('disables the wheel pan handler on the SVG after create', () => {
+        it('disables the wheel pan handler on the SVG by default', () => {
             render(<MindmapRenderer markdown="# Topic" />);
             expect(mockSvgOn).toHaveBeenCalledWith('wheel', null);
         });
 
-        it('does NOT stop wheel event propagation (lets it reach ReactFlow for canvas pan)', () => {
+        it('does NOT stop wheel propagation so canvas pan still works', () => {
             render(<MindmapRenderer markdown="# Topic" />);
             const container = screen.getByTestId('mindmap-renderer');
             const event = new WheelEvent('wheel', { bubbles: true });
             const stopSpy = vi.spyOn(event, 'stopPropagation');
             container.dispatchEvent(event);
             expect(stopSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('D3 zoom — focus overlay (disableZoom=false)', () => {
+        it('does NOT strip D3 zoom listeners when disableZoom=false', () => {
+            render(<MindmapRenderer markdown="# Topic" disableZoom={false} />);
+            expect(mockSvgOn).not.toHaveBeenCalledWith('.zoom', null);
+        });
+
+        it('does NOT strip wheel handler when disableZoom=false', () => {
+            render(<MindmapRenderer markdown="# Topic" disableZoom={false} />);
+            expect(mockSvgOn).not.toHaveBeenCalledWith('wheel', null);
+        });
+
+        it('explicitly passes disableZoom=true strips zoom (explicit default)', () => {
+            render(<MindmapRenderer markdown="# Topic" disableZoom={true} />);
+            expect(mockSvgOn).toHaveBeenCalledWith('.zoom', null);
+            expect(mockSvgOn).toHaveBeenCalledWith('wheel', null);
         });
     });
 

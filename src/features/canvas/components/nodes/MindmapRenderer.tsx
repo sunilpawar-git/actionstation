@@ -39,6 +39,12 @@ import styles from './MindmapRenderer.module.css';
 export interface MindmapRendererProps {
     /** Markdown content to visualize as a mindmap */
     markdown: string;
+    /**
+     * Strip D3 zoom/pan listeners from the SVG after create.
+     * Defaults to true for canvas nodes (prevents competing with ReactFlow pan/zoom).
+     * Set to false in the focus overlay so the user can zoom/pan the mindmap freely.
+     */
+    disableZoom?: boolean;
 }
 
 // ── Singleton transformer (stateless, expensive to create) ───────────
@@ -74,7 +80,7 @@ function buildMarkmapOptions() {
 
 // ── Component ────────────────────────────────────────────────────────
 
-export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }: MindmapRendererProps) {
+export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown, disableZoom = true }: MindmapRendererProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const svgRef = useRef<SVGSVGElement>(null);
     const markmapRef = useRef<Markmap | null>(null);
@@ -100,15 +106,19 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
     useEffect(() => {
         if (!svgRef.current) return;
         const mm = Markmap.create(svgRef.current, buildMarkmapOptions());
-        const svg = mm.svg as unknown as { on: (event: string, handler: null) => void };
-        svg.on('.zoom', null);
-        svg.on('wheel', null);
+        if (disableZoom) {
+            const svg = mm.svg as unknown as { on: (event: string, handler: null) => void };
+            svg.on('.zoom', null);
+            svg.on('wheel', null);
+        }
         markmapRef.current = mm;
         return () => {
             cancelAnimationFrame(rafRef.current);
             markmapRef.current?.destroy();
             markmapRef.current = null;
         };
+    // disableZoom is intentionally excluded — it's a mount-time config, not reactive
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Update data when markdown changes.

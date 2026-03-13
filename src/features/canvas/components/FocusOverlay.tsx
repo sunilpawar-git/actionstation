@@ -68,7 +68,7 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
 
     const handlePanelClick = useCallback((e: React.MouseEvent) => { e.stopPropagation(); }, []);
     const handleSwitchToText = useCallback(() => {
-        if (nodeId) toggleContentModeWithUndo(nodeId);
+        if (nodeId) void toggleContentModeWithUndo(nodeId).catch(() => undefined);
     }, [nodeId]);
 
     if (!isFocused || !focusedNode) return null;
@@ -109,7 +109,7 @@ export const FocusOverlay = React.memo(function FocusOverlay() {
                         <div className={styles.mindmapWrapper}>
                             <MindmapErrorBoundary onSwitchToText={handleSwitchToText}>
                                 <Suspense fallback={<div className={styles.mindmapLoading}>{strings.canvas.mindmap.loading}</div>}>
-                                    <LazyMindmapRenderer markdown={output ?? ''} />
+                                    <LazyMindmapRenderer markdown={output ?? ''} disableZoom={false} />
                                 </Suspense>
                             </MindmapErrorBoundary>
                         </div>
