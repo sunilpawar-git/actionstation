@@ -62,7 +62,69 @@ import { strings } from '@/shared/localization/strings';
 className={styles.primaryButton}  // Uses CSS variable
 ```
 
-## 🆔 ID GENERATION CONVENTION
+## � CSS → TAILWIND INCREMENTAL MIGRATION
+
+> **Strategy**: Migrate one component at a time — only when you already touch its `.tsx` file during normal production work. Never migrate speculatively.
+
+### The Golden Rule
+
+> When you modify a component's `.tsx` file, migrate its **entire** `.module.css` to Tailwind in the **same PR**. Never leave a component half-migrated.
+
+### What Tailwind replaces
+
+- `.module.css` files for **UI components** → replaced with `className="..."` Tailwind utilities
+- Hardcoded `style={{}}` props → replaced with Tailwind utilities
+
+### What NEVER gets migrated
+
+| File / Pattern | Reason |
+|---|---|
+| `src/styles/variables.css` | This IS the design system — Tailwind reads from it |
+| `src/styles/themes/*.css` | Runtime theme switching relies on `:root` CSS variable overrides |
+| `src/styles/global.css` | Resets and global rules must stay in CSS |
+| `src/styles/semanticZoom.css` | Canvas viewport rules — pixel-precision required |
+| Canvas layout: `position: absolute`, transforms, React Flow overrides | Tailwind utilities are insufficient here |
+| Custom scrollbar styles (`::-webkit-scrollbar`) | Must remain in CSS |
+
+### Migration Priority (easiest → hardest — only when touched)
+
+| Tier | Components |
+|---|---|
+| ✅ Easy | `OfflineBanner`, `SyncStatusIndicator`, `CalendarBadge`, `PoolPreviewBadge`, `PinWorkspaceButton` |
+| 🟡 Medium | `LoginPage`, `SearchBar`, `TagInput`, `WorkspaceItem`, `SettingsPanel/*` |
+| 🔴 Hard — migrate last | `IdeaCard`, `CanvasView`, `TipTapEditor`, `ClusterBoundaries`, `ZoomControls` |
+| 🚫 Never | Everything in `src/styles/` global/variables/themes |
+
+### Tailwind class rules
+
+```tsx
+// ❌ FORBIDDEN — mixing Module CSS and Tailwind in same component
+import styles from './Button.module.css';
+<button className={`${styles.btn} mt-4`}>...</button>
+
+// ✅ CORRECT — full migration, Tailwind only
+<button className="mt-4 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg">...</button>
+
+// ✅ CORRECT — CSS variable values in Tailwind arbitrary syntax
+className="text-[var(--color-text-primary)] bg-[var(--color-surface)]"
+
+// ✅ CORRECT — Tailwind spacing maps to our tokens
+// --space-sm: 8px  → use p-2, gap-2 (0.5rem ≈ 8px)
+// --space-md: 16px → use p-4, gap-4
+// --space-lg: 24px → use p-6, gap-6
+```
+
+### Hard rules during migration
+
+1. **All-in or leave it**: Never partially convert a `.module.css` — convert the whole file or none
+2. **Delete the `.module.css` file** when done — do not leave empty or orphaned files
+3. **No new `.module.css` files** may be created for any component going forward
+4. **Theme-aware colors** must use `var(--color-*)` arbitrary syntax, never Tailwind's built-in palette (e.g. `bg-blue-500` → `bg-[var(--color-primary)]`)
+5. **Canvas components stay in CSS** — `IdeaCard`, `CanvasView`, node/edge files are last-resort migrations
+
+---
+
+## �🆔 ID GENERATION CONVENTION
 
 ```typescript
 // ✅ ALWAYS use crypto.randomUUID() for node/edge IDs

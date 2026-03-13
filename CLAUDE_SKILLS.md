@@ -122,9 +122,33 @@ Simulate the GitHub CI pipeline locally before pushing.
 
 **Location**: `.claude/skills/ci/SKILL.md`
 
+### 7. `/css-migrate` — CSS Module → Tailwind Migrator
+Migrate a single component's `.module.css` to Tailwind CSS utilities. Only invoke when you are already modifying the component's `.tsx` during production work.
+
+```bash
+/css-migrate src/features/onboarding/components/HelpButton
+/css-migrate src/app/components/OfflineBanner
+/css-migrate src/features/search/components/SearchBar
+```
+
+**What It Does**:
+- Converts every CSS rule to equivalent Tailwind utility classes
+- Replaces all `styles.x` references in the TSX with inline `className` strings
+- Deletes the `.module.css` file and removes the `import styles` line
+- Uses `var(--color-*)` arbitrary syntax to preserve theme switching
+
+**Rules Enforced**:
+- ✓ All-in or nothing: whole `.module.css` migrated at once
+- ✓ No Tailwind built-in palette colors (`bg-blue-500` → `bg-[var(--color-primary)]`)
+- ✓ `variables.css`, theme files, `global.css` are never touched
+- ✓ Canvas components (`IdeaCard`, `CanvasView`, etc.) skipped — too complex
+- ✓ Runs lint + typecheck after migration to verify
+
+**Location**: `.claude/skills/css-migrate/SKILL.md`
+
 ---
 
-## Setup Instructions
+
 
 ### Option 1: For Your Machine (Project-Level)
 
@@ -215,6 +239,9 @@ These skills enforce **all** rules from `CLAUDE.md`:
 | Test coverage ≥ minimum | `/test`, `/build` |
 | Type safety | `/typecheck`, `/build` |
 | Code quality | `/lint-fix`, `/build` |
+| No mixed CSS Module + Tailwind | `/review`, `/css-migrate` |
+| No new `.module.css` files | `/review` |
+| Tailwind uses `var(--color-*)` | `/review`, `/css-migrate` |
 
 ---
 
