@@ -1,7 +1,7 @@
 /**
  * MindmapRenderer Tests — TDD: Validates rendering, pointer isolation,
- * accessibility, empty/error handling, cleanup lifecycle, scroll jitter
- * suppression, and RAF deduplication of fit() calls.
+ * accessibility, empty/error handling, cleanup lifecycle, D3 zoom
+ * disabling, scroll jitter suppression, and RAF deduplication.
  *
  * Strategy: markmap-view requires a real DOM (SVG operations). We mock
  * the Markmap class and Transformer to verify the component's integration
@@ -13,10 +13,11 @@ import { strings } from '@/shared/localization/strings';
 import { MindmapRenderer } from '../MindmapRenderer';
 
 // ── Mocks (hoisted to avoid "Cannot access before initialization") ───
-const { mockSetData, mockFit, mockDestroy, mockTransform, mockCreate } = vi.hoisted(() => {
+const { mockSetData, mockFit, mockDestroy, mockTransform, mockCreate, mockSvgOn } = vi.hoisted(() => {
     const mockFit = vi.fn().mockResolvedValue(undefined);
     const mockSetData = vi.fn().mockResolvedValue(undefined);
     const mockDestroy = vi.fn();
+    const mockSvgOn = vi.fn().mockReturnThis();
     const mockTransform = vi.fn().mockReturnValue({
         root: { content: 'Topic', children: [] },
     });
@@ -24,8 +25,9 @@ const { mockSetData, mockFit, mockDestroy, mockTransform, mockCreate } = vi.hois
         setData: mockSetData,
         fit: mockFit,
         destroy: mockDestroy,
+        svg: { on: mockSvgOn },
     });
-    return { mockSetData, mockFit, mockDestroy, mockTransform, mockCreate };
+    return { mockSetData, mockFit, mockDestroy, mockTransform, mockCreate, mockSvgOn };
 });
 
 vi.mock('markmap-lib', () => ({
@@ -46,7 +48,6 @@ describe('MindmapRenderer', () => {
             'ResizeObserver',
             vi.fn(() => ({ observe: vi.fn(), disconnect: vi.fn() })),
         );
-        // RAF mock: execute callback synchronously so fit() timing is testable
         vi.stubGlobal('requestAnimationFrame', vi.fn((cb: FrameRequestCallback) => { cb(0); return 1; }));
         vi.stubGlobal('cancelAnimationFrame', vi.fn());
     });
@@ -108,20 +109,32 @@ describe('MindmapRenderer', () => {
         expect(vi.mocked(cancelAnimationFrame)).toHaveBeenCalled();
     });
 
-    describe('pointer isolation (prevents ReactFlow canvas drag/zoom)', () => {
+    describe('D3 zoom disabled (prevents scroll-induced mindmap jumping)', () => {
+        it('disables ALL D3 zoom event listeners on the SVG after create', () => {
+            render(<MindmapRenderer markdown="# Topic" />);
+            expect(mockSvgOn).toHaveBeenCalledWith('.zoom', null);
+        });
+
+        it('disables the wheel pan handler on the SVG after create', () => {
+            render(<MindmapRenderer markdown="# Topic" />);
+            expect(mockSvgOn).toHaveBeenCalledWith('wheel', null);
+        });
+
+        it('does NOT stop wheel event propagation (lets it reach ReactFlow for canvas pan)', () => {
+            render(<MindmapRenderer markdown="# Topic" />);
+            const container = screen.getByTestId('mindmap-renderer');
+            const event = new WheelEvent('wheel', { bubbles: true });
+            const stopSpy = vi.spyOn(event, 'stopPropagation');
+            container.dispatchEvent(event);
+            expect(stopSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('pointer isolation (prevents ReactFlow drag on mindmap click)', () => {
         it('stops pointerDown propagation', () => {
             render(<MindmapRenderer markdown="# Topic" />);
             const container = screen.getByTestId('mindmap-renderer');
             const event = new MouseEvent('pointerdown', { bubbles: true });
-            const stopSpy = vi.spyOn(event, 'stopPropagation');
-            container.dispatchEvent(event);
-            expect(stopSpy).toHaveBeenCalled();
-        });
-
-        it('stops wheel propagation', () => {
-            render(<MindmapRenderer markdown="# Topic" />);
-            const container = screen.getByTestId('mindmap-renderer');
-            const event = new WheelEvent('wheel', { bubbles: true });
             const stopSpy = vi.spyOn(event, 'stopPropagation');
             container.dispatchEvent(event);
             expect(stopSpy).toHaveBeenCalled();
@@ -161,7 +174,7 @@ describe('MindmapRenderer', () => {
             expect(typeof options.style).toBe('function');
         });
 
-        it('style function returns CSS that sets --markmap-text-color to app variable', () => {
+        it('style function maps --markmap-text-color to app variable', () => {
             render(<MindmapRenderer markdown="# Topic" />);
             const [, options] = mockCreate.mock.calls[0] as [unknown, Record<string, unknown>];
             const css = (options.style as (id: string) => string)('test-id');
@@ -169,7 +182,7 @@ describe('MindmapRenderer', () => {
             expect(css).toContain('--color-text-primary');
         });
 
-        it('style function returns CSS that sets --markmap-code-bg to surface variable', () => {
+        it('style function maps --markmap-code-bg to surface variable', () => {
             render(<MindmapRenderer markdown="# Topic" />);
             const [, options] = mockCreate.mock.calls[0] as [unknown, Record<string, unknown>];
             const css = (options.style as (id: string) => string)('test-id');
@@ -185,70 +198,53 @@ describe('MindmapRenderer', () => {
         });
     });
 
-    describe('ResizeObserver — scroll jitter suppression', () => {
-        it('does NOT call fit() when ResizeObserver fires with the same rounded dimensions', () => {
-            let capturedCallback: ((entries: ResizeObserverEntry[]) => void) | null = null;
-            vi.stubGlobal('ResizeObserver', vi.fn((cb: (entries: ResizeObserverEntry[]) => void) => {
-                capturedCallback = cb;
+    describe('ResizeObserver — jitter suppression (defense-in-depth)', () => {
+        it('does NOT call fit() when size differs by less than 4px (scroll jitter)', () => {
+            let cb: ((entries: ResizeObserverEntry[]) => void) | null = null;
+            vi.stubGlobal('ResizeObserver', vi.fn((f: (entries: ResizeObserverEntry[]) => void) => {
+                cb = f;
                 return { observe: vi.fn(), disconnect: vi.fn() };
             }));
 
             render(<MindmapRenderer markdown="# Topic" />);
             vi.clearAllMocks();
 
-            capturedCallback!([{ contentBoxSize: [{ inlineSize: 400, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
+            cb!([{ contentBoxSize: [{ inlineSize: 400, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
             vi.clearAllMocks();
 
-            capturedCallback!([{ contentBoxSize: [{ inlineSize: 400, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
+            // 3px jitter — within the 4px threshold
+            cb!([{ contentBoxSize: [{ inlineSize: 403, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
             expect(mockFit).not.toHaveBeenCalled();
         });
 
-        it('calls fit() when ResizeObserver fires with genuinely different dimensions', () => {
-            let capturedCallback: ((entries: ResizeObserverEntry[]) => void) | null = null;
-            vi.stubGlobal('ResizeObserver', vi.fn((cb: (entries: ResizeObserverEntry[]) => void) => {
-                capturedCallback = cb;
+        it('calls fit() when size changes by 4px or more (real resize)', () => {
+            let cb: ((entries: ResizeObserverEntry[]) => void) | null = null;
+            vi.stubGlobal('ResizeObserver', vi.fn((f: (entries: ResizeObserverEntry[]) => void) => {
+                cb = f;
                 return { observe: vi.fn(), disconnect: vi.fn() };
             }));
 
             render(<MindmapRenderer markdown="# Topic" />);
-            capturedCallback!([{ contentBoxSize: [{ inlineSize: 400, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
+            cb!([{ contentBoxSize: [{ inlineSize: 400, blockSize: 300 }] }] as unknown as ResizeObserverEntry[]);
             vi.clearAllMocks();
 
-            capturedCallback!([{ contentBoxSize: [{ inlineSize: 600, blockSize: 450 }] }] as unknown as ResizeObserverEntry[]);
+            cb!([{ contentBoxSize: [{ inlineSize: 420, blockSize: 310 }] }] as unknown as ResizeObserverEntry[]);
             expect(mockFit).toHaveBeenCalledTimes(1);
         });
 
-        it('rounds sub-pixel values so 400.2 and 400.4 both round to 400 (no fit)', () => {
-            let capturedCallback: ((entries: ResizeObserverEntry[]) => void) | null = null;
-            vi.stubGlobal('ResizeObserver', vi.fn((cb: (entries: ResizeObserverEntry[]) => void) => {
-                capturedCallback = cb;
-                return { observe: vi.fn(), disconnect: vi.fn() };
-            }));
-
-            render(<MindmapRenderer markdown="# Topic" />);
-            // 400.2 → Math.round → 400, 300.1 → 300
-            capturedCallback!([{ contentBoxSize: [{ inlineSize: 400.2, blockSize: 300.1 }] }] as unknown as ResizeObserverEntry[]);
-            vi.clearAllMocks();
-
-            // 400.4 → 400, 300.3 → 300 — same integers, no fit
-            capturedCallback!([{ contentBoxSize: [{ inlineSize: 400.4, blockSize: 300.3 }] }] as unknown as ResizeObserverEntry[]);
-            expect(mockFit).not.toHaveBeenCalled();
-        });
-
         it('uses requestAnimationFrame to coalesce fit calls', () => {
-            let capturedCallback: ((entries: ResizeObserverEntry[]) => void) | null = null;
-            vi.stubGlobal('ResizeObserver', vi.fn((cb: (entries: ResizeObserverEntry[]) => void) => {
-                capturedCallback = cb;
+            let cb: ((entries: ResizeObserverEntry[]) => void) | null = null;
+            vi.stubGlobal('ResizeObserver', vi.fn((f: (entries: ResizeObserverEntry[]) => void) => {
+                cb = f;
                 return { observe: vi.fn(), disconnect: vi.fn() };
             }));
-            // Non-executing RAF so we can verify scheduling
             const rafSpy = vi.fn((_cb: FrameRequestCallback) => 42);
             vi.stubGlobal('requestAnimationFrame', rafSpy);
 
             render(<MindmapRenderer markdown="# Topic" />);
             rafSpy.mockClear();
 
-            capturedCallback!([{ contentBoxSize: [{ inlineSize: 500, blockSize: 400 }] }] as unknown as ResizeObserverEntry[]);
+            cb!([{ contentBoxSize: [{ inlineSize: 500, blockSize: 400 }] }] as unknown as ResizeObserverEntry[]);
             expect(rafSpy).toHaveBeenCalledTimes(1);
         });
     });

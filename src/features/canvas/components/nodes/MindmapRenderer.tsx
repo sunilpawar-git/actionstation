@@ -5,8 +5,10 @@
  * The underlying data.output remains markdown — this component only
  * changes the visual rendering, not the data format.
  *
- * Pointer isolation: onPointerDown / onWheel stopPropagation prevents
- * the mindmap's pan/zoom from bubbling to ReactFlow's canvas handlers.
+ * D3 zoom disabled: markmap-view registers D3 zoom handlers (wheel,
+ * mousedown, etc.) on the SVG. These cause the mindmap to zoom/pan when
+ * the user scrolls the canvas — the "jumping mindmap" bug. We strip ALL
+ * D3 zoom listeners after create. Wheel events pass through to ReactFlow.
  *
  * Fit strategy: ALL fit() calls go through scheduleFit() which uses
  * requestAnimationFrame to coalesce multiple callers (setData completion,
@@ -38,6 +40,9 @@ const transformer = new Transformer();
 function catchRenderError(error: unknown): void {
     captureError(error instanceof Error ? error : new Error(String(error)));
 }
+
+/** Ignore ResizeObserver changes under 4px — CSS transform jitter on HiDPI */
+const JITTER_PX = 4;
 
 /** Markmap options: autoFit OFF, theme-aware CSS variables via style callback */
 function buildMarkmapOptions() {
@@ -73,14 +78,9 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
         });
     }, []);
 
-    // Wheel isolation — prevent ReactFlow canvas zoom hijack
-    const stopPropagation = useCallback((e: React.SyntheticEvent) => {
-        e.stopPropagation();
-    }, []);
-
-    // Pointer isolation — prevent ReactFlow canvas pan/zoom hijack.
-    // We also focus the nearest focusable ancestor so Escape / keyboard
-    // shortcuts reach the card's onKeyDown and useEscapeLayer handler.
+    // Pointer isolation — prevent ReactFlow from starting a node drag
+    // when the user clicks inside the mindmap. Also focuses the nearest
+    // focusable ancestor so Escape / keyboard shortcuts reach the card.
     const handlePointerDown = useCallback((e: React.PointerEvent) => {
         e.stopPropagation();
         const focusable = (e.currentTarget as HTMLElement)
@@ -88,14 +88,13 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
         focusable?.focus({ preventScroll: true });
     }, []);
 
-    // Initialize markmap instance once on mount.
-    // autoFit is OFF — we control fit() timing via scheduleFit() so that
-    // fit never runs while the container still has 0×0 dimensions (the
-    // "garbled initial render" bug). Only scheduleFit + ResizeObserver
-    // trigger fit(), and both defer to the next animation frame.
     useEffect(() => {
         if (!svgRef.current) return;
-        markmapRef.current = Markmap.create(svgRef.current, buildMarkmapOptions());
+        const mm = Markmap.create(svgRef.current, buildMarkmapOptions());
+        const svg = mm.svg as unknown as { on: (event: string, handler: null) => void };
+        svg.on('.zoom', null);
+        svg.on('wheel', null);
+        markmapRef.current = mm;
         return () => {
             cancelAnimationFrame(rafRef.current);
             markmapRef.current?.destroy();
@@ -115,15 +114,6 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
         void markmapRef.current.setData(root).then(() => scheduleFit()).catch(catchRenderError);
     }, [markdown, scheduleFit]);
 
-    // Re-fit on genuine container resize (node resize handles, collapse).
-    //
-    // ResizeObserver rounds dimensions to integer pixels. This eliminates
-    // sub-pixel jitter that HiDPI/Retina displays produce when ReactFlow
-    // pans the canvas via CSS transform — the "jumping mindmap" bug.
-    //
-    // This also handles the initial mount: the container starts at 0×0
-    // and ResizeObserver fires once the node gets its real dimensions,
-    // scheduling the FIRST correct fit() via RAF.
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return;
@@ -134,7 +124,7 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
             if (!entry?.contentBoxSize[0]) return;
             const w = Math.round(entry.contentBoxSize[0].inlineSize);
             const h = Math.round(entry.contentBoxSize[0].blockSize);
-            if (w === lastW && h === lastH) return;
+            if (Math.abs(w - lastW) < JITTER_PX && Math.abs(h - lastH) < JITTER_PX) return;
             lastW = w;
             lastH = h;
             scheduleFit();
@@ -151,7 +141,6 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
             role="figure"
             aria-label={strings.canvas.mindmap.ariaLabel}
             onPointerDown={handlePointerDown}
-            onWheel={stopPropagation}
         >
             <svg ref={svgRef} className={styles.svg} role="img"
                 aria-label={strings.canvas.mindmap.ariaLabel} />
