@@ -160,3 +160,25 @@ describe('slashCommands', () => {
         });
     });
 });
+
+// ── Mindmap slash command removal (TDD RED → GREEN) ───────────────────
+describe('mindmap slash command removed', () => {
+    it('toggle-mindmap is NOT in the registry', () => {
+        // cast to string: SlashCommandId no longer includes this value — that's the point
+        expect(slashCommands.some(c => (c.id as string) === 'toggle-mindmap')).toBe(false);
+    });
+
+    it('getCommandById returns undefined for toggle-mindmap', () => {
+        expect(getCommandById('toggle-mindmap' as never)).toBeUndefined();
+    });
+
+    it('filterCommands("mindmap") returns no mindmap command', () => {
+        const results = filterCommands('mindmap');
+        expect(results.some(c => (c.id as string) === 'toggle-mindmap')).toBe(false);
+    });
+
+    it('filterCommands("convert") returns no mindmap command', () => {
+        const results = filterCommands('convert');
+        expect(results.every(c => (c.id as string) !== 'toggle-mindmap')).toBe(true);
+    });
+});

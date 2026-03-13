@@ -15,10 +15,6 @@ export const slashCommandStrings = {
         label: 'Analyze Document',
         description: 'Extract insights from attached documents',
     },
-    toggleMindmap: {
-        label: 'Mindmap View',
-        description: 'View as mindmap — AI converts prose automatically',
-    },
     noResults: 'No commands found',
     menuLabel: 'Slash commands',
     prefixSeparator: ':',

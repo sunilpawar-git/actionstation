@@ -83,25 +83,18 @@ describe('NodeContextMenu — mindmap toggle', () => {
 // eslint-disable-next-line import-x/first
 import { slashCommands, filterCommands, getCommandById } from '../services/slashCommands';
 
-describe('Slash commands — toggle-mindmap', () => {
-    it('registry includes toggle-mindmap command', () => {
-        const cmd = slashCommands.find(c => c.id === 'toggle-mindmap');
-        expect(cmd).toBeDefined();
-        expect(cmd?.icon).toBe('🗺️');
-        expect(cmd?.prefix).toBe('mindmap');
+describe('Slash commands — mindmap removed', () => {
+    it('toggle-mindmap is NOT in the registry (mindmap is context-menu only)', () => {
+        expect(slashCommands.find(c => (c.id as string) === 'toggle-mindmap')).toBeUndefined();
+        expect(getCommandById('toggle-mindmap' as never)).toBeUndefined();
     });
 
-    it('filterCommands matches "mind" keyword', () => {
-        const results = filterCommands('mind');
-        expect(results.some(c => c.id === 'toggle-mindmap')).toBe(true);
+    it('filterCommands("mindmap") does not return toggle-mindmap', () => {
+        const results = filterCommands('mindmap');
+        expect(results.some(c => (c.id as string) === 'toggle-mindmap')).toBe(false);
     });
 
-    it('getCommandById returns toggle-mindmap', () => {
-        const cmd = getCommandById('toggle-mindmap');
-        expect(cmd).toBeDefined();
-    });
-
-    it('has unique prefix among all commands', () => {
+    it('all remaining commands have unique prefixes', () => {
         const prefixes = slashCommands.map(c => c.prefix);
         expect(new Set(prefixes).size).toBe(prefixes.length);
     });

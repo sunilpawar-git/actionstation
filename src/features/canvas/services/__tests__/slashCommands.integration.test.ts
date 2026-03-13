@@ -6,14 +6,14 @@ import { describe, it, expect } from 'vitest';
 import { slashCommands, filterCommands, getCommandById } from '@/features/canvas/services/slashCommands';
 
 describe('Slash Commands Integration', () => {
-    it('should have all registered slash commands (5 total — convert-to-mindmap consolidated into toggle-mindmap)', () => {
-        expect(slashCommands).toHaveLength(5);
+    it('should have exactly 4 slash commands — mindmap is context-menu only', () => {
+        expect(slashCommands).toHaveLength(4);
         expect(slashCommands.some(c => c.id === 'ai-generate')).toBe(true);
         expect(slashCommands.some(c => c.id === 'insert-image')).toBe(true);
         expect(slashCommands.some(c => c.id === 'insert-document')).toBe(true);
         expect(slashCommands.some(c => c.id === 'analyze-document')).toBe(true);
-        expect(slashCommands.some(c => c.id === 'toggle-mindmap')).toBe(true);
-        expect(slashCommands.some(c => c.id === 'convert-to-mindmap')).toBe(false);
+        expect(slashCommands.some(c => (c.id as string) === 'toggle-mindmap')).toBe(false);
+        expect(slashCommands.some(c => (c.id as string) === 'convert-to-mindmap')).toBe(false);
     });
 
     it('should find ai-generate by id', () => {
@@ -42,7 +42,7 @@ describe('Slash Commands Integration', () => {
 
     it('should return all commands when no filter', () => {
         const results = filterCommands('');
-        expect(results).toHaveLength(5);
+        expect(results).toHaveLength(4);
     });
 
     it('should return empty for unmatched query', () => {

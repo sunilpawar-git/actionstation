@@ -25,7 +25,7 @@ export interface SlashCommand {
  * Valid slash command IDs
  * Extend this union type when adding new commands
  */
-export type SlashCommandId = 'ai-generate' | 'insert-image' | 'insert-document' | 'analyze-document' | 'toggle-mindmap' | 'convert-to-mindmap';
+export type SlashCommandId = 'ai-generate' | 'insert-image' | 'insert-document' | 'analyze-document';
 
 /**
  * Input mode for IdeaCard based on slash command selection

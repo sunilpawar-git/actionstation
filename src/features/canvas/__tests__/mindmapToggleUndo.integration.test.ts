@@ -118,22 +118,13 @@ describe('Mindmap resize floor enforcement', () => {
     });
 });
 
-describe('Slash command registry — single mindmap entry point', () => {
-    it('toggle-mindmap is the only mindmap command (no separate convert-to-mindmap)', () => {
-        expect(getCommandById('convert-to-mindmap')).toBeUndefined();
-        const cmd = getCommandById('toggle-mindmap');
-        expect(cmd).toBeDefined();
-        expect(cmd?.icon).toBe('🗺️');
-        expect(cmd?.prefix).toBe('mindmap');
+describe('Slash command registry — mindmap removed (context-menu only)', () => {
+    it('neither toggle-mindmap nor convert-to-mindmap exist in slash commands', () => {
+        expect(getCommandById('toggle-mindmap' as never)).toBeUndefined();
+        expect(getCommandById('convert-to-mindmap' as never)).toBeUndefined();
     });
 
-    it('toggle-mindmap keywords include convert/transform for discoverability', () => {
-        const cmd = getCommandById('toggle-mindmap');
-        expect(cmd?.keywords).toContain('convert');
-        expect(cmd?.keywords).toContain('transform');
-    });
-
-    it('all slash commands have unique IDs and prefixes', () => {
+    it('all remaining slash commands have unique IDs and prefixes', () => {
         const ids = slashCommands.map(c => c.id);
         const prefixes = slashCommands.map(c => c.prefix);
         expect(new Set(ids).size).toBe(ids.length);
