@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Run strict linting (no new warnings allowed)
-        run: npx eslint . --max-warnings 49
+        run: npx eslint . --max-warnings 0
 
   test:
     name: Unit Tests

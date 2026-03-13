@@ -113,7 +113,7 @@ export default tseslint.config(
                 'error',
                 { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
             ],
-            '@typescript-eslint/no-non-null-assertion': 'warn',
+            '@typescript-eslint/no-non-null-assertion': 'error',
             '@typescript-eslint/prefer-nullish-coalescing': 'error',
             '@typescript-eslint/prefer-optional-chain': 'error',
             '@typescript-eslint/strict-boolean-expressions': [
@@ -128,7 +128,7 @@ export default tseslint.config(
                     allowAny: true,
                 },
             ],
-            '@typescript-eslint/no-floating-promises': 'warn',
+            '@typescript-eslint/no-floating-promises': 'error',
             '@typescript-eslint/no-misused-promises': [
                 'error',
                 { checksVoidReturn: { attributes: false } },
