@@ -8,6 +8,11 @@
  * Pointer isolation: onPointerDown / onWheel stopPropagation prevents
  * the mindmap's pan/zoom from bubbling to ReactFlow's canvas handlers.
  *
+ * Fit strategy: ALL fit() calls go through scheduleFit() which uses
+ * requestAnimationFrame to coalesce multiple callers (setData completion,
+ * ResizeObserver) into at most one fit() per frame. autoFit is OFF so
+ * markmap never calls fit() itself during renderData.
+ *
  * @see contentMode.ts — SSOT for when this renderer is active
  */
 import React, { useEffect, useRef, useCallback } from 'react';
@@ -34,12 +39,39 @@ function catchRenderError(error: unknown): void {
     captureError(error instanceof Error ? error : new Error(String(error)));
 }
 
+/** Markmap options: autoFit OFF, theme-aware CSS variables via style callback */
+function buildMarkmapOptions() {
+    return {
+        autoFit: false,
+        duration: 250,
+        style: (id: string) => `
+            .markmap.${id} {
+                --markmap-text-color: var(--color-text-primary);
+                --markmap-code-color: var(--color-text-secondary);
+                --markmap-code-bg: var(--color-surface);
+                --markmap-a-color: var(--color-primary);
+                --markmap-a-hover-color: var(--color-primary-hover);
+                --markmap-circle-open-bg: var(--color-surface-elevated);
+                --markmap-font: 300 14px/18px var(--font-sans, sans-serif);
+            }
+        `,
+    };
+}
+
 // ── Component ────────────────────────────────────────────────────────
 
 export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }: MindmapRendererProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const svgRef = useRef<SVGSVGElement>(null);
     const markmapRef = useRef<Markmap | null>(null);
+    const rafRef = useRef(0);
+
+    const scheduleFit = useCallback(() => {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(() => {
+            void markmapRef.current?.fit().catch(catchRenderError);
+        });
+    }, []);
 
     // Wheel isolation — prevent ReactFlow canvas zoom hijack
     const stopPropagation = useCallback((e: React.SyntheticEvent) => {
@@ -47,10 +79,8 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
     }, []);
 
     // Pointer isolation — prevent ReactFlow canvas pan/zoom hijack.
-    // We also focus the nearest focusable ancestor so Escape / keyboard shortcuts
-    // reach the card's onKeyDown and the document-level useEscapeLayer handler.
-    // Without this, markmap-view's internal D3 zoom captures keyboard events and
-    // swallows Escape before it can bubble to `document`.
+    // We also focus the nearest focusable ancestor so Escape / keyboard
+    // shortcuts reach the card's onKeyDown and useEscapeLayer handler.
     const handlePointerDown = useCallback((e: React.PointerEvent) => {
         e.stopPropagation();
         const focusable = (e.currentTarget as HTMLElement)
@@ -58,73 +88,60 @@ export const MindmapRenderer = React.memo(function MindmapRenderer({ markdown }:
         focusable?.focus({ preventScroll: true });
     }, []);
 
-    // Initialize markmap instance once on mount
+    // Initialize markmap instance once on mount.
+    // autoFit is OFF — we control fit() timing via scheduleFit() so that
+    // fit never runs while the container still has 0×0 dimensions (the
+    // "garbled initial render" bug). Only scheduleFit + ResizeObserver
+    // trigger fit(), and both defer to the next animation frame.
     useEffect(() => {
         if (!svgRef.current) return;
-        markmapRef.current = Markmap.create(svgRef.current, {
-            autoFit: true,
-            duration: 250,
-            // Override markmap's hardcoded light-mode defaults with CSS custom
-            // properties from the app theme.  The `style` callback is injected
-            // after markmap's own global CSS, so these declarations win for
-            // every theme (light, dark, sepia, grey, darkBlack) without any
-            // JS-side theme detection.
-            style: (id: string) => `
-                .markmap.${id} {
-                    --markmap-text-color: var(--color-text-primary);
-                    --markmap-code-color: var(--color-text-secondary);
-                    --markmap-code-bg: var(--color-surface);
-                    --markmap-a-color: var(--color-primary);
-                    --markmap-a-hover-color: var(--color-primary-hover);
-                    --markmap-circle-open-bg: var(--color-surface-elevated);
-                    --markmap-font: 300 14px/18px var(--font-sans, sans-serif);
-                }
-            `,
-        });
+        markmapRef.current = Markmap.create(svgRef.current, buildMarkmapOptions());
         return () => {
+            cancelAnimationFrame(rafRef.current);
             markmapRef.current?.destroy();
             markmapRef.current = null;
         };
     }, []);
 
-    // Update data when markdown changes
+    // Update data when markdown changes.
+    // setData() returns a promise that resolves after D3 transitions
+    // complete (~250ms). We schedule fit at that point so node positions
+    // are final. scheduleFit deduplicates via requestAnimationFrame.
     useEffect(() => {
         if (!markmapRef.current) return;
         const raw = markdown.trim() || `# ${strings.canvas.mindmap.emptyFallback}`;
         const input = sanitizeMarkdown(raw);
         const { root } = transformer.transform(input);
-        const mm = markmapRef.current;
-        void mm.setData(root).then(() => mm.fit().catch(catchRenderError)).catch(catchRenderError);
-    }, [markdown]);
+        void markmapRef.current.setData(root).then(() => scheduleFit()).catch(catchRenderError);
+    }, [markdown, scheduleFit]);
 
-    // Re-fit on genuine container resize (node resize handles, collapse toggle).
+    // Re-fit on genuine container resize (node resize handles, collapse).
     //
-    // BUG FIX: ReactFlow pans the canvas by applying a CSS transform to a
-    // wrapper div. On HiDPI/Retina displays this causes sub-pixel fluctuations
-    // in ResizeObserver's borderBoxSize (±1px) even though the node div itself
-    // never changed size. The old implementation called fit() on every
-    // observation, making markmap rescale its SVG ~60 times/sec during any pan
-    // gesture — the visible "jumping mindmap" glitch.
+    // ResizeObserver rounds dimensions to integer pixels. This eliminates
+    // sub-pixel jitter that HiDPI/Retina displays produce when ReactFlow
+    // pans the canvas via CSS transform — the "jumping mindmap" bug.
     //
-    // Fix: track the last meaningful size; only call fit() when width or height
-    // changes by MORE than 2px (the subpixel noise threshold).
+    // This also handles the initial mount: the container starts at 0×0
+    // and ResizeObserver fires once the node gets its real dimensions,
+    // scheduling the FIRST correct fit() via RAF.
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return;
-        let lastW = el.offsetWidth;
-        let lastH = el.offsetHeight;
+        let lastW = 0;
+        let lastH = 0;
         const ro = new ResizeObserver((entries) => {
             const entry = entries[0];
-            if (!entry) return;
-            const { inlineSize: w, blockSize: h } = entry.contentBoxSize[0] ?? { inlineSize: lastW, blockSize: lastH };
-            if (Math.abs(w - lastW) < 2 && Math.abs(h - lastH) < 2) return;
+            if (!entry?.contentBoxSize[0]) return;
+            const w = Math.round(entry.contentBoxSize[0].inlineSize);
+            const h = Math.round(entry.contentBoxSize[0].blockSize);
+            if (w === lastW && h === lastH) return;
             lastW = w;
             lastH = h;
-            void markmapRef.current?.fit().catch(catchRenderError);
+            scheduleFit();
         });
         ro.observe(el);
         return () => ro.disconnect();
-    }, []);
+    }, [scheduleFit]);
 
     return (
         <div
