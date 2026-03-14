@@ -106,17 +106,21 @@
     color: var(--color-error);
 }
 
-/* Action buttons row */
+/* Action buttons row — always visible so users can discover the reader */
 .actions {
     display: flex;
     flex-direction: row;
     gap: var(--space-xxs);
     flex-shrink: 0;
+}
+
+/* Secondary actions (download, open tab, remove) fade in on hover */
+.secondaryAction {
     opacity: 0;
     transition: opacity var(--transition-fast);
 }
 
-.card:hover .actions {
+.card:hover .secondaryAction {
     opacity: 1;
 }
 
@@ -147,4 +151,11 @@
 .readerBtn:hover {
     color: var(--color-primary);
     background: var(--color-primary-light);
+}
+
+/* Reader button is always visible and styled to draw attention */
+.readerBtnPrimary {
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+    font-size: 13px;
 }

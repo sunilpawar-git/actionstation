@@ -86,17 +86,17 @@ export const AttachmentCardView = React.memo(function AttachmentCardView({ node,
                 {status !== 'uploading' && (
                     <div className={styles.actions}>
                         {canOpenInReader && (
-                            <button type="button" className={`${styles.actionBtn} ${styles.readerBtn}`}
+                            <button type="button" className={`${styles.actionBtn} ${styles.readerBtn} ${styles.readerBtnPrimary}`}
                                 onClick={handleOpenReader} title={strings.reader.openInReader}
                                 aria-label={strings.reader.openInReader}>📖</button>
                         )}
-                        <button type="button" className={styles.actionBtn}
+                        <button type="button" className={`${styles.actionBtn} ${styles.secondaryAction}`}
                             onClick={handleDownload} title={strings.canvas.docDownload}
                             aria-label={strings.canvas.docDownload}>↓</button>
-                        <button type="button" className={styles.actionBtn}
+                        <button type="button" className={`${styles.actionBtn} ${styles.secondaryAction}`}
                             onClick={handleOpenNewTab} title={strings.canvas.docOpenNewTab}
                             aria-label={strings.canvas.docOpenNewTab}>↗</button>
-                        <button type="button" className={`${styles.actionBtn} ${styles.removeBtn}`}
+                        <button type="button" className={`${styles.actionBtn} ${styles.removeBtn} ${styles.secondaryAction}`}
                             onClick={handleRemove} title={strings.canvas.docRemove}
                             aria-label={strings.canvas.docRemove}>×</button>
                     </div>
