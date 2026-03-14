@@ -236,6 +236,49 @@ describe('LinkPreviewCard', () => {
         });
     });
 
+    describe('Reader button interactions', () => {
+        it('calls onOpenInReader with URL when reader button is clicked', () => {
+            const onOpenInReader = vi.fn();
+            render(<LinkPreviewCard preview={fullPreview} onOpenInReader={onOpenInReader} />);
+            const readerBtn = screen.getByLabelText(strings.reader.openInReader);
+            fireEvent.click(readerBtn);
+            expect(onOpenInReader).toHaveBeenCalledWith('https://example.com/article');
+        });
+
+        it('does not render reader button when onOpenInReader is not provided', () => {
+            render(<LinkPreviewCard preview={fullPreview} />);
+            expect(screen.queryByLabelText(strings.reader.openInReader)).not.toBeInTheDocument();
+        });
+
+        it('stops event propagation when reader button is clicked', () => {
+            const onOpenInReader = vi.fn();
+            const onParentClick = vi.fn();
+            render(
+                <div onClick={onParentClick}>
+                    <LinkPreviewCard preview={fullPreview} onOpenInReader={onOpenInReader} />
+                </div>,
+            );
+            const readerBtn = screen.getByLabelText(strings.reader.openInReader);
+            fireEvent.click(readerBtn);
+            expect(onOpenInReader).toHaveBeenCalled();
+            expect(onParentClick).not.toHaveBeenCalled();
+        });
+
+        it('stops event propagation when remove button is clicked', () => {
+            const onRemove = vi.fn();
+            const onParentClick = vi.fn();
+            render(
+                <div onClick={onParentClick}>
+                    <LinkPreviewCard preview={fullPreview} onRemove={onRemove} />
+                </div>,
+            );
+            const removeBtn = screen.getByLabelText(strings.linkPreview.removePreview);
+            fireEvent.click(removeBtn);
+            expect(onRemove).toHaveBeenCalled();
+            expect(onParentClick).not.toHaveBeenCalled();
+        });
+    });
+
     describe('Accessibility', () => {
         it('has accessible link role', () => {
             render(<LinkPreviewCard preview={fullPreview} />);

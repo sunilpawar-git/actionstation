@@ -1,9 +1,11 @@
 /**
  * useDocumentInsert Hook Tests — toast + immediate persistence on upload start
+ * + updateAttachmentByTempId fallback for blur-during-upload race
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { strings } from '@/shared/localization/strings';
+import type { Editor } from '@tiptap/core';
 
 const mockInsertContent = vi.fn();
 const mockFocus = vi.fn();
@@ -51,7 +53,7 @@ vi.mock('@/shared/stores/toastStore', () => ({
 }));
 
 /* eslint-disable import-x/first -- Must import after vi.mock */
-import { useDocumentInsert } from '../useDocumentInsert';
+import { useDocumentInsert, updateAttachmentByTempId } from '../useDocumentInsert';
 import { toast } from '@/shared/stores/toastStore';
 /* eslint-enable import-x/first */
 
@@ -126,5 +128,118 @@ describe('useDocumentInsert', () => {
         const firstOutputCall = mockUpdateNodeOutput.mock.invocationCallOrder[0] ?? 0;
         const firstToastCall = (toast.info as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0] ?? 0;
         expect(firstOutputCall).toBeLessThan(firstToastCall);
+    });
+});
+
+describe('updateAttachmentByTempId', () => {
+    function makeMockEditor(nodes: Array<{ type: string; attrs: Record<string, unknown> }>) {
+        const setNodeMarkup = vi.fn();
+        const dispatch = vi.fn();
+        const steps: unknown[] = [];
+        setNodeMarkup.mockImplementation(() => { steps.push({}); });
+
+        return {
+            editor: {
+                state: {
+                    doc: {
+                        descendants: vi.fn((cb: (n: { type: { name: string }; attrs: Record<string, unknown> }, pos: number) => void) => {
+                            nodes.forEach((n, i) => cb({ type: { name: n.type }, attrs: { ...n.attrs } }, i));
+                        }),
+                    },
+                    tr: { steps, setNodeMarkup },
+                },
+                view: { dispatch },
+            } as unknown as Editor,
+            setNodeMarkup,
+            dispatch,
+        };
+    }
+
+    it('updates node by exact tempId match', () => {
+        const { editor, setNodeMarkup, dispatch } = makeMockEditor([
+            { type: 'attachment', attrs: { url: '', filename: 'a.pdf', tempId: 'tmp-1' } },
+        ]);
+
+        updateAttachmentByTempId(editor, 'tmp-1', {
+            url: 'https://cdn.example.com/a.pdf',
+            filename: 'a.pdf',
+            status: 'ready',
+            tempId: null,
+        });
+
+        expect(setNodeMarkup).toHaveBeenCalledWith(0, undefined, expect.objectContaining({
+            url: 'https://cdn.example.com/a.pdf',
+        }));
+        expect(dispatch).toHaveBeenCalled();
+    });
+
+    it('falls back to filename + empty url when tempId is lost (blur race)', () => {
+        const { editor, setNodeMarkup, dispatch } = makeMockEditor([
+            { type: 'attachment', attrs: { url: '', filename: 'doc.pdf', tempId: null } },
+        ]);
+
+        updateAttachmentByTempId(editor, 'tmp-gone', {
+            url: 'https://cdn.example.com/doc.pdf',
+            filename: 'doc.pdf',
+            status: 'ready',
+            tempId: null,
+        });
+
+        expect(setNodeMarkup).toHaveBeenCalledWith(0, undefined, expect.objectContaining({
+            url: 'https://cdn.example.com/doc.pdf',
+            filename: 'doc.pdf',
+        }));
+        expect(dispatch).toHaveBeenCalled();
+    });
+
+    it('does not update when neither tempId nor filename matches', () => {
+        const { editor, setNodeMarkup, dispatch } = makeMockEditor([
+            { type: 'attachment', attrs: { url: '', filename: 'other.pdf', tempId: null } },
+        ]);
+
+        updateAttachmentByTempId(editor, 'tmp-gone', {
+            url: 'https://cdn.example.com/doc.pdf',
+            filename: 'doc.pdf',
+            status: 'ready',
+            tempId: null,
+        });
+
+        expect(setNodeMarkup).not.toHaveBeenCalled();
+        expect(dispatch).not.toHaveBeenCalled();
+    });
+
+    it('does not fallback-match nodes that already have a url', () => {
+        const { editor, setNodeMarkup, dispatch } = makeMockEditor([
+            { type: 'attachment', attrs: { url: 'https://existing.com/x.pdf', filename: 'doc.pdf', tempId: null } },
+        ]);
+
+        updateAttachmentByTempId(editor, 'tmp-gone', {
+            url: 'https://cdn.example.com/doc.pdf',
+            filename: 'doc.pdf',
+            status: 'ready',
+            tempId: null,
+        });
+
+        expect(setNodeMarkup).not.toHaveBeenCalled();
+        expect(dispatch).not.toHaveBeenCalled();
+    });
+
+    it('only updates first matching placeholder when duplicates exist', () => {
+        const { editor, setNodeMarkup } = makeMockEditor([
+            { type: 'attachment', attrs: { url: '', filename: 'dup.pdf', tempId: null } },
+            { type: 'attachment', attrs: { url: '', filename: 'dup.pdf', tempId: null } },
+        ]);
+
+        updateAttachmentByTempId(editor, 'tmp-gone', {
+            url: 'https://cdn.example.com/dup.pdf',
+            filename: 'dup.pdf',
+            status: 'ready',
+            tempId: null,
+        });
+
+        expect(setNodeMarkup).toHaveBeenCalledTimes(1);
+        expect(setNodeMarkup).toHaveBeenCalledWith(0, undefined, expect.objectContaining({
+            url: 'https://cdn.example.com/dup.pdf',
+        }));
     });
 });

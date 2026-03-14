@@ -7,6 +7,8 @@
     width: 100%;
     flex: 1;
     min-height: var(--editor-min-height);
+    display: flex;
+    flex-direction: column;
 }
 
 /* ProseMirror core editor area */
@@ -17,6 +19,7 @@
     line-height: var(--line-height-normal);
     color: var(--color-text-primary);
     min-height: var(--editor-min-height);
+    flex: 1;
 }
 
 /* Placeholder text styling (matches textarea ::placeholder) */

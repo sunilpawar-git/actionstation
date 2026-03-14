@@ -60,8 +60,9 @@ export async function handleFetchLinkMeta(
         const response = await fetch(url, {
             signal: controller.signal,
             headers: {
-                'User-Agent': 'EdenLinkPreviewBot/1.0',
-                'Accept': 'text/html,application/xhtml+xml',
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
             },
             // Node's fetch follows up to 20 redirects by default; FETCH_TIMEOUT_MS
             // is the hard backstop against redirect chains consuming function time.

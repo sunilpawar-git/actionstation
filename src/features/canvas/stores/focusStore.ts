@@ -40,6 +40,11 @@ export const useFocusStore = create<FocusStore>()((set) => ({
             focusedNodeId: nodeId,
             readerContext: { nodeId, source, sessionId },
         });
+        const cs = useCanvasStore.getState();
+        const node = getNodeMap(cs.nodes).get(nodeId);
+        if (!isContentModeMindmap(node?.data.contentMode)) {
+            cs.startEditing(nodeId);
+        }
         trackReaderOpened(source.type, 'focus');
         return { sessionId };
     },

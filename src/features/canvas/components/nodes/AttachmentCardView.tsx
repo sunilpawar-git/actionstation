@@ -62,7 +62,8 @@ export const AttachmentCardView = React.memo(function AttachmentCardView({ node,
         deleteNode();
     }, [deleteNode]);
 
-    const handleOpenReader = useCallback(() => {
+    const handleOpenReader = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
         if (!canOpenInReader || !extOptions.onOpenReader) return;
         extOptions.onOpenReader(extOptions.nodeId ?? '', url, filename, resolvedMime);
     }, [canOpenInReader, extOptions, url, filename, resolvedMime]);

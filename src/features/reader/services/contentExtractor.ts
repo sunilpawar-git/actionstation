@@ -25,23 +25,37 @@ export interface ExtractedArticle {
 /**
  * Fetch a URL and extract article content via Readability.
  * Uses the fetchArticleHtml Cloud Function to bypass CORS restrictions.
- * Falls back to a direct fetch in dev environments without a configured proxy.
- * Returns null if the URL cannot be fetched or parsed.
+ * Falls back to a direct fetch when the proxy fails (CORS, 4xx, network).
+ * Returns null if neither method succeeds.
  */
 export async function extractArticleContent(
     url: SafeReaderUrl,
     signal?: AbortSignal,
 ): Promise<ExtractedArticle | null> {
-    let html: string;
-    try {
-        html = isProxyConfigured()
-            ? await fetchViaProxy(url, signal)
-            : await fetchDirect(url, signal);
-    } catch (err) {
-        captureError(err, { context: 'contentExtractor.fetch', url });
-        return null;
+    let html: string | null = null;
+
+    if (isProxyConfigured()) {
+        try {
+            html = await fetchViaProxy(url, signal);
+        } catch (proxyErr) {
+            captureError(proxyErr, { context: 'contentExtractor.proxy', url });
+            try {
+                html = await fetchDirect(url, signal);
+            } catch (directErr) {
+                captureError(directErr, { context: 'contentExtractor.directFallback', url });
+                return null;
+            }
+        }
+    } else {
+        try {
+            html = await fetchDirect(url, signal);
+        } catch (err) {
+            captureError(err, { context: 'contentExtractor.fetch', url });
+            return null;
+        }
     }
 
+    if (!html) return null;
     return parseArticleFromHtml(html, url);
 }
 

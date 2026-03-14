@@ -25,20 +25,39 @@ function makeTempId(): string {
 
 /**
  * Update a specific attachment node in the editor by its tempId.
- * No-ops silently if no matching node is found (avoids spurious transactions).
+ * Falls back to filename + empty-url match when tempId was lost (blur
+ * during upload re-parses HTML and strips the transient tempId).
+ * No-ops silently if no matching node is found.
  */
-function updateAttachmentByTempId(
+export function updateAttachmentByTempId(
     editor: Editor,
     tempId: string,
     newAttrs: Partial<AttachmentNodeAttrs>,
 ): void {
     const { doc, tr } = editor.state;
+    let matched = false;
+
     doc.descendants((node, pos) => {
         if (node.type.name === 'attachment' && node.attrs.tempId === tempId) {
             tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...newAttrs });
+            matched = true;
         }
     });
-    // Only dispatch if the transaction actually contains steps (i.e. a match was found)
+
+    if (!matched && newAttrs.filename && newAttrs.url) {
+        doc.descendants((node, pos) => {
+            if (matched) return;
+            if (
+                node.type.name === 'attachment' &&
+                node.attrs.url === '' &&
+                node.attrs.filename === newAttrs.filename
+            ) {
+                tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...newAttrs });
+                matched = true;
+            }
+        });
+    }
+
     if (tr.steps.length > 0) editor.view.dispatch(tr);
 }
 

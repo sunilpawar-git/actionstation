@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { parseArticleFromHtml, buildArticleSource } from '../services/contentExtractor';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { parseArticleFromHtml, buildArticleSource, extractArticleContent } from '../services/contentExtractor';
 import type { SafeReaderUrl } from '../types/reader';
 
 const sampleHtml = `
@@ -84,6 +84,66 @@ describe('parseArticleFromHtml', () => {
         }
     });
 });
+
+vi.mock('@/shared/services/sentryService', () => ({
+    captureError: vi.fn(),
+}));
+
+vi.mock('@/features/auth/services/authTokenService', () => ({
+    getAuthToken: vi.fn().mockResolvedValue('mock-token'),
+}));
+
+describe('extractArticleContent — proxy-to-direct fallback', () => {
+    const url = 'https://example.com/article' as SafeReaderUrl;
+
+    const articleHtml = `
+    <!DOCTYPE html><html><head><title>Fallback Article</title></head>
+    <body><article>
+    <h1>Fallback Article</h1>
+    ${'<p>Substantial paragraph content for Readability detection. </p>'.repeat(5)}
+    </article></body></html>`;
+
+    beforeEach(() => {
+        vi.spyOn(globalThis, 'fetch');
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('falls back to direct fetch when proxy fetch fails', async () => {
+        const { isProxyConfigured } = await import('@/config/linkPreviewConfig');
+        vi.mocked(isProxyConfigured).mockReturnValue(true);
+
+        const mockFetch = vi.mocked(globalThis.fetch);
+        mockFetch
+            .mockRejectedValueOnce(new Error('CORS blocked'))
+            .mockResolvedValueOnce(new Response(articleHtml, { status: 200 }));
+
+        const result = await extractArticleContent(url);
+        expect(result).not.toBeNull();
+        expect(result?.title).toBeTruthy();
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns null when both proxy and direct fetch fail', async () => {
+        const { isProxyConfigured } = await import('@/config/linkPreviewConfig');
+        vi.mocked(isProxyConfigured).mockReturnValue(true);
+
+        const mockFetch = vi.mocked(globalThis.fetch);
+        mockFetch
+            .mockRejectedValueOnce(new Error('CORS blocked'))
+            .mockRejectedValueOnce(new Error('Network error'));
+
+        const result = await extractArticleContent(url);
+        expect(result).toBeNull();
+    });
+});
+
+vi.mock('@/config/linkPreviewConfig', () => ({
+    isProxyConfigured: vi.fn().mockReturnValue(false),
+    getFetchArticleHtmlUrl: vi.fn().mockReturnValue('https://proxy.test/fetchArticleHtml'),
+}));
 
 describe('buildArticleSource', () => {
     it('builds ArticleReaderSource with correct type', () => {

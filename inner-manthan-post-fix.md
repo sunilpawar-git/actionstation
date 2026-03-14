@@ -1,0 +1,1003 @@
+- generic [ref=e2]:
+  - generic [ref=e6]:
+    - complementary "Workspace sidebar" [ref=e8]:
+      - generic [ref=e9]:
+        - img [ref=e11]
+        - generic [ref=e14]: ActionStation
+        - button "Unpin sidebar" [expanded] [pressed] [ref=e15] [cursor=pointer]:
+          - img [ref=e16]
+      - generic [ref=e18]:
+        - generic [ref=e20]:
+          - button "New Workspace" [ref=e21] [cursor=pointer]:
+            - img [ref=e22]
+            - generic [ref=e23]: New Workspace
+          - button "New Workspace Options" [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+        - list [ref=e28]:
+          - generic [ref=e29] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e30]:
+              - img [ref=e31]
+            - generic [ref=e38]: Pers(13)
+            - button "Pin for offline" [ref=e39]:
+              - img [ref=e40]
+          - generic [ref=e42]:
+            - button "Drag to reorder workspace" [ref=e43]:
+              - img [ref=e44]
+            - button "Delete divider" [ref=e52] [cursor=pointer]:
+              - img [ref=e53]
+          - generic [ref=e56] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e57]:
+              - img [ref=e58]
+            - generic [ref=e65]: Headspace(6)
+            - button "Pin for offline" [ref=e66]:
+              - img [ref=e67]
+          - generic [ref=e69] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e70]:
+              - img [ref=e71]
+            - generic [ref=e78]: Manthan(2)
+            - button "Pin for offline" [ref=e79]:
+              - img [ref=e80]
+          - generic [ref=e82] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e83]:
+              - img [ref=e84]
+            - generic [ref=e91]: Inner Manthan(13)
+            - button "Pin for offline" [ref=e92]:
+              - img [ref=e93]
+          - generic [ref=e95]:
+            - button "Drag to reorder workspace" [ref=e96]:
+              - img [ref=e97]
+            - button "Delete divider" [ref=e105] [cursor=pointer]:
+              - img [ref=e106]
+          - generic [ref=e109] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e110]:
+              - img [ref=e111]
+            - generic [ref=e118]: Dan Koe Ideas(6)
+            - button "Pin for offline" [ref=e119]:
+              - img [ref=e120]
+          - generic [ref=e122] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e123]:
+              - img [ref=e124]
+            - generic [ref=e131]: Human 3.0(48)
+            - button "Pin for offline" [ref=e132]:
+              - img [ref=e133]
+          - generic [ref=e135]:
+            - button "Drag to reorder workspace" [ref=e136]:
+              - img [ref=e137]
+            - button "Delete divider" [ref=e145] [cursor=pointer]:
+              - img [ref=e146]
+          - generic [ref=e149] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e150]:
+              - img [ref=e151]
+            - generic [ref=e158]: fs.blog(2)
+            - button "Pin for offline" [ref=e159]:
+              - img [ref=e160]
+          - generic [ref=e162]:
+            - button "Drag to reorder workspace" [ref=e163]:
+              - img [ref=e164]
+            - button "Delete divider" [ref=e172] [cursor=pointer]:
+              - img [ref=e173]
+          - generic [ref=e176] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e177]:
+              - img [ref=e178]
+            - generic [ref=e185]: Coord(3)
+            - button "Pin for offline" [ref=e186]:
+              - img [ref=e187]
+          - generic [ref=e189] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e190]:
+              - img [ref=e191]
+            - generic [ref=e198]: Land(3)
+            - button "Pin for offline" [ref=e199]:
+              - img [ref=e200]
+          - generic [ref=e202]:
+            - button "Drag to reorder workspace" [ref=e203]:
+              - img [ref=e204]
+            - button "Delete divider" [ref=e212] [cursor=pointer]:
+              - img [ref=e213]
+          - generic [ref=e216] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e217]:
+              - img [ref=e218]
+            - generic [ref=e225]: Physical Security(17)
+            - button "Pin for offline" [ref=e226]:
+              - img [ref=e227]
+          - generic [ref=e229]:
+            - button "Drag to reorder workspace" [ref=e230]:
+              - img [ref=e231]
+            - button "Delete divider" [ref=e239] [cursor=pointer]:
+              - img [ref=e240]
+          - generic [ref=e243] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e244]:
+              - img [ref=e245]
+            - generic [ref=e252]: Coding Plan(1)
+            - button "Pin for offline" [ref=e253]:
+              - img [ref=e254]
+          - generic [ref=e256] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e257]:
+              - img [ref=e258]
+            - generic [ref=e265]: Code Hacks(7)
+            - button "Pin for offline" [ref=e266]:
+              - img [ref=e267]
+          - generic [ref=e269]:
+            - button "Drag to reorder workspace" [ref=e270]:
+              - img [ref=e271]
+            - button "Delete divider" [ref=e279] [cursor=pointer]:
+              - img [ref=e280]
+          - generic [ref=e283] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e284]:
+              - img [ref=e285]
+            - generic [ref=e292]: Action Station(27)
+            - button "Pin for offline" [ref=e293]:
+              - img [ref=e294]
+          - generic [ref=e296] [cursor=pointer]:
+            - button "Drag to reorder workspace" [ref=e297]:
+              - img [ref=e298]
+            - generic [ref=e305]: Attack Framework(6)
+            - button "Pin for offline" [ref=e306]:
+              - img [ref=e307]
+        - status [ref=e309]
+      - generic [ref=e311]:
+        - generic [ref=e312]:
+          - img "Sunil Pawar" [ref=e313]
+          - generic [ref=e314]:
+            - generic [ref=e315]: Sunil Pawar
+            - button "Sign out" [ref=e316] [cursor=pointer]
+        - button "Settings" [ref=e317] [cursor=pointer]:
+          - img [ref=e318]
+    - generic [ref=e321]:
+      - banner [ref=e322]:
+        - button "1" [ref=e324] [cursor=pointer]:
+          - img [ref=e326]
+          - generic [ref=e328]: "1"
+        - generic [ref=e330]:
+          - combobox "Search notes..." [ref=e331]
+          - generic: 🔍
+          - button "Toggle filters" [ref=e332] [cursor=pointer]: ⚙
+        - generic [ref=e333]:
+          - button "Add New Node" [ref=e334] [cursor=pointer]:
+            - img [ref=e335]
+          - button "Auto Arrange (Grid)" [ref=e337] [cursor=pointer]:
+            - img [ref=e338]
+          - button "Toggle Free Flowing nodes (Disables auto-grid alignment)" [ref=e344] [cursor=pointer]:
+            - img [ref=e345]
+          - button "Find themes" [ref=e352] [cursor=pointer]:
+            - img [ref=e353]
+          - button "Clear all nodes" [ref=e360] [cursor=pointer]:
+            - img [ref=e361]
+          - button "Enable all nodes as AI context" [ref=e365] [cursor=pointer]:
+            - img [ref=e366]
+          - button "Delete Workspace" [ref=e370] [cursor=pointer]:
+            - img [ref=e371]
+        - generic [ref=e376]: All changes saved
+      - main [ref=e377]:
+        - application [ref=e379]:
+          - generic [ref=e381] [cursor=pointer]:
+            - generic:
+              - generic:
+                - img
+                - img:
+                  - group "Edge from idea-1771294461303 to idea-1771294511676" [ref=e382]
+                - img:
+                  - group "Edge from idea-1771294511676 to idea-1771294541243" [ref=e386]
+                - img:
+                  - group "Edge from idea-1771294541243 to idea-1771862330440" [ref=e390]
+                - img:
+                  - group "Edge from idea-73ec62fa-af18-4b82-a7bd-597617821764 to idea-a8fc9b5c-0cd8-4428-a1be-d478a2c9270e" [ref=e394]
+                - img:
+                  - group "Edge from idea-1772875969381 to idea-1ab64e2e-7d1c-4e9e-be38-4b31db918a6c" [ref=e398]
+                - img:
+                  - group "Edge from idea-73ec62fa-af18-4b82-a7bd-597617821764 to idea-caccc93c-fe4e-4aef-8382-413dc11c6847" [ref=e402]
+                - img:
+                  - group "Edge from idea-73ec62fa-af18-4b82-a7bd-597617821764 to insight-b087fb6e-a667-4923-92eb-1d2701039524" [ref=e406]
+                - img:
+                  - group "Edge from idea-caccc93c-fe4e-4aef-8382-413dc11c6847 to idea-9eee1dcf-a69c-406c-81ce-7f92639bbe77" [ref=e410]
+              - generic:
+                - button "Delete connection" [ref=e415]: ×
+                - button "Delete connection" [ref=e417]: ×
+                - button "Delete connection" [ref=e419]: ×
+                - button "Delete connection" [ref=e421]: ×
+                - button "Delete connection" [ref=e423]: ×
+                - button "Delete connection" [ref=e425]: ×
+                - button "Delete connection" [ref=e427]: ×
+                - button "Delete connection" [ref=e429]: ×
+              - generic:
+                - group [ref=e430]:
+                  - generic [ref=e431]:
+                    - generic:
+                      - button "Expand width" [ref=e432]: →
+                      - generic:
+                        - button "Reduce height" [ref=e433]: ↑
+                        - button "Expand height" [ref=e434]: ↓
+                    - generic [ref=e436]:
+                      - generic [ref=e437]:
+                        - textbox [ref=e441]:
+                          - paragraph [ref=e442]: Why Human Babies are Born Helpless
+                        - separator "Separator" [ref=e443]
+                      - generic [ref=e444]:
+                        - button "https://www.forbes.com/sites/scotttravers/2026/02/14/a-biologist-explains-why-human-babies-are-born-so-helpless-hint-evolution-made-a-strategic-tradeoff/" [ref=e445]:
+                          - textbox [ref=e448]:
+                            - paragraph [ref=e449]:
+                              - link "https://www.forbes.com/sites/scotttravers/2026/02/14/a-biologist-explains-why-human-babies-are-born-so-helpless-hint-evolution-made-a-strategic-tradeoff/" [ref=e450]:
+                                - /url: https://www.forbes.com/sites/scotttravers/2026/02/14/a-biologist-explains-why-human-babies-are-born-so-helpless-hint-evolution-made-a-strategic-tradeoff/
+                        - generic [ref=e452]:
+                          - 'link "Open link: www.forbes.com" [ref=e453]':
+                            - /url: https://www.forbes.com/sites/scotttravers/2026/02/14/a-biologist-explains-why-human-babies-are-born-so-helpless-hint-evolution-made-a-strategic-tradeoff/
+                            - generic [ref=e454]:
+                              - generic [ref=e455]:
+                                - img "www.forbes.com favicon" [ref=e456]
+                                - generic [ref=e457]: www.forbes.com
+                              - generic [ref=e458]: www.forbes.com
+                          - button "Open in Reader" [ref=e460]: 📖
+                - group [ref=e462]:
+                  - generic [ref=e463]:
+                    - generic:
+                      - button "Expand width" [ref=e464]: →
+                      - generic:
+                        - button "Reduce height" [ref=e465]: ↑
+                        - button "Expand height" [ref=e466]: ↓
+                    - generic [ref=e468]:
+                      - generic [ref=e469]:
+                        - textbox [ref=e473]:
+                          - paragraph [ref=e474]: Whats the Summary of this Web Page?
+                        - separator "Separator" [ref=e475]
+                      - button [ref=e477]:
+                        - textbox [ref=e480]:
+                          - paragraph [ref=e481]: Human babies are born remarkably helpless compared to other mammals, a direct consequence of evolutionary pressures that favored larger brains and bipedalism (walking upright). This helplessness isn't a design flaw, but rather a strategic trade-off in our evolutionary history.
+                          - paragraph [ref=e482]: The key lies in the size of the human brain. A larger brain offers significant advantages in terms of intelligence, problem-solving, and social interaction. However, a larger brain also requires a larger skull. To accommodate this growing skull, the birth canal would have to widen considerably.
+                          - paragraph [ref=e483]: "At the same time, humans were evolving to walk upright. Bipedalism required a narrower pelvis for efficient locomotion. A wider pelvis, while facilitating easier childbirth, would compromise the stability and efficiency of walking. This created an evolutionary conflict: a wider pelvis for easier births versus a narrower pelvis for better walking."
+                          - paragraph [ref=e484]: "The solution evolution arrived at was to give birth earlier in the developmental process. Human gestation is relatively short compared to other primates. This means that human babies are born less developed, with smaller heads that can pass through the birth canal more easily. Think of it this way: a foal can walk within hours of being born, and a sea turtle can immediately swim to the ocean. Human babies, on the other hand, are entirely dependent on their caregivers for survival. They cannot feed themselves, protect themselves, or even regulate their own body temperature effectively."
+                          - paragraph [ref=e485]: This early birth has profound consequences. Because their brains are still developing rapidly after birth, human infants require extensive parental care, including feeding, cleaning, protection, and constant attention. This extended period of dependence allows for significant brain growth and development outside the womb. The environment and experiences of the infant play a crucial role in shaping the neural connections and cognitive abilities of the child.
+                          - paragraph [ref=e486]: Ultimately, this trade-off between early birth and extensive parental care has proven to be incredibly successful for the human species. While human infants are initially helpless, this extended period of development allows for greater cognitive development, increased learning capacity, and remarkable adaptability to diverse environments. The human brain, shaped by both genetics and experience, becomes capable of complex thought, language, and culture, allowing us to thrive in a wide range of conditions and to shape the world around us. The initial helplessness of human babies is, therefore, the foundation for our species' remarkable intelligence and adaptability.
+                - group [ref=e488]:
+                  - generic [ref=e489]:
+                    - generic:
+                      - button "Expand width" [ref=e490]: →
+                      - generic:
+                        - button "Reduce height" [ref=e491]: ↑
+                        - button "Expand height" [ref=e492]: ↓
+                    - generic [ref=e494]:
+                      - generic [ref=e495]:
+                        - textbox [ref=e499]:
+                          - paragraph [ref=e500]: So Whats the Takeaway from this Article for our Podcast?
+                        - separator "Separator" [ref=e501]
+                      - button [ref=e503]:
+                        - textbox [ref=e506]:
+                          - paragraph [ref=e507]: "Okay, here's how we can weave the \"helpless human babies\" concept into the Inner Manthan podcast, focusing on actionable insights for our target audience:"
+                          - paragraph [ref=e508]:
+                            - strong [ref=e509]: "Podcast Angle: The Gift of Helplessness: Why Our Babies' Dependence is Key to Their (and Our) Growth"
+                          - paragraph [ref=e510]:
+                            - strong [ref=e511]: "Here's the breakdown:"
+                          - list [ref=e512]:
+                            - listitem [ref=e513]:
+                              - paragraph [ref=e514]:
+                                - strong [ref=e515]: "Relatable Hook:"
+                                - text: Start with a humorous and relatable scenario about the sheer exhaustion and demands of early parenthood in India. Maybe a story about sleep deprivation, constant feeding schedules, or the pressure to follow traditional childcare practices.
+                            - listitem [ref=e516]:
+                              - paragraph [ref=e517]:
+                                - strong [ref=e518]: "Decoding the Psychology (Simply):"
+                                - text: "Introduce the evolutionary trade-off: larger brains vs. bipedalism, leading to early births and helpless babies. Explain that this isn't a flaw, but a feature! Frame it as nature's way of investing in potential."
+                            - listitem [ref=e519]:
+                              - paragraph [ref=e520]:
+                                - strong [ref=e521]: "Connecting Western and Indian Frameworks:"
+                              - list [ref=e522]:
+                                - listitem [ref=e523]:
+                                  - paragraph [ref=e524]:
+                                    - strong [ref=e525]: "Western Psychology:"
+                                    - text: Touch upon attachment theory (Bowlby) and the importance of responsive parenting in shaping secure attachment bonds.
+                                - listitem [ref=e526]:
+                                  - paragraph [ref=e527]:
+                                    - strong [ref=e528]: "Indian Wisdom:"
+                                    - text: Link this extended period of dependence to the concept of "dharma" – the parents' duty to nurture and guide the child. Also, subtly reference the joint family system, where traditionally, childcare was a shared responsibility, alleviating some of the pressure on individual parents.
+                            - listitem [ref=e529]:
+                              - paragraph [ref=e530]:
+                                - strong [ref=e531]: "Actionable Parenting Insights:"
+                              - list [ref=e532]:
+                                - listitem [ref=e533]:
+                                  - paragraph [ref=e534]:
+                                    - strong [ref=e535]: "Embrace the Dependence:"
+                                    - text: Encourage parents to see their baby's helplessness not as a burden, but as an opportunity to deeply connect and shape their child's developing brain.
+                                - listitem [ref=e536]:
+                                  - paragraph [ref=e537]:
+                                    - strong [ref=e538]: "Responsive Parenting:"
+                                    - text: Explain the importance of attuned and responsive caregiving. This means paying attention to the baby's cues, responding promptly to their needs, and creating a safe and nurturing environment.
+                                - listitem [ref=e539]:
+                                  - paragraph [ref=e540]:
+                                    - strong [ref=e541]: "Self-Care is Essential:"
+                                    - text: Acknowledge the challenges of intensive parenting and emphasize the importance of self-care for parents. Remind listeners that they can't pour from an empty cup. Connect this back to Indian philosophy – the need for balance and inner resources ("manthan").
+                                - listitem [ref=e542]:
+                                  - paragraph [ref=e543]:
+                                    - strong [ref=e544]: "Resist the Urge to Rush Development:"
+                                    - text: In today's competitive environment, parents often feel pressured to accelerate their child's development. Counsel against this. The extended period of dependence is crucial for laying a strong foundation for future learning and growth.
+                            - listitem [ref=e545]:
+                              - paragraph [ref=e546]:
+                                - strong [ref=e547]: "Reflection Prompts:"
+                              - list [ref=e548]:
+                                - listitem [ref=e549]:
+                                  - paragraph [ref=e550]: What are your initial reactions to your baby's dependence? Do you feel overwhelmed, resentful, or something else?
+                                - listitem [ref=e551]:
+                                  - paragraph [ref=e552]: How can you create a more supportive environment for yourself as a parent?
+                                - listitem [ref=e553]:
+                                  - paragraph [ref=e554]: What are some ways you can be more responsive to your baby's needs?
+                                - listitem [ref=e555]:
+                                  - paragraph [ref=e556]: How can you connect with other parents and build a sense of community?
+                          - paragraph [ref=e557]:
+                            - strong [ref=e558]: "Key Takeaways for Listeners:"
+                          - list [ref=e559]:
+                            - listitem [ref=e560]:
+                              - paragraph [ref=e561]: Understanding the evolutionary reasons behind infant helplessness can reframe their perspective on parenting challenges.
+                            - listitem [ref=e562]:
+                              - paragraph [ref=e563]: Responsive parenting during this critical period has a profound impact on the child's development.
+                            - listitem [ref=e564]:
+                              - paragraph [ref=e565]: Self-care is not selfish; it's essential for effective parenting.
+                            - listitem [ref=e566]:
+                              - paragraph [ref=e567]: Resist the pressure to rush development and allow the child to unfold at their own pace.
+                          - paragraph [ref=e568]: This approach allows us to blend scientific insights with cultural context and practical advice, aligning perfectly with the Inner Manthan podcast's core philosophy.
+                - group [ref=e570]:
+                  - generic [ref=e571]:
+                    - generic:
+                      - button "Expand width" [ref=e572]: →
+                      - generic:
+                        - button "Reduce height" [ref=e573]: ↑
+                        - button "Expand height" [ref=e574]: ↓
+                    - generic [ref=e576]:
+                      - generic [ref=e577]:
+                        - textbox [ref=e581]:
+                          - paragraph [ref=e582]: Seed Anology
+                        - separator "Separator" [ref=e583]
+                      - button "A seed unfolds until it becomes a flower. A flower is many times more complex than a seed, and to reach that state, it needs resources from its environment to self-develop.The seed has the natural desire to grow, and through many courses of evolution, it has solved the problems that have led to many other species of plants dying off." [ref=e585]:
+                        - textbox [ref=e588]:
+                          - paragraph [ref=e589]:
+                            - strong [ref=e590]: A seed unfolds until it becomes a flower.
+                            - text: A flower is many times more
+                            - strong [ref=e591]: complex
+                            - text: than a seed, and to reach that state, it needs resources from its environment to self-develop.
+                          - separator [ref=e592]
+                          - paragraph [ref=e593]:
+                            - emphasis [ref=e594]: The seed has the natural desire to grow
+                            - text: ", and through many courses of evolution, it has solved the problems that have led to many other species of plants dying off."
+                - group [ref=e596]:
+                  - generic [ref=e597]:
+                    - generic:
+                      - button "Expand width" [ref=e598]: →
+                      - button "Expand height" [ref=e599]: ↓
+                    - generic [ref=e601]:
+                      - generic [ref=e602]:
+                        - textbox [ref=e606]:
+                          - paragraph [ref=e607]: Psychic Entropy
+                        - separator "Separator" [ref=e608]
+                      - generic [ref=e609]:
+                        - button "https://x.com/riansweetdoris/status/2018373991258329533?s=46" [ref=e610]:
+                          - textbox [ref=e613]:
+                            - paragraph [ref=e614]:
+                              - link "https://x.com/riansweetdoris/status/2018373991258329533?s=46" [ref=e615]:
+                                - /url: https://x.com/riansweetdoris/status/2018373991258329533?s=46
+                        - generic [ref=e617]:
+                          - 'link "Open link: Rian Doris (@RianSweetDoris) on X" [ref=e618]':
+                            - /url: https://x.com/riansweetdoris/status/2018373991258329533?s=46">https://x.com/riansweetdoris/status/2018373991258329533?s=46</a></p>
+                            - img "Rian Doris (@RianSweetDoris) on X" [ref=e620]
+                            - generic [ref=e621]:
+                              - generic [ref=e622]:
+                                - img "x.com favicon" [ref=e623]
+                                - generic [ref=e624]: x.com
+                              - generic [ref=e625]: Rian Doris (@RianSweetDoris) on X
+                              - generic [ref=e626]: The Fastest Way To Achieve Literally Anything
+                          - button "Open in Reader" [ref=e628]: 📖
+                - group [ref=e630]:
+                  - generic [ref=e631]:
+                    - generic:
+                      - button "Expand width" [ref=e632]: →
+                      - button "Expand height" [ref=e633]: ↓
+                    - generic [ref=e635]:
+                      - generic [ref=e636]:
+                        - textbox [ref=e640]:
+                          - paragraph [ref=e641]: Whats this article about
+                        - separator "Separator" [ref=e642]
+                      - button [ref=e644]:
+                        - textbox [ref=e647]:
+                          - paragraph [ref=e648]:
+                            - text: The concept of
+                            - strong [ref=e649]: Psychic Entropy
+                            - text: —the state of mental chaos caused by information overload and the fragmentation of attention—is the exact "noise"
+                            - emphasis [ref=e650]: Inner Manthan
+                            - text: seeks to quiet.
+                          - paragraph [ref=e651]:
+                            - text: While the linked article explores the mechanics of how digital environments fracture our focus, we bridge this into the context of the
+                            - strong [ref=e652]: Indian family unit.
+                          - 'heading "The Synthesis: From Entropy to Inner Manthan" [level=3] [ref=e653]'
+                          - paragraph [ref=e654]:
+                            - text: In our podcast, we argue that
+                            - strong [ref=e655]: Psychic Entropy is not just a productivity problem; it is an identity crisis.
+                          - paragraph [ref=e656]:
+                            - text: When your mind is scattered by algorithms and doomscrolling, you lose the ability to discern your
+                            - emphasis [ref=e657]: Real Self
+                            - text: from your
+                            - emphasis [ref=e658]: Ideal Self
+                            - text: "(the one curated for social media). For parents, this is critical: if you are in a state of psychic entropy, you cannot model \"Mental Space Hygiene\" for your children. You are simply passing your scattered state onto them."
+                          - 'heading "Actionable Progression: Reclaiming Order" [level=3] [ref=e659]'
+                          - paragraph [ref=e660]:
+                            - text: To move from entropy to
+                            - emphasis [ref=e661]: Manthan
+                            - text: "(churning/reflection), consider these three steps grounded in our framework:"
+                          - paragraph [ref=e662]:
+                            - strong [ref=e663]: "1. Identify the \"Algorithmic Authority\":"
+                            - text: Recognize that your attention is being harvested. When you feel that familiar pull to doomscroll, acknowledge it as an external force competing with your
+                            - emphasis [ref=e664]: Parental Authority
+                            - text: . The goal isn't to ban technology, but to exercise
+                            - strong [ref=e665]: Discipline as the Ultimate Technology.
+                          - paragraph [ref=e666]:
+                            - strong [ref=e667]: "2. Practice \"Mental Space Hygiene\":"
+                            - text: Just as we teach children physical hygiene, we must teach them psychological boundaries.
+                          - list [ref=e668]:
+                            - listitem [ref=e669]:
+                              - paragraph [ref=e670]:
+                                - strong [ref=e671]: "The Reflection Prompt:"
+                                - text: "Instead of reaching for the phone during a quiet moment, ask yourself:"
+                                - emphasis [ref=e672]: "\"What feeling am I trying to escape right now?\""
+                                - text: This turns a moment of entropy into a moment of self-awareness.
+                          - paragraph [ref=e673]:
+                            - text: "**3. Shift from Consumption to Creation:**"
+                            - emphasis [ref=e674]: Inner Manthan
+                            - text: "is built on the philosophy:"
+                            - emphasis [ref=e675]: “You become what you repeatedly do.”
+                            - text: If you repeat the act of consuming content, you become a vessel for external ideas. If you repeat the act of reflection (Manthan), you become the author of your own identity.
+                          - heading "The Way Ahead" [level=3] [ref=e676]
+                          - paragraph [ref=e677]:
+                            - text: We are currently developing an episode on
+                            - strong [ref=e678]: "\"Mental Space Hygiene for Children,\""
+                            - text: where we will unpack how to protect your child’s developing psyche from the fragmented input of the digital age.
+                          - paragraph [ref=e679]:
+                            - strong [ref=e680]: "Reflection for today:"
+                            - text: If you stripped away the digital "noise" and the social masks you wear, what is the one value you would want your children to inherit from you—not by what you say, but by the stillness you demonstrate?
+                          - separator [ref=e681]
+                          - paragraph [ref=e682]:
+                            - emphasis [ref=e683]: Inner Manthan is about becoming aware, not becoming perfect. Join us in the next conversation as we continue to decode these modern struggles through the lens of psychology and Indian wisdom.
+                - group [ref=e685]:
+                  - generic [ref=e686]:
+                    - generic:
+                      - button "Expand width" [ref=e687]: →
+                      - button "Expand height" [ref=e688]: ↓
+                    - generic [ref=e690]:
+                      - generic [ref=e691]:
+                        - textbox [ref=e695]:
+                          - paragraph [ref=e696]: Identity
+                        - separator "Separator" [ref=e697]
+                      - button "What Is Identity PDF.pdf✦ AI Ready📖↓↗×" [ref=e699]:
+                        - textbox [ref=e702]:
+                          - group "What Is Identity PDF.pdf" [ref=e705]:
+                            - img "What Is Identity PDF.pdf" [ref=e707]
+                            - generic [ref=e708]:
+                              - generic "What Is Identity PDF.pdf" [ref=e709]
+                              - generic "Document text extracted — available for AI generation" [ref=e710]: ✦ AI Ready
+                            - generic [ref=e711]:
+                              - button "Open in Reader" [ref=e712]: 📖
+                              - button "Download" [ref=e713]: ↓
+                              - button "Open in new tab" [ref=e714]: ↗
+                              - button "Remove attachment" [ref=e715]: ×
+                - group [ref=e717]:
+                  - generic [ref=e718]:
+                    - generic:
+                      - button "Expand width" [ref=e719]: →
+                      - button "Expand height" [ref=e720]: ↓
+                    - generic [ref=e722]:
+                      - generic [ref=e723]:
+                        - textbox [ref=e727]:
+                          - paragraph [ref=e728]: Make a Mindmap of the Article
+                        - separator "Separator" [ref=e729]
+                      - generic [ref=e730]:
+                        - button "Text View" [ref=e731]
+                        - figure "Mindmap visualization" [ref=e732]:
+                          - img "Mindmap visualization" [ref=e733]:
+                            - generic [ref=e734]:
+                              - generic [ref=e783]:
+                                - generic:
+                                  - generic:
+                                    - generic: Gap is the Karmabhoomi for evolution
+                              - generic [ref=e784]:
+                                - generic:
+                                  - generic:
+                                    - generic: Not a failure but practice ground
+                              - generic [ref=e785]:
+                                - generic:
+                                  - generic:
+                                    - generic: Real vs. Ideal Self
+                              - generic [ref=e787]:
+                                - generic:
+                                  - generic:
+                                    - generic: Necessary for social navigation
+                              - generic [ref=e788]:
+                                - generic:
+                                  - generic:
+                                    - generic: Dangerous if over-identified (Jungian view)
+                              - generic [ref=e789]:
+                                - generic:
+                                  - generic:
+                                    - generic: The Persona (Social Masks)
+                              - generic [ref=e791]:
+                                - generic:
+                                  - generic:
+                                    - generic: Collection of roles, not static labels
+                              - generic [ref=e792]:
+                                - generic:
+                                  - generic:
+                                    - generic: "Examples: parent, professional, partner"
+                              - generic [ref=e793]:
+                                - generic:
+                                  - generic:
+                                    - generic: Identity Fluidity
+                              - generic [ref=e795]:
+                                - generic:
+                                  - generic:
+                                    - generic: 1. The Core Tension
+                              - generic [ref=e797]:
+                                - generic:
+                                  - generic:
+                                    - generic: Repressed instincts, guilt, and trauma
+                              - generic [ref=e798]:
+                                - generic:
+                                  - generic:
+                                    - generic: Integration via compassion, not suppression
+                              - generic [ref=e799]:
+                                - generic:
+                                  - generic:
+                                    - generic: The Shadow
+                              - generic [ref=e801]:
+                                - generic:
+                                  - generic:
+                                    - generic: The unlearning process
+                              - generic [ref=e802]:
+                                - generic:
+                                  - generic:
+                                    - generic: Shedding maladaptive childhood coping mechanisms
+                              - generic [ref=e803]:
+                                - generic:
+                                  - generic:
+                                    - generic: Social Conditioning
+                              - generic [ref=e805]:
+                                - generic:
+                                  - generic:
+                                    - generic: Contaminated vs. Redemptive stories
+                              - generic [ref=e806]:
+                                - generic:
+                                  - generic:
+                                    - generic: Rewriting subconscious scripts of self-worth
+                              - generic [ref=e807]:
+                                - generic:
+                                  - generic:
+                                    - generic: The Narrative Trap
+                              - generic [ref=e809]:
+                                - generic:
+                                  - generic:
+                                    - generic: 2. Obstacles to Growth
+                              - generic [ref=e811]:
+                                - generic:
+                                  - generic:
+                                    - generic: Children mirror parental lenses
+                              - generic [ref=e812]:
+                                - generic:
+                                  - generic:
+                                    - generic: Parental Modeling
+                              - generic [ref=e814]:
+                                - generic:
+                                  - generic:
+                                    - generic: Shift from fixed labels to effort
+                              - generic [ref=e815]:
+                                - generic:
+                                  - generic:
+                                    - generic: Power of "I can't do this, yet"
+                              - generic [ref=e816]:
+                                - generic:
+                                  - generic:
+                                    - generic: Growth Mindset
+                              - generic [ref=e818]:
+                                - generic:
+                                  - generic:
+                                    - generic: Digital validation and social media filters
+                              - generic [ref=e819]:
+                                - generic:
+                                  - generic:
+                                    - generic: Algorithm vs. Authenticity
+                              - generic [ref=e821]:
+                                - generic:
+                                  - generic:
+                                    - generic: 3. Indian Family Context (Inner Manthan)
+                              - generic [ref=e823]:
+                                - generic:
+                                  - generic:
+                                    - generic: Space between trigger and response
+                              - generic [ref=e824]:
+                                - generic:
+                                  - generic:
+                                    - generic: Align behavior with Ideal Self
+                              - generic [ref=e825]:
+                                - generic:
+                                  - generic:
+                                    - generic: Practice the Pause
+                              - generic [ref=e827]:
+                                - generic:
+                                  - generic:
+                                    - generic: Identify repressed emotions like anger
+                              - generic [ref=e828]:
+                                - generic:
+                                  - generic:
+                                    - generic: Safely bring into conscious awareness
+                              - generic [ref=e829]:
+                                - generic:
+                                  - generic:
+                                    - generic: Shadow Integration
+                              - generic [ref=e831]:
+                                - generic:
+                                  - generic:
+                                    - generic: Roles are fluid, values are foundational
+                              - generic [ref=e832]:
+                                - generic:
+                                  - generic:
+                                    - generic: Stability during life transitions
+                              - generic [ref=e833]:
+                                - generic:
+                                  - generic:
+                                    - generic: Value-Anchoring
+                              - generic [ref=e835]:
+                                - generic:
+                                  - generic:
+                                    - generic: 4. Actionable Path to Self-Awareness
+                              - generic [ref=e837]:
+                                - generic:
+                                  - generic:
+                                    - generic: Stop viewing identity as fixed suit
+                              - generic [ref=e838]:
+                                - generic:
+                                  - generic:
+                                    - generic: View identity as evolving narrative
+                              - generic [ref=e839]:
+                                - generic:
+                                  - generic:
+                                    - generic: Identity as Ultimate Technology
+                              - generic [ref=e841]:
+                                - generic:
+                                  - generic:
+                                    - generic: Combine Western psychology with Inner Manthan
+                              - generic [ref=e842]:
+                                - generic:
+                                  - generic:
+                                    - generic: Apply to modern conscious parenting
+                              - generic [ref=e843]:
+                                - generic:
+                                  - generic:
+                                    - generic: Integrating Frameworks
+                              - generic [ref=e845]:
+                                - generic:
+                                  - generic:
+                                    - generic: Identify current heavy mask
+                              - generic [ref=e846]:
+                                - generic:
+                                  - generic:
+                                    - generic: Identify hidden shadow impulse
+                              - generic [ref=e847]:
+                                - generic:
+                                  - generic:
+                                    - generic: Reflection Prompt
+                              - generic [ref=e849]:
+                                - generic:
+                                  - generic:
+                                    - generic: 5. Synthesis and Evolution
+                              - generic [ref=e851]:
+                                - generic:
+                                  - generic:
+                                    - generic: The Architecture of Identity
+                - group [ref=e854]:
+                  - generic [ref=e855]:
+                    - generic:
+                      - button "Expand width" [ref=e856]: →
+                      - button "Expand height" [ref=e857]: ↓
+                    - generic [ref=e859]:
+                      - generic [ref=e860]:
+                        - textbox [ref=e864]:
+                          - paragraph [ref=e865]: Critic this Document
+                        - separator "Separator" [ref=e866]
+                      - button [ref=e868]:
+                        - textbox [ref=e871]:
+                          - 'heading "Critique: \"What Is Identity\"" [level=3] [ref=e872]'
+                          - paragraph [ref=e873]:
+                            - text: The document provides a robust, accessible bridge between academic psychological theory and practical life application. Its strength lies in the
+                            - strong [ref=e874]: narrative integration
+                            - text: —using pop culture (Simba, Tony Stark) to deconstruct complex Jungian and Rogerian concepts.
+                          - paragraph [ref=e875]:
+                            - strong [ref=e876]: "Strengths:"
+                          - list [ref=e877]:
+                            - listitem [ref=e878]:
+                              - paragraph [ref=e879]:
+                                - strong [ref=e880]: "The \"Karmabhoomi\" Framing:"
+                                - text: By reframing anxiety as a byproduct of the gap between the "Real" and "Ideal" self, it transforms a negative emotion into a constructive diagnostic tool.
+                            - listitem [ref=e881]:
+                              - paragraph [ref=e882]:
+                                - strong [ref=e883]: "Actionable Growth Mindset:"
+                                - text: It successfully moves Carol Dweck’s research from the classroom to the home, emphasizing
+                                - emphasis [ref=e884]: process
+                                - text: over
+                                - emphasis [ref=e885]: labeling
+                                - text: .
+                            - listitem [ref=e886]:
+                              - paragraph [ref=e887]:
+                                - strong [ref=e888]: "Shadow Integration:"
+                                - text: It avoids the common mistake of treating the "Shadow" as purely evil, instead framing it as repressed potential that requires compassionate integration.
+                          - paragraph [ref=e889]:
+                            - strong [ref=e890]: "Opportunities for Evolution:"
+                          - list [ref=e891]:
+                            - listitem [ref=e892]:
+                              - paragraph [ref=e893]:
+                                - strong [ref=e894]: "The \"Digital Persona\" Gap:"
+                                - text: While the document touches on social masks, it misses the
+                                - emphasis [ref=e895]: algorithmic
+                                - text: layer. Modern identity isn't just about the roles we play (mother, professional); it is about the "curated persona" we maintain for digital audiences, which creates a new, often toxic, layer of the "Ideal Self."
+                            - listitem [ref=e896]:
+                              - paragraph [ref=e897]:
+                                - strong [ref=e898]: "Cultural Nuance:"
+                                - text: The document hints at Indian contexts but could further explore how
+                                - emphasis [ref=e899]: collectivist
+                                - text: expectations (family duty vs. individual desire) often amplify the "Shadow" self in Indian households.
+                          - separator [ref=e900]
+                          - 'heading "Synthesis: The \"Inner Manthan\" Evolution" [level=3] [ref=e901]'
+                          - paragraph [ref=e902]:
+                            - text: To build upon these ideas for the
+                            - emphasis [ref=e903]: Inner Manthan
+                            - text: podcast context, we must shift the focus from "Identity as a static concept" to
+                            - strong [ref=e904]: "\"Identity as a dynamic practice.\""
+                          - heading "1. From \"Persona\" to \"Algorithmic Mask\"" [level=4] [ref=e905]
+                          - paragraph [ref=e906]: In the age of Instagram, our "Persona" isn't just a social mask; it is a performance for an invisible, judgmental algorithm.
+                          - list [ref=e907]:
+                            - listitem [ref=e908]:
+                              - paragraph [ref=e909]:
+                                - strong [ref=e910]: "The Insight:"
+                                - text: When we curate our lives, we widen the gap between our
+                                - emphasis [ref=e911]: Real Self
+                                - text: and our
+                                - emphasis [ref=e912]: Digital Ideal Self
+                                - text: .
+                            - listitem [ref=e913]:
+                              - paragraph [ref=e914]:
+                                - strong [ref=e915]: "Actionable Reflection:"
+                                - text: "Ask yourself: \"If the internet were to go dark tomorrow, which parts of my current identity would remain intact, and which would vanish?\""
+                          - 'heading "2. Parenting: Modeling the \"Un-learning\"" [level=4] [ref=e916]'
+                          - paragraph [ref=e917]:
+                            - text: "The document suggests parents teach growth mindsets to children. We must add:"
+                            - strong [ref=e918]: Parents must model the act of "un-learning" themselves.
+                          - list [ref=e919]:
+                            - listitem [ref=e920]:
+                              - paragraph [ref=e921]:
+                                - strong [ref=e922]: "The Insight:"
+                                - text: Children don't learn by what we tell them to value (effort); they learn by watching how we handle our own failures. If a parent panics when they make a mistake, they reinforce the "Fixed Mindset" they are trying to discourage.
+                            - listitem [ref=e923]:
+                              - paragraph [ref=e924]:
+                                - strong [ref=e925]: "Actionable Practice:"
+                                - text: Share your "failures of the day" at the dinner table. Narrate the
+                                - emphasis [ref=e926]: process
+                                - text: of how you are "un-learning" a limiting belief (e.g., "I used to think I had to be perfect to be a good parent, but today I realized that being honest is more important").
+                          - heading "3. The \"Karmabhoomi\" of Digital Discomfort" [level=4] [ref=e927]
+                          - paragraph [ref=e928]:
+                            - text: The document correctly identifies that adversity is a practice ground. In our digital age, the "battlefield" is no longer just external; it is the
+                            - strong [ref=e929]: impulse to scroll
+                            - text: .
+                          - list [ref=e930]:
+                            - listitem [ref=e931]:
+                              - paragraph [ref=e932]:
+                                - strong [ref=e933]: "The Insight:"
+                                - text: Doomscrolling is often an attempt to escape the "Shadow" (the quiet discomfort of our own thoughts).
+                            - listitem [ref=e934]:
+                              - paragraph [ref=e935]:
+                                - strong [ref=e936]: "The Practice:"
+                                - text: Treat the urge to pick up your phone when you feel bored or anxious as a "Pause Point." Use that moment of discomfort to sit with the
+                                - emphasis [ref=e937]: Real Self
+                                - text: rather than fleeing into the
+                                - emphasis [ref=e938]: Digital Persona
+                                - text: .
+                          - paragraph [ref=e939]:
+                            - strong [ref=e940]: "Final Thought for Implementation:"
+                            - text: Identity is not a destination you reach; it is a
+                            - strong [ref=e941]: Manthan (churning)
+                            - text: . Just as the ocean was churned to extract nectar, we must be willing to churn our own experiences—both the light and the shadow—to extract a more authentic version of ourselves.
+                          - paragraph [ref=e942]:
+                            - strong [ref=e943]: "Reflection Prompt for your next session:"
+                            - emphasis [ref=e944]: "\"What is one 'social mask' I am currently wearing that is no longer serving my growth, and what would happen if I dared to remove it in my most important relationship?\""
+                - group [ref=e946]:
+                  - generic [ref=e947]:
+                    - generic:
+                      - button "Expand width" [ref=e948]: →
+                      - button "Expand height" [ref=e949]: ↓
+                    - generic [ref=e951]:
+                      - generic [ref=e952]:
+                        - textbox [ref=e956]:
+                          - paragraph [ref=e957]: Make a Mindmap of the Article
+                        - separator "Separator" [ref=e958]
+                      - button [ref=e960]:
+                        - textbox [ref=e963]:
+                          - paragraph [ref=e964]:
+                            - text: This mind map synthesizes the psychological frameworks of identity—moving from the "Persona" to the "True Self"—as explored in the
+                            - emphasis [ref=e965]: What Is Identity
+                            - text: document and the
+                            - emphasis [ref=e966]: Inner Manthan
+                            - text: philosophy.
+                          - 'heading "Mind Map: The Architecture of Identity" [level=3] [ref=e967]':
+                            - strong [ref=e968]: "Mind Map: The Architecture of Identity"
+                          - heading "1. The Core Tension (The \"Why\")" [level=4] [ref=e969]:
+                            - strong [ref=e970]: 1. The Core Tension (The "Why")
+                          - list [ref=e971]:
+                            - listitem [ref=e972]:
+                              - paragraph [ref=e973]:
+                                - strong [ref=e974]: "Real vs. Ideal Self:"
+                                - text: The gap between who we are and who we aspire to be.
+                              - list [ref=e975]:
+                                - listitem [ref=e976]:
+                                  - paragraph [ref=e977]:
+                                    - emphasis [ref=e978]: "Growth Perspective:"
+                                    - text: This gap is not a failure; it is the "Karmabhoomi" (practice ground) for self-evolution.
+                            - listitem [ref=e979]:
+                              - paragraph [ref=e980]:
+                                - strong [ref=e981]: "The Persona (Social Masks):"
+                                - text: Necessary for social navigation but dangerous if we over-identify with them (Jungian perspective).
+                            - listitem [ref=e982]:
+                              - paragraph [ref=e983]:
+                                - strong [ref=e984]: "Identity Fluidity:"
+                                - text: Recognizing identity as a collection of roles (parent, professional, partner) rather than a static label.
+                          - heading "2. Obstacles to Growth" [level=4] [ref=e985]:
+                            - strong [ref=e986]: 2. Obstacles to Growth
+                          - list [ref=e987]:
+                            - listitem [ref=e988]:
+                              - paragraph [ref=e989]:
+                                - strong [ref=e990]: "The Shadow:"
+                                - text: Repressed instincts, guilt, and trauma.
+                              - list [ref=e991]:
+                                - listitem [ref=e992]:
+                                  - paragraph [ref=e993]:
+                                    - emphasis [ref=e994]: "Action:"
+                                    - text: Integration requires compassion and "nursing" one’s own wounds rather than suppression.
+                            - listitem [ref=e995]:
+                              - paragraph [ref=e996]:
+                                - strong [ref=e997]: "Social Conditioning:"
+                                - text: The "unlearning" process.
+                              - list [ref=e998]:
+                                - listitem [ref=e999]:
+                                  - paragraph [ref=e1000]:
+                                    - emphasis [ref=e1001]: "Concept:"
+                                    - text: Shedding maladaptive coping mechanisms learned in childhood (e.g., Peter Parker’s guilt or "people-pleasing" habits).
+                            - listitem [ref=e1002]:
+                              - paragraph [ref=e1003]:
+                                - strong [ref=e1004]: "The Narrative Trap:"
+                                - text: Contaminated vs. Redemptive stories.
+                              - list [ref=e1005]:
+                                - listitem [ref=e1006]:
+                                  - paragraph [ref=e1007]:
+                                    - emphasis [ref=e1008]: "Action:"
+                                    - text: Rewriting the subconscious scripts formed in early childhood that dictate self-worth.
+                          - heading "3. Identity in the Indian Family Context (Inner Manthan lens)" [level=4] [ref=e1009]:
+                            - strong [ref=e1010]:
+                              - text: 3. Identity in the Indian Family Context (
+                              - emphasis [ref=e1011]: Inner Manthan
+                              - text: lens)
+                          - list [ref=e1012]:
+                            - listitem [ref=e1013]:
+                              - paragraph [ref=e1014]:
+                                - strong [ref=e1015]: "Parental Modeling:"
+                                - text: Children mirror parental lenses.
+                            - listitem [ref=e1016]:
+                              - paragraph [ref=e1017]:
+                                - strong [ref=e1018]: "Growth Mindset:"
+                                - text: Shifting from fixed labels ("You are a topper") to effort-based praise ("You are hardworking").
+                              - list [ref=e1019]:
+                                - listitem [ref=e1020]:
+                                  - paragraph [ref=e1021]:
+                                    - emphasis [ref=e1022]: "Key Phrase:"
+                                    - text: "\"I can’t do this,"
+                                    - strong [ref=e1023]: yet
+                                    - text: ."
+                            - listitem [ref=e1024]:
+                              - paragraph [ref=e1025]:
+                                - strong [ref=e1026]: "Algorithm vs. Authenticity:"
+                                - text: Navigating identity in an age of Instagram filters and digital validation.
+                          - heading "4. Actionable Path to Self-Awareness" [level=4] [ref=e1027]:
+                            - strong [ref=e1028]: 4. Actionable Path to Self-Awareness
+                          - list [ref=e1029]:
+                            - listitem [ref=e1030]:
+                              - paragraph [ref=e1031]:
+                                - strong [ref=e1032]: "Practice the Pause:"
+                                - text: Creating space between an emotional trigger and a reactive response to align behavior with the "Ideal Self."
+                            - listitem [ref=e1033]:
+                              - paragraph [ref=e1034]:
+                                - strong [ref=e1035]: "Shadow Integration:"
+                                - text: Identifying what you repress (e.g., anger, boundaries) and safely bringing it into conscious awareness.
+                            - listitem [ref=e1036]:
+                              - paragraph [ref=e1037]:
+                                - strong [ref=e1038]: "Value-Anchoring:"
+                                - text: While roles (fluid) change, core values (rigid/foundational) provide stability during life transitions (parenthood, career shifts).
+                          - separator [ref=e1039]
+                          - heading "Synthesis & Evolution" [level=3] [ref=e1040]:
+                            - strong [ref=e1041]: Synthesis & Evolution
+                          - paragraph [ref=e1042]:
+                            - text: To move from
+                            - emphasis [ref=e1043]: Identity Paralysis
+                            - text: to
+                            - emphasis [ref=e1044]: Self-Actualization
+                            - text: ", we must treat identity as"
+                            - strong [ref=e1045]: "\"The Ultimate Technology.\""
+                          - list [ref=e1046]:
+                            - listitem [ref=e1047]:
+                              - paragraph [ref=e1048]:
+                                - strong [ref=e1049]: "The Shift:"
+                                - text: Stop viewing your identity as a fixed suit (like Tony Stark’s) that grants you worth. Instead, view it as an evolving narrative.
+                            - listitem [ref=e1050]:
+                              - paragraph [ref=e1051]:
+                                - strong [ref=e1052]: "The Practice:"
+                                - text: Use the
+                                - emphasis [ref=e1053]: Inner Manthan
+                                - text: approach—connect the Western psychological framework (Rogers/Jung/Dweck) with the reflective, conscious parenting required in modern India.
+                          - paragraph [ref=e1054]:
+                            - strong [ref=e1055]: "Reflection Prompt for your next step:"
+                            - emphasis [ref=e1056]: Which "mask" are you wearing most heavily today, and what is the specific "shadow" impulse it is currently trying to hide?
+                - group [ref=e1058]:
+                  - generic [ref=e1059]:
+                    - generic:
+                      - button "Expand width" [ref=e1060]: →
+                      - button "Expand height" [ref=e1061]: ↓
+                    - generic [ref=e1063]:
+                      - generic "In AI Memory":
+                        - img
+                      - generic [ref=e1064]:
+                        - textbox [ref=e1068]:
+                          - paragraph [ref=e1069]: Document Insight
+                        - separator "Separator" [ref=e1070]
+                      - button [ref=e1072]:
+                        - textbox [ref=e1075]:
+                          - paragraph [ref=e1076]:
+                            - strong [ref=e1077]: Summary
+                            - emphasis [ref=e1078]: (What Is Identity PDF.pdf)
+                          - paragraph [ref=e1079]: This document explores the psychological construction of identity, examining how individuals form, maintain, and evolve their sense of self through various life stages and social contexts. It draws on theories from Carl Rogers, Carl Jung, and Carol Dweck to discuss concepts like the 'real' vs. 'ideal' self, the 'shadow' self, and the importance of a growth mindset.
+                          - paragraph [ref=e1080]:
+                            - strong [ref=e1081]: Key Facts
+                          - list [ref=e1082]:
+                            - listitem [ref=e1083]:
+                              - paragraph [ref=e1084]: Identity is described as both fluid and rigid, evolving through life experiences and social roles.
+                            - listitem [ref=e1085]:
+                              - paragraph [ref=e1086]: Carl Rogers emphasized 'Unconditional Positive Regard' in psychological development.
+                            - listitem [ref=e1087]:
+                              - paragraph [ref=e1088]: Carl Jung introduced the concept of 'persona' (social masks) and the 'shadow' (repressed instincts).
+                            - listitem [ref=e1089]:
+                              - paragraph [ref=e1090]: The gap between the 'real self' and 'ideal self' is a primary source of anxiety and a catalyst for growth.
+                            - listitem [ref=e1091]:
+                              - paragraph [ref=e1092]: Carol Dweck's 'growth mindset' suggests focusing on effort rather than fixed traits to build resilience in children.
+                            - listitem [ref=e1093]:
+                              - paragraph [ref=e1094]: Social conditioning can lead to self-deprecating behaviors that may require 'unlearning'.
+                            - listitem [ref=e1095]:
+                              - paragraph [ref=e1096]: Personal narratives created in early childhood significantly shape adult self-worth and capabilities.
+                            - listitem [ref=e1097]:
+                              - paragraph [ref=e1098]: Integrating the 'shadow' is presented as a necessary step toward a complete sense of self.
+                          - paragraph [ref=e1099]:
+                            - strong [ref=e1100]: Questions to Consider
+                          - list [ref=e1101]:
+                            - listitem [ref=e1102]:
+                              - paragraph [ref=e1103]: How can one effectively identify and integrate their 'shadow' self?
+                            - listitem [ref=e1104]:
+                              - paragraph [ref=e1105]: What specific practices help in closing the gap between the real and ideal self?
+                            - listitem [ref=e1106]:
+                              - paragraph [ref=e1107]: How does one distinguish between necessary social personas and losing touch with the true self?
+                            - listitem [ref=e1108]:
+                              - paragraph [ref=e1109]: What are the most effective ways to rewrite self-limiting narratives from childhood?
+                            - listitem [ref=e1110]:
+                              - paragraph [ref=e1111]: How can parents practically implement growth mindset language in daily interactions?
+                          - separator [ref=e1112]
+                          - paragraph [ref=e1113]:
+                            - emphasis [ref=e1114]: Auto-analyzed · High confidence
+          - img
+          - generic [ref=e1116]:
+            - button "Canvas radar — click to fit all nodes" [ref=e1117] [cursor=pointer]:
+              - img [ref=e1118]
+            - button "Undo" [disabled]:
+              - img
+            - button "Redo" [disabled]:
+              - img
+            - button "Zoom In" [ref=e1133] [cursor=pointer]:
+              - img [ref=e1134]
+            - button "Zoom Out" [ref=e1135] [cursor=pointer]:
+              - img [ref=e1136]
+            - button "Lock Canvas" [ref=e1137] [cursor=pointer]:
+              - img [ref=e1138]
+          - link "React Flow attribution" [ref=e1142] [cursor=pointer]:
+            - /url: https://reactflow.dev
+            - text: React Flow
+  - button "Help and keyboard shortcuts" [ref=e1144] [cursor=pointer]: "?"

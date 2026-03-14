@@ -54,7 +54,7 @@ export const ArticleViewer = React.memo(function ArticleViewer({
                     </a>
                 </header>
                 <div
-                    className="prose prose-sm text-[var(--color-text-primary)] leading-relaxed [&_a]:text-[var(--color-primary)] [&_img]:rounded [&_img]:max-w-full"
+                    className="prose prose-sm prose-neutral max-w-none text-[var(--color-text-primary)] leading-relaxed [&_a]:text-[var(--color-primary)] [&_img]:rounded [&_img]:max-w-full"
                     dangerouslySetInnerHTML={{ __html: source.content }}
                 />
             </article>

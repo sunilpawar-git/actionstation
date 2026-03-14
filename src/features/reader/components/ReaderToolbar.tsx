@@ -7,10 +7,11 @@
 import React, { useCallback, useRef } from 'react';
 import { strings } from '@/shared/localization/strings';
 
-const BTN_BASE = 'px-2 py-1 text-xs rounded transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-primary)]';
+const FOCUS_RING = 'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-primary)]';
+const BTN_BASE = `px-2.5 py-1.5 text-xs rounded-md transition-colors ${FOCUS_RING}`;
 const BTN_SECONDARY = `${BTN_BASE} bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border)]`;
 const BTN_CLOSE = `${BTN_BASE} text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]`;
-const BTN_PAGE = `px-1.5 py-0.5 rounded hover:bg-[var(--color-surface-hover)] disabled:opacity-30 disabled:cursor-default transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-primary)]`;
+const BTN_PAGE = `px-2 py-1 rounded-md hover:bg-[var(--color-surface-hover)] disabled:opacity-30 disabled:cursor-default transition-colors ${FOCUS_RING}`;
 
 interface ReaderToolbarProps {
     currentPage?: number;
@@ -61,7 +62,7 @@ export const ReaderToolbar = React.memo(function ReaderToolbar({
     return (
         <div
             ref={toolbarRef}
-            className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-surface)] shrink-0"
+            className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)] shrink-0"
             role="toolbar"
             aria-label={strings.reader.readerPanel}
             onKeyDown={handleKeyDown}

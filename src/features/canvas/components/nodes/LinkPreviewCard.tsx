@@ -106,7 +106,7 @@ const RemoveButton = React.memo(({ url, onRemove }: {
 }) => (
     <button className={styles.removeButton}
         aria-label={strings.linkPreview.removePreview}
-        onClick={(e) => { e.preventDefault(); onRemove(url); }}>
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(url); }}>
         ✕
     </button>
 ));
@@ -119,7 +119,7 @@ const ReadButton = React.memo(({ url, onOpenInReader }: {
     <button className={styles.readButton}
         aria-label={strings.reader.openInReader}
         title={strings.reader.openInReader}
-        onClick={(e) => { e.preventDefault(); onOpenInReader(url); }}>
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenInReader(url); }}>
         📖
     </button>
 ));

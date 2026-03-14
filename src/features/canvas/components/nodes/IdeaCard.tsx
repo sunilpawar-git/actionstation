@@ -3,9 +3,10 @@ import React, { useCallback } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { useIdeaCard } from '../../hooks/useIdeaCard';
 import { useNodeContextMenu } from './useNodeContextMenu';
-import { useReaderPanelStore } from '@/features/reader/stores/readerPanelStore';
+import { useFocusStore } from '../../stores/focusStore';
 import { extractArticleContent, buildArticleSource } from '@/features/reader/services/contentExtractor';
 import { toSafeArticleUrl } from '@/features/reader/utils/safeUrl';
+import { toastWithAction } from '@/shared/stores/toastStore';
 import { NodeResizeButtons } from './NodeResizeButtons';
 import { IdeaCardHeadingSection } from './IdeaCardHeadingSection';
 import { IdeaCardContentSection } from './IdeaCardContentSection';
@@ -68,11 +69,24 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
         const safeUrl = toSafeArticleUrl(url);
         if (!safeUrl) return;
         extractArticleContent(safeUrl).then((article) => {
-            if (!article) return;
+            if (!article) {
+                toastWithAction(
+                    strings.reader.extractionFailed,
+                    'warning',
+                    { label: strings.reader.openInBrowser, onClick: () => window.open(url, '_blank', 'noopener,noreferrer') },
+                );
+                return;
+            }
             const source = buildArticleSource(safeUrl, article);
-            useReaderPanelStore.getState().openPanel(source);
-        }).catch(() => undefined);
-    }, []);
+            useFocusStore.getState().openReader(id, source);
+        }).catch(() => {
+            toastWithAction(
+                strings.reader.extractionFailed,
+                'warning',
+                { label: strings.reader.openInBrowser, onClick: () => window.open(url, '_blank', 'noopener,noreferrer') },
+            );
+        });
+    }, [id]);
 
     return (
         <div ref={cardWrapperRef}

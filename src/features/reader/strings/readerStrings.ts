@@ -18,8 +18,13 @@ export const readerStrings = {
     readerPanel: 'Reader Panel',
     sourcePane: 'Source Document',
     notePane: 'Note Editor',
+    notePaneHeading: 'Notes',
+    notePanePlaceholder: 'Start typing to take notes...',
     quoteAdded: 'Quote added to note',
     nodeCreated: 'Node created from quote',
     selectionActions: 'Quote Actions',
     documentReady: 'Document loaded',
+    extracting: 'Extracting article…',
+    extractionFailed: 'Could not extract article content',
+    openInBrowser: 'Open in browser',
 };

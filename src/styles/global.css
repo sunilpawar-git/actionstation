@@ -3,6 +3,7 @@
  */
 /* Tailwind CSS v4 — utilities layer only; our variables/themes cascade on top */
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import './variables.css';
 @import './themes/dark.css';

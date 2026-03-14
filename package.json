@@ -66,6 +66,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
+    "@tailwindcss/typography": "^0.5.19",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/mozilla__readability": "^0.4.2",

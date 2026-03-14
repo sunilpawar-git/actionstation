@@ -4,10 +4,12 @@ import { db } from '@/config/firebase';
 import type { Workspace } from '../types/workspace';
 import { createWorkspace, createDivider } from '../types/workspace';
 import { strings } from '@/shared/localization/strings';
-import type { CanvasNode } from '@/features/canvas/types/node';
+import type { CanvasNode, IdeaNodeData } from '@/features/canvas/types/node';
 import { normalizeNodeColorKey } from '@/features/canvas/types/node';
 import { normalizeContentMode } from '@/features/canvas/types/contentMode';
-import type { CanvasEdge } from '@/features/canvas/types/edge';import { removeUndefined } from '@/shared/utils/firebaseUtils';
+import type { CanvasEdge } from '@/features/canvas/types/edge';
+import { removeUndefined } from '@/shared/utils/firebaseUtils';
+import { reconcileAttachmentUrls } from '@/features/canvas/utils/reconcileAttachmentUrls';
 
 /** Get Firestore path for workspace subcollection */
 const getSubcollectionRef = (userId: string, workspaceId: string, subcollection: string) =>
@@ -234,14 +236,14 @@ export async function loadNodes(userId: string, workspaceId: string): Promise<Ca
     return snapshot.docs.map((docSnapshot) => {
         const data = docSnapshot.data();
         /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call -- Firestore DocumentData fields */
+        const nd = data.data as IdeaNodeData;
         return {
-            id: data.id,
-            workspaceId,
-            type: data.type,
+            id: data.id, workspaceId, type: data.type,
             data: {
-                ...(data.data as CanvasNode['data']),
-                colorKey: normalizeNodeColorKey((data.data as CanvasNode['data']).colorKey),
-                contentMode: normalizeContentMode((data.data as CanvasNode['data']).contentMode),
+                ...nd,
+                output: reconcileAttachmentUrls(nd?.output ?? '', nd?.attachments),
+                colorKey: normalizeNodeColorKey(nd?.colorKey),
+                contentMode: normalizeContentMode(nd?.contentMode),
             },
             position: data.position,
             width: data.width, height: data.height,
@@ -275,22 +277,12 @@ export async function deleteWorkspace(userId: string, workspaceId: string): Prom
 
     const batch = writeBatch(db);
 
-    // 1. Get all nodes and edges for this workspace
-    const nodesRef = getSubcollectionRef(userId, workspaceId, 'nodes');
-    const edgesRef = getSubcollectionRef(userId, workspaceId, 'edges');
-
     const [nodesSnapshot, edgesSnapshot] = await Promise.all([
-        getDocs(nodesRef),
-        getDocs(edgesRef)
+        getDocs(getSubcollectionRef(userId, workspaceId, 'nodes')),
+        getDocs(getSubcollectionRef(userId, workspaceId, 'edges')),
     ]);
-
-    // 2. Queue all nodes for deletion
     nodesSnapshot.docs.forEach((d) => batch.delete(d.ref));
-
-    // 3. Queue all edges for deletion
     edgesSnapshot.docs.forEach((d) => batch.delete(d.ref));
-
-    // Queue workspace doc for deletion and commit
     batch.delete(doc(db, 'users', userId, 'workspaces', workspaceId));
     await batch.commit();
 }

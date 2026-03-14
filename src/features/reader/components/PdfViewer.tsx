@@ -3,11 +3,17 @@
  * Uses pdfjs-dist (already installed) for rendering.
  * Bounded page cache: only current page rendered at a time.
  * Session-scoped: aborts rendering on unmount or source switch.
+ *
+ * Fit-to-width: measures the container via ResizeObserver
+ * and passes the width to renderPdfPage so each page scales
+ * to fill the available space without horizontal scrolling.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { strings } from '@/shared/localization/strings';
 import type { SafeReaderUrl, ReaderLoadState } from '../types/reader';
-import { loadPdfDocument, renderPdfPage } from '../services/pdfRenderService';
+import { loadPdfDocument, renderPdfPage, type RenderHandle } from '../services/pdfRenderService';
+
+const RESIZE_DEBOUNCE_MS = 150;
 
 interface PdfViewerProps {
     url: SafeReaderUrl;
@@ -17,6 +23,24 @@ interface PdfViewerProps {
     onTextSelected: (text: string) => void;
 }
 
+function useDebouncedContainerWidth(ref: React.RefObject<HTMLDivElement | null>): number {
+    const [width, setWidth] = useState(0);
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        let timer: ReturnType<typeof setTimeout>;
+        const ro = new ResizeObserver(([entry]) => {
+            if (!entry) return;
+            clearTimeout(timer);
+            timer = setTimeout(() => setWidth(Math.floor(entry.contentRect.width)), RESIZE_DEBOUNCE_MS);
+        });
+        ro.observe(el);
+        setWidth(Math.floor(el.clientWidth));
+        return () => { clearTimeout(timer); ro.disconnect(); };
+    }, [ref]);
+    return width;
+}
+
 export const PdfViewer = React.memo(function PdfViewer({
     url,
     currentPage,
@@ -24,21 +48,34 @@ export const PdfViewer = React.memo(function PdfViewer({
     onLoadStateChange,
     onTextSelected,
 }: PdfViewerProps) {
+    const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const textLayerRef = useRef<HTMLDivElement>(null);
     const [error, setError] = useState<string | null>(null);
     const [pdfDoc, setPdfDoc] = useState<Awaited<ReturnType<typeof loadPdfDocument>> | null>(null);
+    const containerWidth = useDebouncedContainerWidth(containerRef);
+    const activeRenderRef = useRef<RenderHandle | null>(null);
 
     useEffect(() => {
         let cancelled = false;
 
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/d26e22b3-6755-4c07-a08d-25f78b15f908',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7f51a9'},body:JSON.stringify({sessionId:'7f51a9',location:'PdfViewer.tsx:load-effect',message:'loadPdfDocument starting',data:{url:url.substring(0,80)},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+        // #endregion
+
         loadPdfDocument(url).then((doc) => {
             if (cancelled) { doc.destroy().catch(() => undefined); return; }
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/d26e22b3-6755-4c07-a08d-25f78b15f908',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7f51a9'},body:JSON.stringify({sessionId:'7f51a9',location:'PdfViewer.tsx:load-success',message:'PDF loaded',data:{numPages:doc.numPages},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+            // #endregion
             setPdfDoc(doc);
             onTotalPages(doc.numPages);
             onLoadStateChange('ready');
         }).catch((err: unknown) => {
             if (cancelled) return;
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/d26e22b3-6755-4c07-a08d-25f78b15f908',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7f51a9'},body:JSON.stringify({sessionId:'7f51a9',location:'PdfViewer.tsx:load-error',message:'PDF load failed',data:{err:String(err)},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+            // #endregion
             setError(err instanceof Error ? err.message : strings.reader.loadError);
             onLoadStateChange('error');
         });
@@ -49,15 +86,30 @@ export const PdfViewer = React.memo(function PdfViewer({
     useEffect(() => {
         const canvas = canvasRef.current;
         const textContainer = textLayerRef.current;
-        if (!pdfDoc || !canvas || !textContainer) return;
+        if (!pdfDoc || !canvas || !textContainer || containerWidth === 0) return;
 
-        let cancelled = false;
-        renderPdfPage(pdfDoc, currentPage, canvas, textContainer).catch(() => {
-            if (!cancelled) setError(strings.reader.loadError);
+        activeRenderRef.current?.cancel();
+
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/d26e22b3-6755-4c07-a08d-25f78b15f908',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7f51a9'},body:JSON.stringify({sessionId:'7f51a9',location:'PdfViewer.tsx:render-effect',message:'renderPdfPage starting',data:{page:currentPage,containerWidth,canvasW:canvas.width,canvasH:canvas.height,textChildCount:textContainer.childElementCount},timestamp:Date.now(),hypothesisId:'H2,H3,H4'})}).catch(()=>{});
+        // #endregion
+
+        const handle = renderPdfPage(pdfDoc, currentPage, canvas, textContainer, containerWidth);
+        activeRenderRef.current = handle;
+        handle.promise.then(() => {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/d26e22b3-6755-4c07-a08d-25f78b15f908',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7f51a9'},body:JSON.stringify({sessionId:'7f51a9',location:'PdfViewer.tsx:render-success',message:'renderPdfPage done',data:{page:currentPage,canvasW:canvas.width,canvasH:canvas.height,textChildCount:textContainer.childElementCount,textLayerOpacity:textContainer.style.opacity,textLayerClasses:textContainer.className},timestamp:Date.now(),hypothesisId:'H1,H2,H5'})}).catch(()=>{});
+            // #endregion
+        }).catch((err: unknown) => {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/d26e22b3-6755-4c07-a08d-25f78b15f908',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7f51a9'},body:JSON.stringify({sessionId:'7f51a9',location:'PdfViewer.tsx:render-error',message:'renderPdfPage failed',data:{err:String(err)},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+            // #endregion
+            if (activeRenderRef.current !== handle) return;
+            setError(err instanceof Error ? err.message : strings.reader.loadError);
         });
 
-        return () => { cancelled = true; };
-    }, [pdfDoc, currentPage]);
+        return () => { handle.cancel(); };
+    }, [pdfDoc, currentPage, containerWidth]);
 
     const handleMouseUp = useCallback(() => {
         const text = window.getSelection()?.toString().trim() ?? '';
@@ -72,12 +124,13 @@ export const PdfViewer = React.memo(function PdfViewer({
 
     return (
         <div
-            className="relative overflow-auto h-full flex justify-center bg-[var(--color-surface)]"
+            ref={containerRef}
+            className="relative overflow-auto h-full bg-[var(--color-surface)]"
             onMouseUp={handleMouseUp}
             role="document"
             aria-label={strings.reader.sourcePane}
         >
-            <div className="relative inline-block">
+            <div className="relative mx-auto" style={{ width: containerWidth || undefined }}>
                 <canvas ref={canvasRef} className="block" />
                 <div
                     ref={textLayerRef}
