@@ -115,11 +115,24 @@
     font-style: italic;
 }
 
-/* Remove button overlay */
-.removeButton {
+/* Action buttons container — top-right overlay */
+.cardActions {
     position: absolute;
     top: var(--space-xs);
     right: var(--space-xs);
+    display: flex;
+    gap: var(--space-xxs);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.card:hover .cardActions {
+    opacity: 1;
+}
+
+/* Remove button overlay */
+.removeButton,
+.readButton {
     width: 20px;
     height: 20px;
     border: none;
@@ -131,18 +144,17 @@
     align-items: center;
     justify-content: center;
     font-size: 12px;
-    opacity: 0;
-    transition: opacity var(--transition-fast);
     box-shadow: 0 1px 3px hsla(220, 13%, 13%, 0.1);
-}
-
-.card:hover .removeButton {
-    opacity: 1;
 }
 
 .removeButton:hover {
     color: var(--color-error);
     background: var(--color-surface);
+}
+
+.readButton:hover {
+    color: var(--color-primary);
+    background: var(--color-primary-light);
 }
 
 /* List container for multiple previews */

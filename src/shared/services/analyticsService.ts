@@ -148,6 +148,20 @@ export function trackAggregationGenerated(classificationCount: number): void {
     track('aggregation_generated', { classification_count: classificationCount });
 }
 
+// ── Reader events ─────────────────────────────────────────────────────────────
+
+export function trackReaderOpened(sourceType: string, context: 'focus' | 'sidePanel'): void {
+    track('reader_opened', { source_type: sourceType, context });
+}
+
+export function trackReaderClosed(sourceType: string, reason: 'escape' | 'user' | 'navigation'): void {
+    track('reader_closed', { source_type: sourceType, reason });
+}
+
+export function trackReaderQuoteInserted(sourceType: string, action: 'add_to_note' | 'create_node'): void {
+    track('reader_quote_inserted', { source_type: sourceType, action });
+}
+
 // ── Onboarding events ─────────────────────────────────────────────────────────
 
 export function trackOnboardingWelcomeShown(): void { track('onboarding_welcome_shown'); }

@@ -14,10 +14,11 @@ import styles from './LinkPreviewCard.module.css';
 interface LinkPreviewCardProps {
     preview: LinkPreviewMetadata;
     onRemove?: (url: string) => void;
+    onOpenInReader?: (url: string) => void;
 }
 
-/** Single link preview card with optional remove button */
-export const LinkPreviewCard = React.memo(({ preview, onRemove }: LinkPreviewCardProps) => {
+/** Single link preview card with optional remove and reader buttons */
+export const LinkPreviewCard = React.memo(({ preview, onRemove, onOpenInReader }: LinkPreviewCardProps) => {
     const { url, title, description, image, favicon, domain, error } = preview;
     const displayTitle = title ?? domain ?? url;
     const ariaLabel = `${strings.linkPreview.openLink}: ${displayTitle}`;
@@ -86,9 +87,14 @@ export const LinkPreviewCard = React.memo(({ preview, onRemove }: LinkPreviewCar
                     )}
                 </div>
             </a>
-            {onRemove && (
-                <RemoveButton url={url} onRemove={onRemove} />
-            )}
+            <div className={styles.cardActions}>
+                {onOpenInReader && (
+                    <ReadButton url={url} onOpenInReader={onOpenInReader} />
+                )}
+                {onRemove && (
+                    <RemoveButton url={url} onRemove={onRemove} />
+                )}
+            </div>
         </div>
     );
 });
@@ -105,9 +111,23 @@ const RemoveButton = React.memo(({ url, onRemove }: {
     </button>
 ));
 
+/** Read in Reader button for article extraction */
+const ReadButton = React.memo(({ url, onOpenInReader }: {
+    url: string;
+    onOpenInReader: (url: string) => void;
+}) => (
+    <button className={styles.readButton}
+        aria-label={strings.reader.openInReader}
+        title={strings.reader.openInReader}
+        onClick={(e) => { e.preventDefault(); onOpenInReader(url); }}>
+        📖
+    </button>
+));
+
 interface LinkPreviewListProps {
     previews: Record<string, LinkPreviewMetadata>;
     onRemove?: (url: string) => void;
+    onOpenInReader?: (url: string) => void;
 }
 
 /** Only render previews whose URL starts with http:// or https:// */
@@ -116,14 +136,15 @@ function isValidPreviewUrl(url: string): boolean {
 }
 
 /** Renders a list of link preview cards from a previews record */
-export const LinkPreviewList = React.memo(({ previews, onRemove }: LinkPreviewListProps) => {
+export const LinkPreviewList = React.memo(({ previews, onRemove, onOpenInReader }: LinkPreviewListProps) => {
     const entries = Object.values(previews).filter((p) => isValidPreviewUrl(p.url));
     if (entries.length === 0) return null;
 
     return (
         <div className={styles.previewList} data-testid="link-preview-list">
             {entries.map((preview) => (
-                <LinkPreviewCard key={preview.url} preview={preview} onRemove={onRemove} />
+                <LinkPreviewCard key={preview.url} preview={preview}
+                    onRemove={onRemove} onOpenInReader={onOpenInReader} />
             ))}
         </div>
     );

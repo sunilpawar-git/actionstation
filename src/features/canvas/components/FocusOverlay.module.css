@@ -89,6 +89,13 @@
     margin: var(--space-md) auto;
 }
 
+/* Reader mode: wider panel to accommodate two panes side by side */
+.panelReader {
+    width: min(92%, 1400px);
+    max-height: none;
+    height: min(90vh, calc(100vh - var(--space-lg) * 2));
+}
+
 /* Mindmap needs the panel to stretch to full allowed height so the
    SVG has space.  Text mode keeps shrink-to-content behaviour.
    ~90% width × 92vh gives ~25-30 % more area for an immersive view. */

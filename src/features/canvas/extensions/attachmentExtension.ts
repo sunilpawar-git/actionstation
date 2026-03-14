@@ -4,6 +4,9 @@
  * Stores url, filename, thumbnailUrl, status as node attrs.
  * Atomic: the whole node is selected/deleted as a single unit.
  * Serializes to <div data-attachment='{json}'> for lossless markdown round-trips.
+ *
+ * Supports optional `onOpenReader` callback threaded via .configure() for
+ * opening PDF/image attachments in the reader workspace (Phase 11).
  */
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
@@ -31,12 +34,24 @@ interface AttachmentPayload {
     mimeType: string;
 }
 
-export const AttachmentExtension = Node.create<object, object>({
+/** Extension options threaded via .configure() */
+export interface AttachmentExtensionOptions {
+    /** Canvas node ID — identifies which IdeaCard owns this editor */
+    nodeId?: string;
+    /** Callback to open an attachment in the reader workspace */
+    onOpenReader?: (nodeId: string, url: string, filename: string, mimeType: string) => void;
+}
+
+export const AttachmentExtension = Node.create<AttachmentExtensionOptions, object>({
     name: 'attachment',
     group: 'block',
     atom: true,
     selectable: true,
     draggable: true,
+
+    addOptions() {
+        return { nodeId: undefined, onOpenReader: undefined };
+    },
 
     addAttributes(): Record<keyof AttachmentNodeAttrs, object> {
         return {

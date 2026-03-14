@@ -13,6 +13,7 @@ import { contextMenuStrings } from './contextMenuStrings';
 import { slashCommandStrings } from './slashCommandStrings';
 import { searchStrings } from '@/features/search/strings/searchStrings';
 import { onboardingStrings } from '@/features/onboarding/strings/onboardingStrings';
+import { readerStrings } from '@/features/reader/strings/readerStrings';
 
 export const strings = {
     app: {
@@ -274,6 +275,7 @@ export const strings = {
     export: exportStrings,
     contextMenu: contextMenuStrings,
     onboarding: onboardingStrings,
+    reader: readerStrings,
 } as const;
 
 export type StringKeys = typeof strings;

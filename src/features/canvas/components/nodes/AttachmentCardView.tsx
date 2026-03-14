@@ -1,12 +1,14 @@
 /**
  * AttachmentCardView — TipTap ReactNodeView for document attachment blocks.
  * Renders a rich card: thumbnail/icon, filename, upload status, and action menu.
+ * Includes "Open in Reader" action for PDF/image attachments (Phase 11).
  * Memoized per CLAUDE.md performance rules.
  */
 import React, { useCallback } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/react';
-import type { AttachmentNodeAttrs, AttachmentStatus } from '../../extensions/attachmentExtension';
+import type { AttachmentNodeAttrs, AttachmentStatus, AttachmentExtensionOptions } from '../../extensions/attachmentExtension';
+import { isReaderSupportedMime } from '@/features/reader/utils/safeUrl';
 import { strings } from '@/shared/localization/strings';
 import { isSafeUrl, getIconLabel } from './AttachmentCardView.utils';
 import styles from './AttachmentCardView.module.css';
@@ -34,9 +36,12 @@ const StatusBadge = React.memo(function StatusBadge({ status }: StatusBadgeProps
     return <span className={styles.statusError}>{strings.canvas.docUploadFailed}</span>;
 });
 
-export const AttachmentCardView = React.memo(function AttachmentCardView({ node, deleteNode }: NodeViewProps) {
+export const AttachmentCardView = React.memo(function AttachmentCardView({ node, deleteNode, extension }: NodeViewProps) {
     const attrs = node.attrs as AttachmentNodeAttrs;
     const { url, filename, thumbnailUrl, mimeType, status } = attrs;
+    const extOptions = extension.options as AttachmentExtensionOptions;
+
+    const canOpenInReader = isReaderSupportedMime(mimeType) && isSafeUrl(url) && !!extOptions.onOpenReader;
 
     const handleDownload = useCallback(() => {
         if (!url || !isSafeUrl(url)) return;
@@ -55,13 +60,17 @@ export const AttachmentCardView = React.memo(function AttachmentCardView({ node,
         deleteNode();
     }, [deleteNode]);
 
+    const handleOpenReader = useCallback(() => {
+        if (!canOpenInReader || !extOptions.onOpenReader) return;
+        extOptions.onOpenReader(extOptions.nodeId ?? '', url, filename, mimeType);
+    }, [canOpenInReader, extOptions, url, filename, mimeType]);
+
     const iconLabel = getIconLabel(mimeType, filename);
 
     return (
         <NodeViewWrapper className={styles.wrapper} data-drag-handle>
             <div className={`${styles.card} ${status === 'uploading' ? styles.cardUploading : ''}`}
                 role="group" aria-label={filename}>
-                {/* Thumbnail or file-type icon */}
                 <div className={styles.thumb}>
                     {thumbnailUrl && isSafeUrl(thumbnailUrl)
                         ? <img src={thumbnailUrl} alt={filename} className={styles.thumbImg} loading="lazy" />
@@ -69,15 +78,18 @@ export const AttachmentCardView = React.memo(function AttachmentCardView({ node,
                     }
                 </div>
 
-                {/* Metadata */}
                 <div className={styles.meta}>
                     <span className={styles.filename} title={filename}>{filename}</span>
                     <StatusBadge status={status} />
                 </div>
 
-                {/* Actions */}
                 {status !== 'uploading' && (
                     <div className={styles.actions}>
+                        {canOpenInReader && (
+                            <button type="button" className={`${styles.actionBtn} ${styles.readerBtn}`}
+                                onClick={handleOpenReader} title={strings.reader.openInReader}
+                                aria-label={strings.reader.openInReader}>📖</button>
+                        )}
                         <button type="button" className={styles.actionBtn}
                             onClick={handleDownload} title={strings.canvas.docDownload}
                             aria-label={strings.canvas.docDownload}>↓</button>

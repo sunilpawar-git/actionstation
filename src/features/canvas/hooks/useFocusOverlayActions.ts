@@ -18,9 +18,11 @@ interface UseFocusOverlayActionsOptions {
     onExit: () => void;
     /** Returns the current (possibly uncommitted) heading text from the heading editor. */
     getHeading?: () => string;
+    /** Callback to open an attachment in the reader workspace */
+    onOpenReader?: (nodeId: string, url: string, filename: string, mimeType: string) => void;
 }
 
-export function useFocusOverlayActions({ nodeId, output, isEditing, onExit, getHeading }: UseFocusOverlayActionsOptions) {
+export function useFocusOverlayActions({ nodeId, output, isEditing, onExit, getHeading, onOpenReader }: UseFocusOverlayActionsOptions) {
     const handleDoubleClick = useCallback(() => {
         if (!nodeId) return;
         useCanvasStore.getState().startEditing(nodeId);
@@ -52,6 +54,8 @@ export function useFocusOverlayActions({ nodeId, output, isEditing, onExit, getH
         // In focus mode, blur saves content but does NOT exit editing.
         // Editing stays alive until explicit exit (close button / backdrop / ESC).
         onExitEditing: useCallback(() => { /* no-op — kept alive by focus mode */ }, []),
+        nodeId,
+        onOpenReader,
     });
 
     const saveBeforeExit = useCallback(() => {

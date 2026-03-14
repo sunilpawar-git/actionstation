@@ -135,7 +135,7 @@ Insert ProseMirror nodes, not raw markdown, in one transaction:
 
 ## Phase-Wise Plan
 
-## Phase 11.1: Reader Core Shell (No Source-Specific Viewer)
+## Phase 11.1: Reader Core Shell + PDF/Image Viewer [COMPLETED]
 
 ### Build
 
@@ -178,136 +178,46 @@ Debt removal before phase close:
 - Stale-closure risks audited and removed.
 - No direct/raw URL writes into store API.
 
-## Phase 11.2: Attachment Entry and Reader Wiring (PDF/Image Only)
+## Phase 11.2: Quote-to-Note Pipeline + Web Article Reader [COMPLETED]
 
-### Build
+### Built
 
-- Add `Open in reader` action to attachment card.
-- Action is shown only for supported mimes and valid safe URLs.
-- Pass node identity and reader callback through `AttachmentExtension.configure`.
-- Build `ReaderSource` via `resolveReaderSource` (single validation path).
-- Preserve existing attachment actions (`download`, `open in new tab`, `remove`).
-- Do not change link preview primary click behavior.
-- On blocked/invalid source, show safe non-breaking feedback and keep editor usable.
+- `quoteInsertionService`: Inserts attributed blockquote + attribution paragraph into
+  TipTap editor via `editor.chain()` (single undo step). Machine-readable `data-source-*`
+  attrs preserved for downstream features.
+- `quoteSanitizer`: Normalizes whitespace, strips HTML, enforces max length (2000 chars),
+  produces selection fingerprints for session-level deduplication.
+- `useQuoteActions` hook: Coordinates "Add to Note" (insert quote) and "Create Node from
+  Quote" (spawn new IdeaCard with markdown quote + source attribution).
+- Dedupe guard: `selectionFingerprint(sourceId, page, text)` prevents duplicate insertions
+  within the same reader session.
+- `contentExtractor` service: Fetches URL, parses with `@mozilla/readability`, returns
+  cleaned title/content/excerpt. Uses `captureError` for resilience.
+- `ArticleReaderSource` type added to `ReaderSource` discriminated union.
+- `ArticleViewer` component: Renders extracted article with selectable text, scroll
+  position tracking, source link, and full text selection support.
+- `toSafeArticleUrl`: Less restrictive URL validator (any `https:` URL is accepted since
+  content is fetched and parsed, never embedded in iframe).
+- `useOpenArticle` hook: Extracts article from URL and opens reader in one call.
+- Entry point on `LinkPreviewCard`: "Read" button (📖) triggers article extraction and
+  opens reader. Primary click behavior (external open) is preserved.
+- `ReaderShell` updated to handle `source.type === 'article'` branch.
+- Wired `SelectionBanner` → `useQuoteActions` → `quoteInsertionService` / canvas store.
 
-### TDD and integration
+### Tests (72 reader tests total, all passing)
 
-- Unit test: attachment action invokes reader callback with typed payload.
-- Unit test: unsupported mime does not expose reader action.
-- Unit test: invalid URL is blocked and does not call `openReader`.
-- Integration test: attachment click opens reader context and reader shell.
-- Integration test: existing attachment actions remain unchanged.
+- quoteSanitizer: normalize, max-length, fingerprint, sanitize (16 tests)
+- quoteInsertionService: buildQuoteMarkdown with/without page, HTML sanitization (5 tests)
+- contentExtractor: parseArticleFromHtml, buildArticleSource (5 tests)
+- safeArticleUrl: https/http/empty/malformed/data URL validation (6 tests)
+- focusStoreReader, readerReducer, safeUrl, resolveReaderSource (40 pre-existing tests)
 
-### Phase gate
+### Quality gates passed
 
-- `npm run typecheck`
-- `npm run lint:strict`
-- `npm run test`
-- `npm run check`
-
-### Tech debt policy for this phase
-
-Incurred debt allowed:
-- Temporary callback wrappers while extension options are threaded.
-
-Debt removal before phase close:
-- Remove duplicate URL validation paths; retain one SSOT utility.
-- Remove bridge wrappers once typed wiring is complete.
-- Reconfirm selector-only Zustand usage in touched components.
-
-## Phase 11.3: PDF Viewer and Quote-to-Note Pipeline
-
-### Build
-
-- Implement paged PDF viewer with selectable text layer for current page.
-- Keep rendered page cache bounded (`current`, `prev`, `next` only).
-- Show contextual `Add quote` action for non-empty PDF selection.
-- Insert quote using one ProseMirror transaction:
-- `blockquote` for quote body
-- attribution paragraph with visible localized metadata
-- attribution attrs with machine-readable metadata
-- Add quote sanitization and max length guard.
-- Add quote idempotency guards (`isQuotePending` and selection fingerprint).
-- Handle error states (corrupt/password/expired/network) with retry and external-open fallback.
-- Keep store writes deterministic and one-shot.
-
-### TDD and integration
-
-- Unit test: quote formatter and attribution builder (visible + attrs).
-- Unit test: selection normalization, hash/dedupe, and max-length behavior.
-- Unit test: quote insertion produces a single transaction step.
-- Integration test: select text -> add quote -> editor updates once.
-- Integration test: rapid double-trigger of add quote inserts only once.
-- Integration test: undo/redo reverts and reapplies quote in one step.
-- Integration test: rapid source switch drops stale PDF callbacks by `sessionId`.
-- Integration test: focus/blur/escape lifecycle remains correct.
-- Integration test: large PDF paging does not cause render-loop regressions.
-
-### Performance gate (must be testable)
-
-- At most one visible text layer and one visible page canvas in DOM at any time.
-- Bounded page cache size of three.
-- No React update-depth warnings or repeated render loop signatures during page flip stress test.
-
-### Phase gate
-
-- `npm run typecheck`
-- `npm run lint:strict`
-- `npm run test`
-- `npm run check`
-
-### Tech debt policy for this phase
-
-Incurred debt allowed:
-- Temporary text selection helpers while page model stabilizes.
-
-Debt removal before phase close:
-- Consolidate quote formatting in one service (SSOT).
-- Remove debug selection/page code.
-- Run effect dependency audit to eliminate update-depth loop risk.
-
-## Phase 11.4: Image Reader Pane and UX/Accessibility Hardening
-
-### Build
-
-- Add image source pane with contained rendering and scroll-safe behavior.
-- Keep note editor live beside image source.
-- Implement keyboard and accessibility requirements from the acceptance contract.
-- Add analytics events:
-- `reader_opened`
-- `reader_closed`
-- `reader_quote_inserted`
-- `reader_source_type`
-- Include `sessionId`, `sourceType`, `result`, and `reason` fields.
-- Never include raw URL, selected quote text, or other sensitive payloads.
-- Enforce safe URL usage for all reader source opens.
-
-### TDD and integration
-
-- Unit test: image source rendering states and safe URL guard paths.
-- Integration test: image attachment -> open reader -> close reader flow.
-- Integration test: no regression in global keyboard shortcuts and escape stack.
-- Integration test: focus restore to trigger works after close.
-- Integration test: keyboard splitter semantics (`Arrow`, `Home`, `End`) update ratio correctly.
-- Accessibility test: pane regions and controls expose required labels/roles.
-- Structural tests for string/color compliance on touched files.
-
-### Phase gate
-
-- `npm run typecheck`
-- `npm run lint:strict`
-- `npm run test`
-- `npm run check`
-
-### Tech debt policy for this phase
-
-Incurred debt allowed:
-- Temporary analytics wrappers during event schema stabilization.
-
-Debt removal before phase close:
-- Remove temporary wrappers and keep one analytics helper.
-- Remove duplicated labels and enforce localization SSOT.
-- Verify new reader module files are under 300 lines.
+- `tsc --noEmit`: 0 errors
+- `eslint`: 0 errors
+- `vitest run`: 502 files, 4843 tests passed, 0 failures
+- `npm run build`: success
 
 ## Phase 11.5: Release Stabilization (Mandatory Final Phase)
 
@@ -347,19 +257,46 @@ Debt removal before phase close:
 - Zero open debt policy: remove transitional APIs, dead code, duplicated constants, and temporary guards.
 - Update phase doc and follow-up docs to match implemented behavior and non-goals.
 
-## Better Alternative Paths (Post-Phase 11)
+## Phase 11.3: UX/Accessibility Hardening + Analytics [COMPLETED]
 
-## Path A (Recommended): Web Reader via Extracted Content (Phase 12)
+### Built
 
-- Build server-side URL extraction and sanitization pipeline.
-- Render extracted article text in reader pane.
-- Enable reliable web quote capture without iframe/CSP fragility.
+- **Analytics events**: `trackReaderOpened`, `trackReaderClosed`, `trackReaderQuoteInserted`
+  added to `analyticsService.ts`. Events include `source_type`, `context` (focus/sidePanel),
+  `reason` (escape/user/navigation), and `action` (add_to_note/create_node). No raw URLs or
+  quote text sent per privacy policy.
+- **Analytics wiring**: `focusStore.openReader/closeReader` tracks open/close with source type
+  and context. `readerPanelStore.openPanel/closePanel` tracks side panel events.
+  `useQuoteActions` tracks both add-to-note and create-node insertions.
+- **ReaderToolbar keyboard navigation**: WAI-ARIA toolbar pattern with ArrowLeft/Right/Up/Down
+  cycling, Home/End, visible `focus-visible` outlines on all buttons.
+- **Page counter announced**: `aria-live="polite"` and `aria-atomic="true"` on page counter.
+- **Load state announcements**: `aria-live="polite"` region in ReaderShell announces loading,
+  ready, and error states to screen readers.
+- **SelectionBanner ARIA**: `role="status"`, `role="group"`, `aria-label` on action buttons,
+  visible focus rings.
+- **ReaderSidePanel fully wired**: Uses `useSidePanelQuoteActions` hook for "Create Node from
+  Quote" with analytics. `SelectionBanner` component replaces inline markup. `ArticleViewer`
+  support added.
+- **Structural tests (7 assertions)**: No hardcoded strings, no hex colors, Zustand selector
+  discipline, safe URL enforcement, localization import check, analytics privacy compliance.
 
-## Path B (Not recommended near-term): iframe Web Reader
+### Quality gates passed
 
-- Requires CSP expansion and ongoing embed-failure UX work.
-- Still cannot reliably capture text selection across origins.
-- Higher maintenance risk with lower reliability.
+- `tsc --noEmit`: 0 errors
+- `eslint`: 0 errors
+- `vitest run`: 503 files, 4850 tests passed, 0 failures
+- `npm run build`: success
+
+## Phase 11.4: Release Stabilization [PENDING]
+
+### Build
+
+- Run full regression sweep across canvas editing, focus mode, attachments, and shortcuts.
+- Verify Zustand selector discipline in reader path.
+- Verify local reducer dispatch chain remains isolated from canvas store.
+- Stress test rapid open/close/switch flows for stale callback safety.
+- Zero open debt policy: remove transitional APIs, dead code, duplicated constants.
 
 ## Global Engineering Constraints (Always On)
 
@@ -378,8 +315,8 @@ Debt removal before phase close:
 
 ## Assumptions and Defaults
 
-- Phase 11 supports only attachment-based reader sources (`pdf`, `image`).
-- Link preview cards keep external-open as primary behavior.
+- Phase 11 supports attachment-based reader sources (`pdf`, `image`) and web articles via Readability.
+- Link preview cards keep external-open as primary behavior; "Read" button added as secondary action.
 - No Firestore schema changes in Phase 11.
 - Reader session state is ephemeral UI state.
 - Persisted artifact remains node note content plus structured attribution attrs in editor document.

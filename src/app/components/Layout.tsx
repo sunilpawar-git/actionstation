@@ -12,6 +12,7 @@ import { useSearchInputRef } from '@/features/search/hooks/useSearchInputRef';
 import { WorkspaceControls } from '@/features/workspace/components/WorkspaceControls';
 import { KnowledgeBankAddButton } from '@/features/knowledgeBank/components/KnowledgeBankAddButton';
 import { KnowledgeBankPanel } from '@/features/knowledgeBank/components/KnowledgeBankPanel';
+import { ReaderSidePanel } from '@/features/reader';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import { useWorkspaceStore } from '@/features/workspace/stores/workspaceStore';
 import { useSidebarStore } from '@/shared/stores/sidebarStore';
@@ -55,6 +56,7 @@ export function Layout({ children, onSettingsClick }: LayoutProps) {
                 <Sidebar onSettingsClick={onSettingsClick} />
             </div>
             <KnowledgeBankPanel />
+            <ReaderSidePanel />
             <div className={styles.mainArea}>
                 <header className={styles.topBar}>
                     <KnowledgeBankAddButton />

@@ -30,6 +30,10 @@ interface UseIdeaCardEditorOptions {
      */
     documentInsertFnRef?: React.RefObject<DocumentInsertFn | null>;
     onAfterImageInsertRef?: React.RefObject<AfterImageInsertFn | null>;
+    /** Canvas node ID for reader integration (Phase 11) */
+    nodeId?: string;
+    /** Callback to open an attachment in the reader workspace */
+    onOpenReader?: (nodeId: string, url: string, filename: string, mimeType: string) => void;
 }
 
 interface UseIdeaCardEditorReturn {
@@ -44,6 +48,7 @@ export function useIdeaCardEditor(options: UseIdeaCardEditorOptions): UseIdeaCar
     const {
         isEditing, output, getEditableContent, placeholder,
         saveContent, onExitEditing, imageUploadFn, documentInsertFnRef, onAfterImageInsertRef,
+        nodeId, onOpenReader,
     } = options;
     const submitHandlerRef = useRef<SubmitKeymapHandler | null>(null);
 
@@ -62,13 +67,13 @@ export function useIdeaCardEditor(options: UseIdeaCardEditorOptions): UseIdeaCar
     const editorExtensions: Extension[] = useMemo(() => {
         const exts: Extension[] = [
             SubmitKeymap.configure({ handlerRef: submitHandlerRef }) as Extension,
-            AttachmentExtension as unknown as Extension,
+            AttachmentExtension.configure({ nodeId, onOpenReader }) as unknown as Extension,
         ];
         if (imageUploadFn) {
             exts.push(createFileHandlerExtension(imageUploadFn, stableDocumentInsertFn, stableAfterImageInsert) as Extension);
         }
         return exts;
-    }, [imageUploadFn, stableDocumentInsertFn, stableAfterImageInsert]);
+    }, [imageUploadFn, stableDocumentInsertFn, stableAfterImageInsert, nodeId, onOpenReader]);
 
     const blurRef = useRef<(md: string) => void>(() => undefined);
     const displayContent = isEditing ? getEditableContent() : (output ?? '');
