@@ -57,8 +57,13 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
         hasContent, isEditing, onExitEditing, calendar, focusBody, registerProximityLostFn,
     } = api;
     const handleHeadingBlur = React.useCallback(
-        () => { onExitEditing(); },
-        [onExitEditing],
+        () => {
+            requestAnimationFrame(() => {
+                if (cardWrapperRef.current?.contains(document.activeElement)) return;
+                onExitEditing();
+            });
+        },
+        [onExitEditing, cardWrapperRef],
     );
     const nodeColorKey = normalizeNodeColorKey(resolvedData.colorKey);
     const contextMenu = useNodeContextMenu();

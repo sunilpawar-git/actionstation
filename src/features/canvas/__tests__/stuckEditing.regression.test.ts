@@ -12,7 +12,8 @@
  * Root cause: IdeaCardHeadingSection did not pass onBlur to NodeHeading,
  * so the heading blur path never called stopEditing().
  *
- * Fix: IdeaCard passes onExitEditing through to the heading's onBlur prop.
+ * Fix: IdeaCard passes a deferred onBlur that checks whether focus moved
+ * outside the card wrapper (heading→body transitions are NOT exits).
  */
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -41,6 +42,14 @@ describe('Stuck editingNodeId regression guard', () => {
 
     it('IdeaCard passes an onBlur handler to IdeaCardHeadingSection', () => {
         expect(IDEA_CARD_SRC).toMatch(/<IdeaCardHeadingSection[\s\S]*?onBlur/);
+    });
+
+    it('handleHeadingBlur uses requestAnimationFrame to defer exit check', () => {
+        expect(IDEA_CARD_SRC).toContain('requestAnimationFrame');
+    });
+
+    it('handleHeadingBlur checks cardWrapperRef.contains(activeElement) before exiting', () => {
+        expect(IDEA_CARD_SRC).toMatch(/cardWrapperRef\.current\?\.contains\(document\.activeElement\)/);
     });
 
     it('editingNodeId clears when stopEditing is called after heading blur', () => {
