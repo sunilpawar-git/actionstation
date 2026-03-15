@@ -156,14 +156,29 @@ describe('calculateMasonryPosition — virtual-vs-stored position mismatch', () 
             makeNode('g3', col3X, GRID_PADDING, 3),
         ];
 
-        // Virtual target for 5th node = col0 row1 = (32, 292).
-        // Place a node at (32, 292) with an EARLY createdAt so virtual
-        // assignment puts it in col0 row0, diverging from its stored position.
         const divergent = makeNode('div', col0X, row1Y, -1);
         const allNodes = [divergent, ...gridNodes];
 
         const position = calculateMasonryPosition(allNodes, GRID_COLUMNS);
         assertNoCollision(position, allNodes);
+    });
+
+    it('always returns collision-free position for scrambled stored positions', () => {
+        const col0X = getDefaultColumnX(0, DEFAULT_NODE_WIDTH, GRID_GAP, GRID_PADDING);
+        const col1X = getDefaultColumnX(1, DEFAULT_NODE_WIDTH, GRID_GAP, GRID_PADDING);
+        const col2X = getDefaultColumnX(2, DEFAULT_NODE_WIDTH, GRID_GAP, GRID_PADDING);
+        const row1Y = GRID_PADDING + DEFAULT_NODE_HEIGHT + GRID_GAP;
+
+        const nodes = [
+            makeNode('n0', col2X, row1Y, 0),
+            makeNode('n1', col0X, GRID_PADDING, 1),
+            makeNode('n2', col1X, row1Y, 2),
+            makeNode('n3', col0X, row1Y, 3),
+            makeNode('n4', col2X, GRID_PADDING, 4),
+        ];
+
+        const position = calculateMasonryPosition(nodes, GRID_COLUMNS);
+        assertNoCollision(position, nodes);
     });
 });
 
@@ -213,5 +228,25 @@ describe('snapToMasonrySlot — cross-mode collision', () => {
 
         expect(position.x).toBe(col2X);
         expect(position.y).toBe(expectedY);
+    });
+});
+
+describe('calculateSmartPlacement — stale focusedNodeId', () => {
+    it('avoids existing node at grid origin when focusedNodeId is stale', () => {
+        const blocker = makeNode('b0', GRID_PADDING, GRID_PADDING, 0);
+        const allNodes = [blocker];
+
+        const position = calculateSmartPlacement(allNodes, 'non-existent-id');
+        assertNoCollision(position, allNodes);
+    });
+
+    it('avoids multiple nodes near grid origin when focusedNodeId is stale', () => {
+        const col1X = getDefaultColumnX(1, DEFAULT_NODE_WIDTH, GRID_GAP, GRID_PADDING);
+        const b0 = makeNode('b0', GRID_PADDING, GRID_PADDING, 0);
+        const b1 = makeNode('b1', col1X, GRID_PADDING, 1);
+        const allNodes = [b0, b1];
+
+        const position = calculateSmartPlacement(allNodes, 'deleted-node-id');
+        assertNoCollision(position, allNodes);
     });
 });

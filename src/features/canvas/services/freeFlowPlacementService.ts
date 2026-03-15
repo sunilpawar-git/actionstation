@@ -28,7 +28,7 @@ export function calculateSmartPlacement(
         )[0];
 
     if (!anchor) {
-        return { x: GRID_PADDING, y: GRID_PADDING };
+        return findNearestOpenSlot(GRID_PADDING, GRID_PADDING, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT, nodes);
     }
 
     const anchorWidth = anchor.width ?? DEFAULT_NODE_WIDTH;

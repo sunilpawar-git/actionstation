@@ -6,7 +6,9 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { useWorkspaceContext } from '@/app/contexts/WorkspaceContext';
 import { DEFAULT_WORKSPACE_ID } from '@/features/workspace/stores/workspaceStore';
-import { createIdeaNode } from '../types/node';
+import { createIdeaNode, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT } from '../types/node';
+import { useCanvasStore } from '../stores/canvasStore';
+import { findNearestOpenSlot } from '../services/spiralPlacement';
 import { useUndoableActions } from './useUndoableActions';
 
 // Custom event for focusing a newly created node
@@ -69,12 +71,17 @@ export function useQuickCapture() {
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
 
-        const position = screenToFlowPosition({
+        const rawPosition = screenToFlowPosition({
             x: centerX,
             y: centerY,
         });
 
-        const nodeId = `idea-${Date.now()}`;
+        const nodes = useCanvasStore.getState().nodes;
+        const position = findNearestOpenSlot(
+            rawPosition.x, rawPosition.y, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT, nodes,
+        );
+
+        const nodeId = `idea-${crypto.randomUUID()}`;
         const newNode = createIdeaNode(
             nodeId,
             currentWorkspaceId ?? DEFAULT_WORKSPACE_ID,

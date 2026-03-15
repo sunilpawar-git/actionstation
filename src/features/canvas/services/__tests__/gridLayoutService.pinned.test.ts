@@ -5,6 +5,8 @@
 import { describe, it, expect } from 'vitest';
 import { calculateMasonryPosition, arrangeMasonry } from '../gridLayoutService';
 import type { CanvasNode } from '../../types/node';
+import { DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT } from '../../types/node';
+import { collidesWithAny } from '../spiralPlacement';
 
 const createMockNode = (id: string, overrides?: Partial<CanvasNode>): CanvasNode => ({
     id,
@@ -163,7 +165,7 @@ describe('Grid Layout Service — Pinned Node Exclusion', () => {
     });
 
     describe('calculateMasonryPosition with pinned nodes', () => {
-        it('should exclude pinned nodes when calculating next position', () => {
+        it('should avoid pinned node at grid origin when all nodes are pinned', () => {
             const nodes = [
                 createMockNode('pinned', {
                     position: { x: 32, y: 32 },
@@ -173,7 +175,9 @@ describe('Grid Layout Service — Pinned Node Exclusion', () => {
             ];
 
             const result = calculateMasonryPosition(nodes);
-            expect(result).toEqual({ x: 32, y: 32 });
+            expect(
+                collidesWithAny(result.x, result.y, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT, nodes),
+            ).toBe(false);
         });
     });
 });

@@ -4,7 +4,7 @@
  *
  * Pure function — no Zustand, no side effects.
  * Used by freeFlowPlacementService, gridLayoutService, snapToMasonrySlot,
- * synthesisPosition, and expandInsightService.
+ * synthesisPosition, expandInsightService, and useQuickCapture.
  */
 import type { CanvasNode, NodePosition } from '../types/node';
 import { DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT } from '../types/node';

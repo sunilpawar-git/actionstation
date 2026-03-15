@@ -101,10 +101,17 @@ describe('freeFlowPlacementService', () => {
             expect(position.y).toBe(100);
         });
 
-        it('should fall back to origin when focusedNodeId not found in nodes', () => {
+        it('should fall back to collision-free origin area when focusedNodeId not found', () => {
             const nodes = [createMockNode('n1', 200, 200)];
             const position = calculateSmartPlacement(nodes, 'nonexistent-id');
-            expect(position).toEqual({ x: GRID_PADDING, y: GRID_PADDING });
+
+            for (const node of nodes) {
+                const overlapX = position.x < node.position.x + (node.width ?? DEFAULT_NODE_WIDTH) &&
+                    position.x + DEFAULT_NODE_WIDTH > node.position.x;
+                const overlapY = position.y < node.position.y + (node.height ?? DEFAULT_NODE_HEIGHT) &&
+                    position.y + DEFAULT_NODE_HEIGHT > node.position.y;
+                expect(overlapX && overlapY).toBe(false);
+            }
         });
 
         it('should respect custom node widths for offset calculation', () => {
