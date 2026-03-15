@@ -1,13 +1,9 @@
 /**
- * Offline Pin End-to-End Tests
- * TDD: Full integration test for offline workspace pinning flow
- *
- * Tests the complete user journey:
- * 1. User pins workspace (Pro tier)
- * 2. Workspace data cached to IndexedDB
- * 3. User goes offline
- * 4. Pinned workspace loads from cache
- * 5. Unpinned workspaces fail to load
+ * Offline Pin Integration Tests
+ * Tests offline workspace pinning edge cases:
+ * - Unpinned workspace fails gracefully when offline
+ * - Unpin removes data from IndexedDB
+ * - Storage quota exceeded triggers rollback
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
@@ -53,11 +49,10 @@ vi.mock('../services/workspacePinService', () => ({
 
 // Mock workspaceCache (in-memory cache)
 const mockCacheGet = vi.fn().mockReturnValue(null);
-const mockCacheSet = vi.fn();
 vi.mock('../services/workspaceCache', () => ({
     workspaceCache: {
         get: (...args: unknown[]) => mockCacheGet(...args),
-        set: (...args: unknown[]) => mockCacheSet(...args),
+        set: vi.fn(),
     },
 }));
 
@@ -79,13 +74,11 @@ vi.mock('@/features/auth/stores/authStore', () => ({
 }));
 
 const mockSetNodes = vi.fn();
-const mockSetEdges = vi.fn();
 const mockCanvasStoreState = {
     nodes: [], edges: [],
     viewport: { x: 32, y: 32, zoom: 1 },
     editingNodeId: null,
     setNodes: mockSetNodes,
-    setEdges: mockSetEdges,
     clearClusterGroups: vi.fn(),
     setClusterGroups: vi.fn(),
     pruneDeletedNodes: vi.fn(),
@@ -140,66 +133,6 @@ describe('Offline Pin - E2E Integration', () => {
         mockIdbSet.mockResolvedValue(undefined); // Reset IDB to succeed
     });
 
-    it.skip('FULL FLOW: Pin → Cache → Offline → Load from cache', async () => {
-        // SKIP REASON: Firebase SDK initialises a real gRPC connection during dynamic import of
-        // knowledgeBankService inside useWorkspaceLoader, even when the service itself is mocked.
-        // Requires Firebase Emulator or full module isolation to run correctly.
-        // Track: set up Firebase Emulator in CI before enabling this test.
-        // STEP 1: User is online, loads workspace from Firestore
-        mockLoadNodes.mockResolvedValue(testNodes);
-        mockLoadEdges.mockResolvedValue(testEdges);
-
-        const { result: loader } = renderHook(() => useWorkspaceLoader('ws-test'));
-        await waitFor(() => expect(loader.current.isLoading).toBe(false), { timeout: 3000 });
-
-        expect(mockLoadNodes).toHaveBeenCalledWith('user-1', 'ws-test');
-        expect(mockLoadEdges).toHaveBeenCalledWith('user-1', 'ws-test');
-        expect(mockCacheSet).toHaveBeenCalled(); // Loader cached data
-
-        // STEP 2: User pins the workspace (Pro tier)
-        // Workspace is now in cache (from STEP 1), so pin can persist it to IDB
-        mockCacheGet.mockReturnValue({
-            nodes: testNodes,
-            edges: testEdges,
-            loadedAt: Date.now(),
-        });
-
-        mockGetPinnedIds.mockResolvedValue(['ws-test']);
-        await act(async () => {
-            await usePinnedWorkspaceStore.getState().pinWorkspace('ws-test');
-        });
-
-        expect(mockPin).toHaveBeenCalledWith('ws-test');
-        expect(usePinnedWorkspaceStore.getState().isPinned('ws-test')).toBe(true);
-
-        // Verify data was cached to IndexedDB
-        expect(mockIdbSet).toHaveBeenCalledWith('ws-test', expect.objectContaining({
-            nodes: testNodes,
-            edges: testEdges,
-        }));
-
-        // STEP 3: User goes OFFLINE
-        mockIsOnline.mockReturnValue(false);
-        mockLoadNodes.mockRejectedValue(new Error('Network error'));
-        mockLoadEdges.mockRejectedValue(new Error('Network error'));
-
-        // STEP 4: Simulate cache returning pinned data
-        mockIdbGet.mockResolvedValue({
-            nodes: testNodes,
-            edges: testEdges,
-            loadedAt: Date.now(),
-        });
-
-        // STEP 5: Load workspace while offline
-        const { result: offlineLoader } = renderHook(() => useWorkspaceLoader('ws-test'));
-        await waitFor(() => expect(offlineLoader.current.isLoading).toBe(false));
-
-        // EXPECTED: Workspace loads from cache, not Firestore
-        expect(offlineLoader.current.hasOfflineData).toBe(true);
-        expect(mockSetNodes).toHaveBeenCalledWith(testNodes);
-        expect(mockSetEdges).toHaveBeenCalledWith(testEdges);
-    });
-
     it('FAIL CASE: Unpinned workspace fails when offline', async () => {
         // User is offline, workspace is NOT pinned
         mockIsOnline.mockReturnValue(false);
@@ -228,28 +161,6 @@ describe('Offline Pin - E2E Integration', () => {
         expect(mockUnpin).toHaveBeenCalledWith('ws-test');
         expect(mockIdbRemove).toHaveBeenCalledWith('ws-test');
         expect(usePinnedWorkspaceStore.getState().isPinned('ws-test')).toBe(false);
-    });
-
-    it.skip('CACHE HIT: Loads from cache first, then validates with Firestore', async () => {
-        // SKIP REASON: Same Firebase gRPC bleed-through as 'FULL FLOW' test above.
-        // Track: set up Firebase Emulator in CI before enabling this test.
-        // Workspace is pinned and cached
-        mockIdbGet.mockResolvedValue({
-            nodes: testNodes,
-            edges: testEdges,
-            loadedAt: Date.now() - 5000, // 5 seconds old
-        });
-        mockLoadNodes.mockResolvedValue(testNodes);
-        mockLoadEdges.mockResolvedValue(testEdges);
-        mockIsOnline.mockReturnValue(true);
-
-        const { result } = renderHook(() => useWorkspaceLoader('ws-cached'));
-
-        await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-        // EXPECTED: Loads from cache immediately, then validates
-        expect(result.current.hasOfflineData).toBe(true);
-        expect(mockSetNodes).toHaveBeenCalledWith(testNodes);
     });
 
     it('STORAGE QUOTA: Prevents pin when IndexedDB is full', async () => {
