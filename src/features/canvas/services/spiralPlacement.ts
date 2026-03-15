@@ -3,7 +3,8 @@
  * using an expanding rectangular spiral search.
  *
  * Pure function — no Zustand, no side effects.
- * Used by freeFlowPlacementService, synthesisPosition, and expandInsightService.
+ * Used by freeFlowPlacementService, gridLayoutService, snapToMasonrySlot,
+ * synthesisPosition, and expandInsightService.
  */
 import type { CanvasNode, NodePosition } from '../types/node';
 import { DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT } from '../types/node';
@@ -34,7 +35,7 @@ const DIRECTION_OFFSETS: ReadonlyArray<{ dx: number; dy: number }> = [
 /**
  * Checks if a candidate rectangle collides with any existing node.
  */
-function collidesWithAny(
+export function collidesWithAny(
     x: number,
     y: number,
     width: number,

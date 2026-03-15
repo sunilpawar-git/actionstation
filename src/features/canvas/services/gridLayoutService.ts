@@ -8,6 +8,7 @@ import type { ColumnStack, NodePlacement } from '../types/masonryLayout';
 import { checkVerticalOverlap, getDefaultColumnX } from '../types/masonryLayout';
 
 import { GRID_COLUMNS, GRID_GAP, GRID_PADDING } from './gridConstants';
+import { collidesWithAny, findNearestOpenSlot } from './spiralPlacement';
 // Re-export from SSOT so existing importers keep working
 export { GRID_COLUMNS, GRID_GAP, GRID_PADDING } from './gridConstants';
 
@@ -205,6 +206,9 @@ export function calculateMasonryPosition(nodes: CanvasNode[], columnCount = GRID
         targetX = getDefaultColumnX(targetCol, DEFAULT_NODE_WIDTH, GRID_GAP, GRID_PADDING);
     }
 
+    if (collidesWithAny(targetX, targetY, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT, nodes)) {
+        return findNearestOpenSlot(targetX, targetY, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT, nodes);
+    }
     return { x: targetX, y: targetY };
 }
 
