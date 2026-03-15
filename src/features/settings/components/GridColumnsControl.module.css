@@ -1,0 +1,121 @@
+/**
+ * GridColumnsControl Styles — Visual swatch grid for column count selection.
+ * Mirrors the AppearanceSection swatch pattern for design consistency.
+ */
+
+.swatchGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-sm);
+}
+
+.swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+    cursor: pointer;
+    padding: var(--space-sm);
+    border-radius: var(--radius-md);
+    border: 2px solid transparent;
+    transition: all var(--transition-fast);
+}
+
+.swatch:hover {
+    background: var(--color-surface-hover);
+}
+
+.swatchActive {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+.swatchInput {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+/* Focus ring shown on the preview box when the hidden input is keyboard-focused */
+.swatchInput:focus-visible ~ .swatchPreview {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.swatchPreview {
+    width: 56px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-elevated);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--space-xs);
+    gap: 3px;
+    overflow: hidden;
+}
+
+/* Each column bar inside the preview */
+.swatchPreviewBar {
+    flex: 1;
+    border-radius: 2px;
+    min-width: 0;
+}
+
+/* Column bar heights vary slightly to give a natural "card stack" feel */
+.swatchPreviewBar:nth-child(odd) {
+    height: 72%;
+    background: var(--color-primary);
+    opacity: 0.75;
+}
+
+.swatchPreviewBar:nth-child(even) {
+    height: 55%;
+    background: var(--color-primary);
+    opacity: 0.45;
+}
+
+/* Auto swatch: show a "~" grid of 4 bars with a subtle gradient to suggest adaptive */
+.swatchPreview[data-column-preview="auto"] .swatchPreviewBar {
+    height: 60%;
+    opacity: 0.5;
+    background: linear-gradient(
+        to bottom,
+        var(--color-primary),
+        var(--color-primary-light)
+    );
+}
+
+.swatchPreview[data-column-preview="auto"] .swatchPreviewBar:nth-child(2) {
+    height: 80%;
+    opacity: 0.7;
+}
+
+.swatchPreview[data-column-preview="auto"] .swatchPreviewBar:nth-child(3) {
+    height: 50%;
+    opacity: 0.45;
+}
+
+.swatchPreview[data-column-preview="auto"] .swatchPreviewBar:nth-child(4) {
+    height: 70%;
+    opacity: 0.6;
+}
+
+.swatchLabel {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    text-align: center;
+    line-height: 1;
+}
+
+.label {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-sm);
+}

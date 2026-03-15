@@ -28,6 +28,8 @@ export const settingsStrings = {
     freeFlow: 'Free flow mode',
     gridColumnsLabel: 'Grid columns',
     gridColumnsAuto: 'Auto',
+    gridColumnsAutoDescription: 'Adapt to window width',
+    gridColumnsFixedDescription: (n: number) => `${n} column${n === 1 ? '' : 's'}`,
     canvasDisplay: 'Display',
     compactModeDescription: 'Reduce spacing for more content on screen',
     close: 'Close',

@@ -1,59 +1,79 @@
 /**
- * GridColumnsControl — Segmented control for selecting masonry grid column count.
- * Renders: Auto | 2 | 3 | 4 | 5 | 6
- * Tailwind-only styling (no .module.css).
+ * GridColumnsControl — Visual swatch picker for masonry grid column count.
+ *
+ * Renders a 3×2 grid of swatches (Auto | 2 | 3 | 4 | 5 | 6), each showing a
+ * miniature column-layout preview. Follows the AppearanceSection swatch pattern:
+ * - Hidden <input type="radio"> for full keyboard & screen-reader support
+ * - Visible preview box with CSS-driven column bars (data-column-preview attribute)
+ * - Active border via .swatchActive class
+ * - No inline styles, no hardcoded colors — all CSS variables
  */
-import React, { useCallback } from 'react';
+import React from 'react';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import type { GridColumnsPreference } from '@/features/canvas/services/gridColumnsResolver';
 import { VALID_GRID_COLUMNS } from '@/features/canvas/services/gridColumnsResolver';
 import { strings } from '@/shared/localization/strings';
+import styles from './GridColumnsControl.module.css';
 
-const OPTIONS: ReadonlyArray<{ value: GridColumnsPreference; label: string }> =
-    VALID_GRID_COLUMNS.map((v) => ({
-        value: v,
-        label: v === 'auto' ? strings.settings.gridColumnsAuto : String(v),
-    }));
+/** Number of placeholder bars shown in the Auto swatch preview */
+const AUTO_PREVIEW_BAR_COUNT = 4;
+
+interface ColumnSwatchConfig {
+    value: GridColumnsPreference;
+    label: string;
+    ariaLabel: string;
+    barCount: number;
+}
+
+const COLUMN_SWATCHES: readonly ColumnSwatchConfig[] = VALID_GRID_COLUMNS.map((v) => ({
+    value: v,
+    label: v === 'auto' ? strings.settings.gridColumnsAuto : String(v),
+    ariaLabel: v === 'auto'
+        ? strings.settings.gridColumnsAuto
+        : strings.settings.gridColumnsFixedDescription(v as number),
+    barCount: v === 'auto' ? AUTO_PREVIEW_BAR_COUNT : (v as number),
+}));
 
 export const GridColumnsControl = React.memo(function GridColumnsControl() {
     const gridColumns = useSettingsStore((s) => s.gridColumns);
 
-    const handleChange = useCallback((value: GridColumnsPreference) => {
-        useSettingsStore.getState().setGridColumns(value);
-    }, []);
-
     return (
         <div>
-            <label
-                className="block text-[length:var(--font-size-sm)] font-[var(--font-weight-medium)] text-[var(--color-text-secondary)] mb-2"
-            >
+            <span id="grid-columns-label" className={styles.label}>
                 {strings.settings.gridColumnsLabel}
-            </label>
+            </span>
             <div
-                className="inline-flex rounded-[var(--radius-md)] overflow-hidden border border-[var(--color-border)]"
+                className={styles.swatchGrid}
                 role="radiogroup"
-                aria-label={strings.settings.gridColumnsLabel}
+                aria-labelledby="grid-columns-label"
             >
-                {OPTIONS.map((option) => {
-                    const isActive = option.value === gridColumns;
+                {COLUMN_SWATCHES.map((swatch) => {
+                    const isActive = swatch.value === gridColumns;
                     return (
-                        <button
-                            key={String(option.value)}
-                            type="button"
-                            role="radio"
-                            aria-checked={isActive}
-                            onClick={() => handleChange(option.value)}
-                            className={`
-                                px-3 py-1.5 text-[length:var(--font-size-sm)] cursor-pointer
-                                border-none outline-none transition-colors duration-150
-                                ${isActive
-                                    ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] font-[var(--font-weight-semibold)]'
-                                    : 'bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
-                                }
-                            `.trim()}
+                        <label
+                            key={String(swatch.value)}
+                            className={`${styles.swatch} ${isActive ? styles.swatchActive : ''}`}
                         >
-                            {option.label}
-                        </button>
+                            <input
+                                type="radio"
+                                name="grid-columns"
+                                value={String(swatch.value)}
+                                checked={isActive}
+                                onChange={() => useSettingsStore.getState().setGridColumns(swatch.value)}
+                                className={styles.swatchInput}
+                                aria-label={swatch.ariaLabel}
+                            />
+                            <span
+                                className={styles.swatchPreview}
+                                data-column-preview={String(swatch.value)}
+                                aria-hidden="true"
+                            >
+                                {Array.from({ length: swatch.barCount }, (_, i) => (
+                                    <span key={`bar-${i}`} className={styles.swatchPreviewBar} />
+                                ))}
+                            </span>
+                            <span className={styles.swatchLabel}>{swatch.label}</span>
+                        </label>
                     );
                 })}
             </div>
