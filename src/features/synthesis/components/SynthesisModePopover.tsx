@@ -1,7 +1,6 @@
 /** SynthesisModePopover — four-mode picker for synthesis type */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { SynthesisMode } from '../services/synthesisPrompts';
-import clsx from 'clsx';
 import { synthesisStrings } from '../strings/synthesisStrings';
 
 interface SynthesisModePopoverProps {

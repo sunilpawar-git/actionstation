@@ -5,7 +5,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTagStore } from '../stores/tagStore';
 import { strings } from '@/shared/localization/strings';
-import clsx from 'clsx';
 import { tagNameSchema } from '@/shared/validation/schemas';
 
 interface TagInputProps {

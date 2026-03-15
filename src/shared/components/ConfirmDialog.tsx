@@ -2,7 +2,6 @@
  * ConfirmDialog - A global, async-compatible confirmation modal
  * Replaces window.confirm for a non-blocking, themed UX.
  */
-import clsx from 'clsx';
 import { useConfirmStore } from '@/shared/stores/confirmStore';
 import { strings } from '@/shared/localization/strings';
 

@@ -88,6 +88,6 @@ describe('ConfirmDialog', () => {
         render(<ConfirmDialog />);
 
         const confirmButton = screen.getByText('Confirm');
-        expect(confirmButton.className).toMatch(/color-error/);
+        expect(confirmButton).toHaveStyle({ background: 'var(--color-error)' });
     });
 });
