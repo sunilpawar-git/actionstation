@@ -143,6 +143,8 @@ export interface CanvasNode {
     updatedAt: Date;
     /** Schema version for forward-compatible migrations */
     schemaVersion?: number;
+    /** Spatial tile ID derived from position (e.g. 'tile_3_4') */
+    tileId?: string;
 }
 
 /**

@@ -52,6 +52,7 @@ export async function saveWorkspace(userId: string, workspace: Workspace): Promi
         nodeCount: workspace.nodeCount ?? 0,
         includeAllNodesInPool: workspace.includeAllNodesInPool ?? false,
         clusterGroups: workspace.clusterGroups ?? [],
+        spatialChunkingEnabled: workspace.spatialChunkingEnabled ?? false,
     });
 }
 
@@ -72,6 +73,7 @@ interface WorkspaceDoc {
     nodeCount?: number;
     includeAllNodesInPool?: boolean;
     clusterGroups?: unknown[];
+    spatialChunkingEnabled?: boolean;
 }
 
 function validateClusterGroups(raw: unknown[] | undefined): Workspace['clusterGroups'] {
@@ -107,6 +109,7 @@ function buildWorkspace(data: WorkspaceDoc, userId: string, nodeCount: number): 
         orderIndex: data.orderIndex ?? Date.now(), type: data.type ?? 'workspace',
         nodeCount, includeAllNodesInPool: data.includeAllNodesInPool ?? false,
         clusterGroups: validateClusterGroups(data.clusterGroups),
+        spatialChunkingEnabled: data.spatialChunkingEnabled ?? false,
     });
 }
 

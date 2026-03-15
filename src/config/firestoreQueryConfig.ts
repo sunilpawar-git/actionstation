@@ -14,3 +14,12 @@ export const WORKSPACE_LIST_CAP = 100;
 
 /** Max KB entries returned for a workspace */
 export const KB_ENTRIES_CAP = 500;
+
+/** Spatial tile size in canvas pixels (2000 x 2000 grid cells) */
+export const TILE_SIZE = 2000;
+
+/** Number of extra tile rings to prefetch around the viewport */
+export const TILE_PREFETCH_RING = 1;
+
+/** Milliseconds before an inactive tile is evicted from the cache */
+export const TILE_EVICTION_MS = 60_000;

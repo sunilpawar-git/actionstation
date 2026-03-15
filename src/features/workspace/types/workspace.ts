@@ -27,6 +27,8 @@ export interface Workspace {
     clusterGroups?: ClusterGroup[];
     /** Schema version for forward-compatible migrations */
     schemaVersion?: number;
+    /** Enables tile-based spatial chunking for viewport-aware node loading */
+    spatialChunkingEnabled?: boolean;
 }
 
 /**

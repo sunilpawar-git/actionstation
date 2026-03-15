@@ -25,6 +25,7 @@ interface UseWorkspaceLoaderResult {
     isLoading: boolean;
     error: string | null;
     hasOfflineData: boolean;
+    spatialChunkingEnabled: boolean;
 }
 
 type UpdateCallback = (nodes: CanvasNode[], edges: CanvasEdge[], viewport?: Viewport) => void;
@@ -199,6 +200,7 @@ export function useWorkspaceLoader(workspaceId: string): UseWorkspaceLoaderResul
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [hasOfflineData, setHasOfflineData] = useState(false);
+    const [spatialChunkingEnabled, setSpatialChunkingEnabled] = useState(false);
 
     useEffect(() => {
         useHistoryStore.getState().dispatch({ type: 'CLEAR' });
@@ -208,12 +210,18 @@ export function useWorkspaceLoader(workspaceId: string): UseWorkspaceLoaderResul
         let mounted = true;
         const getMounted = () => mounted;
 
+        setSpatialChunkingEnabled(false);
+        const checkChunking = () => {
+            const ws = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId);
+            if (mounted) setSpatialChunkingEnabled(ws?.spatialChunkingEnabled === true);
+        };
+
         void runWorkspaceLoad({ userId, workspaceId, getMounted, setIsLoading, setError, setHasOfflineData })
-            .then(() => loadClustersIfMounted(workspaceId, getMounted));
+            .then(() => { loadClustersIfMounted(workspaceId, getMounted); checkChunking(); });
         void loadKBIfMounted(userId, workspaceId, getMounted);
 
         return () => { mounted = false; };
     }, [userId, workspaceId]);
 
-    return { isLoading, error, hasOfflineData };
+    return { isLoading, error, hasOfflineData, spatialChunkingEnabled };
 }

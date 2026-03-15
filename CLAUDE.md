@@ -196,6 +196,49 @@ import { useDebouncedCallback } from '@/shared/hooks/useDebounce';
 const debouncedSearch = useDebouncedCallback(search, 250);
 ```
 
+## 🗺️ SPATIAL CHUNKING (Tile-Based Graph Storage)
+
+The canvas uses spatial chunking to reduce Firestore reads by ~80-95% at scale.
+
+### Architecture
+
+```
+users/{userId}/workspaces/{workspaceId}/
+├── tiles/{tileId}/nodes/{nodeId}   ← spatially-partitioned nodes
+├── edges/{edgeId}                  ← edges stay flat (fewer docs)
+└── (workspace doc has spatialChunkingEnabled: boolean)
+```
+
+**Tile size**: `TILE_SIZE = 2000` px (configured in `firestoreQueryConfig.ts`)
+**Tile ID format**: `tile_{xIndex}_{yIndex}` — e.g. `tile_3_4` for position `(7500, 9200)`
+
+### Key Modules
+
+| Module | Purpose |
+|--------|---------|
+| `tileCalculator.ts` | Pure math: position → tile coords/ID, viewport → tile set |
+| `tileLoader.ts` | Firestore reads from tile subcollections + in-memory cache |
+| `tiledNodeWriter.ts` | Firestore writes grouped by tile, with orphan cleanup |
+| `tileReducer.ts` | Pure `useReducer` state machine for tile lifecycle |
+| `useViewportTileLoader.ts` | React hook: viewport changes → tile loads (debounced) |
+| `useTiledSaveCallback.ts` | Dirty-tile tracking + tiled save function |
+| `spatialChunkingMigration.ts` | One-time paginated migration from flat `nodes/` to `tiles/` |
+
+### Rules
+
+1. **Feature flag**: Gated by `workspace.spatialChunkingEnabled` — backwards compatible
+2. **Tile eviction**: Stale tiles evicted after `TILE_EVICTION_MS` (60s) via periodic interval
+3. **Dirty tracking**: Done in `useEffect` (never during render) via `prevNodesRef` comparison
+4. **Zustand compliance**: `useViewportTileLoader` uses `useReducer` (isolated from canvas store), scalar selectors, `getState()` for actions, `useRef` for stale-closure prevention
+5. **Migration**: `migrateFlatToTiled()` is paginated (handles >1000 nodes), idempotent, normalizes `colorKey`/`contentMode`
+6. **Firestore rules**: `tiles/{tileId}/nodes/{nodeId}` mirrors `nodes/{nodeId}` auth rules
+
+### Adding New Tile Features
+
+- New tile-related constants go in `firestoreQueryConfig.ts`
+- New string resources go in `workspaceStrings.ts` (prefixed with `tile`)
+- Tile state transitions go through `tileReducer` actions — never mutate directly
+
 ## 🔒 SECURITY PROTOCOL
 
 ### Firebase Rules Structure

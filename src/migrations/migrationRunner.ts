@@ -6,8 +6,9 @@
 import type { Workspace } from '@/features/workspace/types/workspace';
 import type { CanvasNode } from '@/features/canvas/types/node';
 import { logger } from '@/shared/services/logger';
+import { getTileId } from '@/features/workspace/services/tileCalculator';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export interface Migration {
     readonly version: number;
@@ -27,6 +28,14 @@ const migrations: Migration[] = [
         // userId is written by workspaceService.saveNodes on every save — no client-side backfill needed.
         version: 2,
         name: 'ensure_userId_field',
+    },
+    {
+        version: 3,
+        name: 'add_tileId_field',
+        migrateNode: (node) => ({
+            ...node,
+            tileId: node.tileId ?? getTileId(node.position),
+        }),
     },
 ];
 
