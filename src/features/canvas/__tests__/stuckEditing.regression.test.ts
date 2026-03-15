@@ -29,6 +29,10 @@ const IDEA_CARD_SRC = readFileSync(
     resolve(__dirname, '../components/nodes/IdeaCard.tsx'), 'utf-8',
 );
 
+const USE_IDEA_CARD_SRC = readFileSync(
+    resolve(__dirname, '../hooks/useIdeaCard.ts'), 'utf-8',
+);
+
 describe('Stuck editingNodeId regression guard', () => {
     beforeEach(() => {
         useCanvasStore.setState({ editingNodeId: null });
@@ -44,12 +48,17 @@ describe('Stuck editingNodeId regression guard', () => {
         expect(IDEA_CARD_SRC).toMatch(/<IdeaCardHeadingSection[\s\S]*?onBlur/);
     });
 
-    it('handleHeadingBlur uses requestAnimationFrame to defer exit check', () => {
-        expect(IDEA_CARD_SRC).toContain('requestAnimationFrame');
+    it('onHeadingBlur uses requestAnimationFrame to defer exit check', () => {
+        expect(USE_IDEA_CARD_SRC).toContain('requestAnimationFrame');
     });
 
-    it('handleHeadingBlur checks cardWrapperRef.contains(activeElement) before exiting', () => {
-        expect(IDEA_CARD_SRC).toMatch(/cardWrapperRef\.current\?\.contains\(document\.activeElement\)/);
+    it('onHeadingBlur checks cardWrapperRef.contains(activeElement) before exiting', () => {
+        expect(USE_IDEA_CARD_SRC).toMatch(/cardWrapperRef\.current\?\.contains\(document\.activeElement\)/);
+    });
+
+    it('IdeaCard passes onHeadingBlur (not inline handler) to IdeaCardHeadingSection', () => {
+        expect(IDEA_CARD_SRC).toContain('onHeadingBlur');
+        expect(IDEA_CARD_SRC).not.toContain('requestAnimationFrame');
     });
 
     it('editingNodeId clears when stopEditing is called after heading blur', () => {

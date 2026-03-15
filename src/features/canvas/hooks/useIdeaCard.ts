@@ -56,6 +56,15 @@ export function useIdeaCard({ id, rfData, selected }: UseIdeaCardParams) {
         useCanvasStore.getState().stopEditing();
     }, []);
 
+    // Deferred blur: only exit editing if focus truly left the card.
+    // heading→body (Enter/Tab) must NOT exit — activeElement stays inside.
+    const onHeadingBlur = useCallback((): void => {
+        requestAnimationFrame(() => {
+            if (cardWrapperRef.current?.contains(document.activeElement)) return;
+            onExitEditing();
+        });
+    }, [onExitEditing, cardWrapperRef]);
+
     const { editor, getMarkdown, setContent, submitHandlerRef } = useIdeaCardEditor({
         isEditing, output, getEditableContent, placeholder, saveContent,
         onExitEditing,
@@ -76,6 +85,6 @@ export function useIdeaCard({ id, rfData, selected }: UseIdeaCardParams) {
     return {
         resolvedData, heading, prompt, output, isGenerating, isPinned, isCollapsed, tagIds, linkPreviews, calendarEvent,
         isAICard, showTagInput, contentRef, cardWrapperRef, barContainerRef, headingRef,
-        editor, hasContent: Boolean(output), isEditing, onExitEditing, calendar, registerProximityLostFn, ...handlers,
+        editor, hasContent: Boolean(output), isEditing, onHeadingBlur, calendar, registerProximityLostFn, ...handlers,
     };
 }

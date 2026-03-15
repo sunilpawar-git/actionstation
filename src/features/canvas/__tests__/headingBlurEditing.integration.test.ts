@@ -18,7 +18,7 @@
  * exercised here by simulating the DOM focus state that would exist after
  * the browser settles the new activeElement.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useCanvasStore } from '../stores/canvasStore';
 import { useFocusStore } from '../stores/focusStore';
 
