@@ -28,6 +28,7 @@ interface CalendarBadgeProps {
     onRetry?: () => void;
 }
 
+/** Formats an ISO date string as a short locale date + time (e.g. "Mar 16, 2:30 PM"). */
 function formatBadgeDate(isoDate: string): string {
     try {
         const d = new Date(isoDate);
@@ -39,6 +40,7 @@ function formatBadgeDate(isoDate: string): string {
     }
 }
 
+/** Calendar event badge showing type icon, title, date, and sync status on IdeaCard nodes. */
 export const CalendarBadge = React.memo(({ metadata, onClick, onRetry }: CalendarBadgeProps) => {
     const { type, title, date, status, error } = metadata;
 

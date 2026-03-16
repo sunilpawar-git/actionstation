@@ -13,6 +13,7 @@ interface TagInputProps {
     compact?: boolean;
 }
 
+/** Add/remove tags on a canvas node with inline autocomplete and on-the-fly tag creation. */
 // eslint-disable-next-line max-lines-per-function -- tag input with autocomplete + CRUD
 export function TagInput({ selectedTagIds, onChange, compact = false }: TagInputProps) {
     const [isInputVisible, setIsInputVisible] = useState(false);

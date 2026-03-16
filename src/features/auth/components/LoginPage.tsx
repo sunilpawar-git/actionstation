@@ -5,6 +5,7 @@ import { strings } from '@/shared/localization/strings';
 import { signInWithGoogle } from '../services/authService';
 import { useAuthStore } from '../stores/authStore';
 
+/** Google "G" logo SVG used inside the sign-in button. */
 function GoogleIcon() {
     return (
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -16,6 +17,7 @@ function GoogleIcon() {
     );
 }
 
+/** App logo mark displayed at the top of the sign-in card. */
 function LoginLogo() {
     return (
         <div style={{ marginBottom: 32 }}>
@@ -31,6 +33,7 @@ function LoginLogo() {
     );
 }
 
+/** Inline error alert rendered when sign-in fails. */
 function LoginError({ message }: { message: string }) {
     return (
         <div
@@ -43,6 +46,7 @@ function LoginError({ message }: { message: string }) {
     );
 }
 
+/** "Sign in with Google" button with loading-spinner state. */
 function LoginButton({ isLoading, onClick }: { isLoading: boolean; onClick: () => void }) {
     return (
         <button
@@ -62,6 +66,7 @@ function LoginButton({ isLoading, onClick }: { isLoading: boolean; onClick: () =
     );
 }
 
+/** Full-page Google OAuth sign-in screen. */
 export function LoginPage() {
     const isLoading = useAuthStore((s) => s.isLoading);
     const error = useAuthStore((s) => s.error);

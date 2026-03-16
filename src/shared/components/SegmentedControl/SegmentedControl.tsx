@@ -20,6 +20,7 @@ interface SegmentedControlProps<T extends string> {
     onChange: (value: T) => void;
 }
 
+/** Accessible horizontal radio pill group; each option uses a visually hidden radio for native semantics. */
 function SegmentedControlInner<T extends string>({
     name,
     label,

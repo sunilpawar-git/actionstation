@@ -11,6 +11,7 @@ interface ClusterPreviewBarProps {
     readonly onDismiss: () => void;
 }
 
+/** Floating accept/dismiss bar shown at the bottom of the canvas during cluster preview. */
 export const ClusterPreviewBar = React.memo(function ClusterPreviewBar({ phase, previewGroups, onAccept, onDismiss }: ClusterPreviewBarProps) {
     if (phase === 'idle') return null;
 

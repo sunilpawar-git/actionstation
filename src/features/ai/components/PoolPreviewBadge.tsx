@@ -11,6 +11,7 @@ interface PoolPreviewBadgeProps {
     totalCount: number;
 }
 
+/** Amber badge showing the pooled node count; renders nothing when the count is zero. */
 export const PoolPreviewBadge = React.memo(function PoolPreviewBadge({
     pooledCount,
     totalCount,

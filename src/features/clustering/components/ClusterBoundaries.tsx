@@ -20,6 +20,7 @@ const PADDING = 40;
 const DEFAULT_WIDTH = 200;
 const DEFAULT_HEIGHT = 100;
 
+/** Computes the padded bounding rectangle for a set of cluster nodes, or null if the set is empty. */
 function computeBoundsFromNodes(
     nodeIds: readonly string[],
     nodeMap: ReadonlyMap<string, CanvasNode>,
@@ -45,6 +46,7 @@ function computeBoundsFromNodes(
     };
 }
 
+/** Renders translucent cluster boundary overlays as a ReactFlow sibling layer. */
 export const ClusterBoundaries = React.memo(function ClusterBoundaries({
     clusters,
     nodes,

@@ -31,6 +31,7 @@ const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     { action: strings.shortcuts.openSettings,   keys: formatShortcut(',') },
 ];
 
+/** Renders the keyboard shortcut reference list as an accessible <ul>. */
 function ShortcutList() {
     return (
         <ul className="flex flex-col" style={{ listStyle: 'none', padding: 'var(--space-sm) var(--space-lg)', margin: 0 }}>
@@ -48,6 +49,7 @@ function ShortcutList() {
     );
 }
 
+/** Portal-rendered keyboard shortcuts cheat sheet; dismissed by Escape or the close button. */
 export const ShortcutsPanel = React.memo(function ShortcutsPanel({ onClose, onReplay }: ShortcutsPanelProps) {
     useEscapeLayer(ESCAPE_PRIORITY.SETTINGS_PANEL, true, onClose);
 

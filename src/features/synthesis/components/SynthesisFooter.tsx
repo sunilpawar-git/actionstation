@@ -9,6 +9,7 @@ interface SynthesisFooterProps {
     readonly onReSynthesize: () => void;
 }
 
+/** Footer bar on synthesis nodes showing source count, highlight-sources action, and re-synthesize button. */
 export const SynthesisFooter = React.memo(function SynthesisFooter({
     sourceCount,
     sourceNodeIds,

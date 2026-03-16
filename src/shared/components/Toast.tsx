@@ -13,6 +13,7 @@ const toastTypeClasses: Record<ToastType, string> = {
     warning: 'bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]',
 };
 
+/** Renders the stack of active toast notifications anchored to the bottom-centre of the viewport. */
 export function ToastContainer() {
     const toasts = useToastStore((s) => s.toasts);
 

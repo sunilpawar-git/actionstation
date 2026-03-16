@@ -15,16 +15,19 @@ interface State {
     error: Error | null;
 }
 
+/** React class error boundary providing a retry-able fallback UI for unexpected render errors. */
 export class ErrorBoundary extends Component<Props, State> {
     constructor(props: Props) {
         super(props);
         this.state = { hasError: false, error: null };
     }
 
+    /** Captures the thrown error in state, triggering the fallback UI on the next render. */
     static getDerivedStateFromError(error: Error): State {
         return { hasError: true, error };
     }
 
+    /** Logs the error and component stack to the monitoring service. */
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         logger.error('[ErrorBoundary] Caught error:', error, {
             componentStack: errorInfo.componentStack ?? '',
@@ -32,10 +35,12 @@ export class ErrorBoundary extends Component<Props, State> {
         });
     }
 
+    /** Resets error state to unmount the fallback and re-render children. */
     handleRetry = () => {
         this.setState({ hasError: false, error: null });
     };
 
+    /** Renders fallback UI with a retry button on error, or children when healthy. */
     render() {
         if (this.state.hasError) {
             if (this.props.fallback != null) {

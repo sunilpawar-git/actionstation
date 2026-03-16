@@ -16,6 +16,7 @@ interface OfflineFallbackProps {
     onRetry: () => void;
 }
 
+/** Full-page offline fallback that probes IDB and SW Cache API to show contextual messaging. */
 export function OfflineFallback({ hasOfflineData, onRetry }: OfflineFallbackProps) {
     const [hasSwCache, setHasSwCache] = useState(false);
 

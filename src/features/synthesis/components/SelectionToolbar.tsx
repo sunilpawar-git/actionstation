@@ -12,6 +12,7 @@ import { captureError } from '@/shared/services/sentryService';
 
 const MAX_SYNTHESIS_NODES = 50;
 
+/** Floating toolbar shown when 2+ canvas nodes are selected; provides synthesis and export actions. */
 export const SelectionToolbar = React.memo(function SelectionToolbar() {
     const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
     const nodeCount = selectedNodeIds.size;

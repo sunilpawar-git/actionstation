@@ -17,6 +17,7 @@ interface ToggleProps {
 
 const TOGGLE_KNOB_SIZE = 16;
 
+/** Accessible pill-style toggle switch with optional description; uses a visually-hidden checkbox with role="switch". */
 export const Toggle = React.memo(function Toggle({ checked, onChange, label, description, disabled = false, id }: ToggleProps) {
     const descriptionId = description ? `${id}-desc` : undefined;
 

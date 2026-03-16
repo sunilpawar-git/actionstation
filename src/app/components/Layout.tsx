@@ -23,6 +23,7 @@ interface LayoutProps {
     onSettingsClick?: () => void;
 }
 
+/** Renders the app shell: pinned/hover sidebar, top header bar, and main canvas area. */
 export function Layout({ children, onSettingsClick }: LayoutProps) {
     const searchRef = useSearchInputRef();
     const currentWorkspaceId = useWorkspaceStore((s) => s.currentWorkspaceId);

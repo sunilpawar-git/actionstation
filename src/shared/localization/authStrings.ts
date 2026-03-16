@@ -1,3 +1,4 @@
+/** Localized string constants for all authentication-related UI copy. */
 export const authStrings = {
     signInWithGoogle: 'Sign in with Google',
     signOut: 'Sign out',

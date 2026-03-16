@@ -15,6 +15,7 @@ export interface HelpButtonProps {
     readonly onReplay:           () => void;
 }
 
+/** Persistent "?" floating button that opens the ShortcutsPanel; hidden during active onboarding. */
 export const HelpButton = React.memo(function HelpButton({
     isOnboardingActive,
     onReplay,

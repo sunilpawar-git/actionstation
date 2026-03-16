@@ -10,6 +10,7 @@ interface SwUpdatePromptProps {
     registration: SwRegistrationResult;
 }
 
+/** PWA update notification banner; renders nothing when no service-worker update is pending. */
 export function SwUpdatePrompt({ registration }: SwUpdatePromptProps) {
     const { needRefresh, acceptUpdate, dismissUpdate } = registration;
 

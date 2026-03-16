@@ -10,6 +10,7 @@ interface UpgradePromptProps {
     onUpgrade?: () => void;
 }
 
+/** Modal prompt shown to free users when they attempt to access a subscription-gated feature. */
 export function UpgradePrompt({ featureName, onDismiss, onUpgrade }: UpgradePromptProps) {
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-[hsla(0,0%,0%,0.4)] z-[var(--z-modal)]" role="dialog" aria-modal="true">

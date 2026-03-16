@@ -12,6 +12,7 @@ interface LoadingFallbackProps {
     fullScreen?: boolean;
 }
 
+/** Suspense boundary fallback showing a spinner and message; supports optional full-screen overlay. */
 export function LoadingFallback({ 
     message = strings.common.loadingComponent, 
     fullScreen = false 

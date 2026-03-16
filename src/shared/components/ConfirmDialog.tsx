@@ -5,6 +5,7 @@
 import { useConfirmStore } from '@/shared/stores/confirmStore';
 import { strings } from '@/shared/localization/strings';
 
+/** Global async-compatible confirmation modal; themed replacement for window.confirm. */
 export function ConfirmDialog() {
     const isOpen = useConfirmStore((s) => s.isOpen);
     const options = useConfirmStore((s) => s.options);

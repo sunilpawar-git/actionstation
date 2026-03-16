@@ -15,26 +15,32 @@ interface Props {
 }
 interface State { hasError: boolean; }
 
+/** React error boundary catching MindmapRenderer failures; shows retry/switch-to-text fallback. */
 export class MindmapErrorBoundary extends React.Component<Props, State> {
     state: State = { hasError: false };
 
+    /** Sets error state to trigger the fallback UI on the next render cycle. */
     static getDerivedStateFromError(): State {
         return { hasError: true };
     }
 
+    /** Reports the caught error to Sentry. */
     componentDidCatch(error: Error): void {
         captureError(error);
     }
 
+    /** Resets error state so the child tree is re-mounted. */
     private handleRetry = () => {
         this.setState({ hasError: false });
     };
 
+    /** Resets error state and delegates to the onSwitchToText prop. */
     private handleSwitchToText = () => {
         this.setState({ hasError: false });
         this.props.onSwitchToText?.();
     };
 
+    /** Renders fallback UI on error, or children when healthy. */
     render() {
         if (this.state.hasError) {
             return (

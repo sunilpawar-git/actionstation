@@ -8,6 +8,7 @@ import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
 import { useOfflineQueueStore } from '@/features/workspace/stores/offlineQueueStore';
 import { strings } from '@/shared/localization/strings';
 
+/** Dismissible banner shown at the top of the canvas when the network is offline. */
 export function OfflineBanner() {
     const isOnline = useNetworkStatusStore((s) => s.isOnline);
     const pendingCount = useOfflineQueueStore((s) => s.pendingCount);

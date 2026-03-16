@@ -10,6 +10,7 @@ interface SynthesisModePopoverProps {
 
 const MODES: readonly SynthesisMode[] = ['summarize', 'outline', 'narrative', 'questions'];
 
+/** Keyboard-navigable popover for selecting one of the four synthesis modes. */
 export const SynthesisModePopover = React.memo(function SynthesisModePopover({
     onSelect,
     onClose,

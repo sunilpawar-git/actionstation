@@ -11,6 +11,7 @@ import { strings } from '@/shared/localization/strings';
 
 type DotVariant = 'green' | 'spinner' | 'yellow' | 'gray' | 'red' | 'blue';
 
+/** Derives the status dot variant and label from current save/network/sync state. */
 function getIndicatorState(
     status: string,
     isOnline: boolean,
@@ -52,6 +53,7 @@ const DOT_CLASSES: Record<DotVariant, string> = {
     blue:    'bg-[var(--color-primary)] animate-[sync-pulse_1.2s_ease-in-out_infinite]',
 };
 
+/** Displays a coloured status dot and label reflecting current save/sync/network state. */
 export function SyncStatusIndicator() {
     const status = useSaveStatusStore((s) => s.status);
     const isOnline = useNetworkStatusStore((s) => s.isOnline);

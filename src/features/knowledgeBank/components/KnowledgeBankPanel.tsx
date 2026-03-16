@@ -14,6 +14,7 @@ import { ESCAPE_PRIORITY } from '@/shared/hooks/escapePriorities';
 import { strings } from '@/shared/localization/strings';
 import styles from './KnowledgeBankPanel.module.css';
 
+/** Slide-out panel for browsing, searching, and managing Knowledge Bank entries. */
 export function KnowledgeBankPanel() {
     const isPanelOpen = useKnowledgeBankStore((s) => s.isPanelOpen);
     const entries = useKnowledgeBankStore((s) => s.entries);
@@ -69,6 +70,7 @@ export function KnowledgeBankPanel() {
     );
 }
 
+/** Header row with title and close button for the Knowledge Bank panel. */
 function PanelHeader({ onClose }: { onClose: () => void }) {
     return (
         <div className={styles.panelHeader}>

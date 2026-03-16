@@ -14,6 +14,7 @@ interface MarkdownRendererProps {
     className?: string;
 }
 
+/** Renders markdown as safe formatted HTML using react-markdown (XSS-safe by design). */
 export const MarkdownRenderer = React.memo(({
     content,
     className,

@@ -12,6 +12,7 @@ interface WelcomeScreenProps {
     readonly onDismiss: () => void;
 }
 
+/** Bullet list highlighting three key features of the app on the welcome screen. */
 function WelcomeBullets() {
     return (
         <ul
@@ -25,6 +26,7 @@ function WelcomeBullets() {
     );
 }
 
+/** Full-screen first-visit welcome overlay; portal-rendered and dismissed by CTA or Escape. */
 export const WelcomeScreen = React.memo(function WelcomeScreen({ onDismiss }: WelcomeScreenProps) {
     useEscapeLayer(ESCAPE_PRIORITY.MODAL, true, onDismiss);
 

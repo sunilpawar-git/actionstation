@@ -24,6 +24,7 @@ export interface CoachMarkProps {
 
 const PAD = 6;
 
+/** Computes fixed-position CSS for the coach mark popup relative to the target element and placement. */
 function computePosition(rect: DOMRect, placement: OnboardingPlacement): React.CSSProperties {
     const gap = PAD + 12;
     switch (placement) {
@@ -55,6 +56,7 @@ interface CoachMarkPopupProps {
     onSkip: () => void;
 }
 
+/** Inner popup card for a coach mark step; shows title, description, optional try-prompt, and nav buttons. */
 function CoachMarkPopup({ markRef, placement, rect, title, description, tryPrompt, stepLabel, nextLabel, skipLabel, onNext, onSkip }: CoachMarkPopupProps) {
     return (
         <div
@@ -79,6 +81,7 @@ function CoachMarkPopup({ markRef, placement, rect, title, description, tryPromp
     );
 }
 
+/** Portal-rendered spotlight coach mark that anchors to a CSS selector and dismisses via Escape. */
 export const CoachMark = React.memo(function CoachMark(props: CoachMarkProps) {
     const { targetSelector, title, description, tryPrompt, placement,
         stepLabel, onNext, onSkip, nextLabel, skipLabel } = props;

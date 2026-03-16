@@ -13,6 +13,7 @@ interface PinWorkspaceButtonProps {
     workspaceId: string;
 }
 
+/** Toggle button to pin a workspace for offline availability; shows upgrade prompt for free users. */
 export const PinWorkspaceButton = React.memo(function PinWorkspaceButton({ workspaceId }: PinWorkspaceButtonProps) {
     const { isPinned, showUpgrade, setShowUpgrade, storageLabel, handleToggle } = usePinWorkspaceButton(workspaceId);
 

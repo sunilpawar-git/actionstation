@@ -50,6 +50,7 @@ function computePosition(
     };
 }
 
+/** Portal tooltip anchored to a ref; escapes parent stacking contexts and supports keyboard shortcut hints. */
 export function PortalTooltip({
     text,
     shortcut,
