@@ -4,12 +4,17 @@
  * Uses scalar selectors to avoid re-renders during drag operations.
  */
 import { useCallback, useMemo } from 'react';
+import clsx from 'clsx';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import { useWorkspaceStore } from '@/features/workspace/stores/workspaceStore';
 import { BrainIcon } from '@/shared/components/icons';
 import { PoolPreviewBadge } from '@/features/ai/components/PoolPreviewBadge';
 import { strings } from '@/shared/localization/strings';
-import styles from './WorkspaceControls.module.css';
+import {
+    CONTROLS_BUTTON,
+    CONTROLS_BUTTON_ACTIVE,
+    CONTROLS_POOL_BUTTON,
+} from './workspaceControlsStyles';
 
 const POOL_ACTIVE_STYLE = { color: 'var(--color-pool-active)' } as const;
 
@@ -38,7 +43,7 @@ export function WorkspacePoolButton() {
 
     return (
         <button
-            className={`${styles.button} ${styles.poolButton} ${isPooled ? styles.buttonActive : ''}`}
+            className={clsx(CONTROLS_BUTTON, CONTROLS_POOL_BUTTON, isPooled && CONTROLS_BUTTON_ACTIVE)}
             onClick={handleToggle}
             aria-pressed={isPooled}
             aria-label={tooltipText}

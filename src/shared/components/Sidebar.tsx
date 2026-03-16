@@ -7,7 +7,17 @@ import { PlusIcon, ChevronDownIcon } from '@/shared/components/icons';
 import { WorkspaceList } from '@/app/components/WorkspaceList';
 import { SidebarHeader } from './SidebarHeader';
 import { SidebarFooter } from '@/app/components/SidebarFooter';
-import styles from './Sidebar.module.css';
+import './Sidebar.css';
+import {
+    SB_SIDEBAR, SB_WORKSPACES, SB_WORKSPACES_STYLE,
+    SB_NEW_WS_WRAPPER, SB_NEW_WS_WRAPPER_STYLE,
+    SB_SPLIT_BTN_CONTAINER,
+    SB_NEW_WS_MAIN, SB_NEW_WS_MAIN_STYLE,
+    SB_SPLIT_DIVIDER,
+    SB_NEW_WS_DROPDOWN_BTN, SB_NEW_WS_DROPDOWN_BTN_STYLE,
+    SB_DROPDOWN_MENU, SB_DROPDOWN_MENU_STYLE,
+    SB_DROPDOWN_ITEM, SB_DROPDOWN_ITEM_STYLE,
+} from './sidebarStyles';
 
 interface SidebarProps {
     onSettingsClick?: () => void;
@@ -41,27 +51,29 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
 
     return (
         <aside
-            className={styles.sidebar}
+            className={SB_SIDEBAR}
             data-pinned={String(isPinned)}
             data-open={String(isHoverOpen)}
             aria-label={strings.sidebar.ariaLabel}
         >
             <SidebarHeader isPinned={isPinned} isHoverOpen={isHoverOpen} onTogglePin={() => useSidebarStore.getState().togglePin()} />
 
-            <div className={styles.workspaces}>
-                <div className={styles.newWorkspaceWrapper} ref={dropdownRef}>
-                    <div className={styles.splitButtonContainer}>
+            <div className={SB_WORKSPACES} style={SB_WORKSPACES_STYLE}>
+                <div className={SB_NEW_WS_WRAPPER} style={SB_NEW_WS_WRAPPER_STYLE} ref={dropdownRef}>
+                    <div className={SB_SPLIT_BTN_CONTAINER}>
                         <button
-                            className={styles.newWorkspaceMain}
+                            className={SB_NEW_WS_MAIN}
+                            style={SB_NEW_WS_MAIN_STYLE}
                             onClick={handleNewWorkspace}
                             disabled={isCreating || isCreatingDivider}
                         >
                             <PlusIcon size={18} />
                             <span>{isCreating ? strings.common.loading : strings.workspace.newWorkspace}</span>
                         </button>
-                        <div className={styles.splitDivider} />
+                        <div className={SB_SPLIT_DIVIDER} />
                         <button
-                            className={styles.newWorkspaceDropdown}
+                            className={SB_NEW_WS_DROPDOWN_BTN}
+                            style={SB_NEW_WS_DROPDOWN_BTN_STYLE}
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                             disabled={isCreating || isCreatingDivider}
                             aria-label="New Workspace Options"
@@ -71,9 +83,10 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
                         </button>
                     </div>
                     {isDropdownOpen && (
-                        <div className={styles.dropdownMenu}>
+                        <div className={SB_DROPDOWN_MENU} style={SB_DROPDOWN_MENU_STYLE}>
                             <button
-                                className={styles.dropdownItem}
+                                className={SB_DROPDOWN_ITEM}
+                                style={SB_DROPDOWN_ITEM_STYLE}
                                 onClick={onAddDivider}
                                 disabled={isCreating || isCreatingDivider}
                             >

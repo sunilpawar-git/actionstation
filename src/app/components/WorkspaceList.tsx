@@ -1,7 +1,8 @@
 import { strings } from '@/shared/localization/strings';
 import { WorkspaceItem } from './WorkspaceItem';
 import type { Workspace } from '@/features/workspace/types/workspace';
-import styles from '@/shared/components/Sidebar.module.css';
+import { SB_WORKSPACE_LIST, SB_WORKSPACE_LIST_STYLE } from '@/shared/components/sidebarStyles';
+import { WI_ITEM, WI_ITEM_STYLE, WI_NAME } from './workspaceItemStyles';
 import {
     DndContext,
     closestCenter,
@@ -38,7 +39,7 @@ export function WorkspaceList({
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 5, // Requires 5px movement before dragging starts
+                distance: 5,
             },
         }),
         useSensor(KeyboardSensor, {
@@ -61,9 +62,9 @@ export function WorkspaceList({
 
     if (workspaces.length === 0) {
         return (
-            <div className={styles.workspaceList}>
-                <div className={styles.workspaceItem}>
-                    <span className={styles.workspaceName}>
+            <div className={SB_WORKSPACE_LIST} style={SB_WORKSPACE_LIST_STYLE}>
+                <div className={WI_ITEM} style={WI_ITEM_STYLE}>
+                    <span className={WI_NAME}>
                         {strings.workspace.untitled}
                     </span>
                 </div>
@@ -82,7 +83,7 @@ export function WorkspaceList({
                 items={workspaces.map((ws) => ws.id)}
                 strategy={verticalListSortingStrategy}
             >
-                <div className={styles.workspaceList} role="list">
+                <div className={SB_WORKSPACE_LIST} style={SB_WORKSPACE_LIST_STYLE} role="list">
                     {workspaces.map((ws) => (
                         <WorkspaceItem
                             key={ws.id}

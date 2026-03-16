@@ -27,13 +27,13 @@ describe('WorkspaceItem', () => {
     it('applies active class when isActive is true', () => {
         const { container } = render(<WorkspaceItem {...defaultProps} isActive={true} />);
         const element = container.firstChild as HTMLElement;
-        expect(element.className).toContain('active');
+        expect(element.className).toContain('bg-[var(--color-primary-light)]');
     });
 
     it('does not apply active class when isActive is false', () => {
         const { container } = render(<WorkspaceItem {...defaultProps} isActive={false} />);
         const element = container.firstChild as HTMLElement;
-        expect(element.className).not.toContain('active');
+        expect(element.className).not.toContain('bg-[var(--color-primary-light)]');
     });
 
     it('calls onSelect when clicked', () => {

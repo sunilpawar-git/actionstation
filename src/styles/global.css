@@ -132,6 +132,11 @@ a {
     to   { transform: translateY(0);     opacity: 1; }
 }
 
+@keyframes sidebarSlideDown {
+    from { transform: translateY(-4px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
 @keyframes sync-pulse {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.4; }

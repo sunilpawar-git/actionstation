@@ -2,7 +2,7 @@ import { useClearCanvasWithUndo } from '@/features/canvas/hooks/useClearCanvasWi
 import { EraserIcon } from '@/shared/components/icons';
 import { strings } from '@/shared/localization/strings';
 import { captureError } from '@/shared/services/sentryService';
-import styles from './WorkspaceControls.module.css';
+import { CONTROLS_BUTTON } from './workspaceControlsStyles';
 
 interface ClearCanvasButtonProps {
     nodeCount: number;
@@ -13,7 +13,7 @@ export function ClearCanvasButton({ nodeCount }: ClearCanvasButtonProps) {
 
     return (
         <button
-            className={styles.button}
+            className={CONTROLS_BUTTON}
             onClick={() => void clearCanvasWithUndo().catch((e: unknown) => captureError(e))}
             disabled={nodeCount === 0}
             title={strings.canvas.clearCanvas}

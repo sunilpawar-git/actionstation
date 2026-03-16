@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import clsx from 'clsx';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import { PlusIcon, GridIcon, FreeFlowIcon, ClusterIcon, EraserIcon } from '@/shared/components/icons';
 import { toast } from '@/shared/stores/toastStore';
@@ -14,7 +15,12 @@ import { useClusterPreviewStore } from '@/features/clustering/stores/clusterPrev
 import { DeleteWorkspaceButton } from './DeleteWorkspaceButton';
 import { ClearCanvasButton } from './ClearCanvasButton';
 import { WorkspacePoolButton } from './WorkspacePoolButton';
-import styles from './WorkspaceControls.module.css';
+import {
+    CONTROLS_CONTAINER, CONTROLS_CONTAINER_STYLE,
+    CONTROLS_BUTTON,
+    CONTROLS_BUTTON_ACTIVE,
+    CONTROLS_DIVIDER, CONTROLS_DIVIDER_STYLE,
+} from './workspaceControlsStyles';
 
 function useHandleArrange() {
     const nodeCount = useCanvasStore((s) => s.nodes.length);
@@ -49,42 +55,42 @@ export function WorkspaceControls() {
     const hasActiveClusters = useCanvasStore((s) => s.clusterGroups.length > 0);
 
     return (
-        <div className={styles.container}>
-            <button className={styles.button} onClick={() => handleAddNode()}
+        <div className={CONTROLS_CONTAINER} style={CONTROLS_CONTAINER_STYLE}>
+            <button className={CONTROLS_BUTTON} onClick={() => handleAddNode()}
                 title={strings.workspace.addNodeTooltip} data-testid="add-node-button">
                 <PlusIcon size={20} />
             </button>
-            <div className={styles.divider} />
-            <button className={styles.button} onClick={handleArrangeNodes}
+            <div className={CONTROLS_DIVIDER} style={CONTROLS_DIVIDER_STYLE} />
+            <button className={CONTROLS_BUTTON} onClick={handleArrangeNodes}
                 disabled={nodeCount === 0} title={strings.workspace.arrangeNodesTooltip}>
                 <GridIcon size={20} />
             </button>
-            <div className={styles.divider} />
+            <div className={CONTROLS_DIVIDER} style={CONTROLS_DIVIDER_STYLE} />
             <button
-                className={`${styles.button} ${canvasFreeFlow ? styles.buttonActive : ''}`}
+                className={clsx(CONTROLS_BUTTON, canvasFreeFlow && CONTROLS_BUTTON_ACTIVE)}
                 onClick={() => useSettingsStore.getState().toggleCanvasFreeFlow()}
                 aria-pressed={canvasFreeFlow} aria-label={strings.workspace.freeFlowTooltip}
                 title={strings.workspace.freeFlowTooltip}>
                 <FreeFlowIcon size={20} />
             </button>
-            <div className={styles.divider} />
-            <button className={styles.button} onClick={suggestClusters}
+            <div className={CONTROLS_DIVIDER} style={CONTROLS_DIVIDER_STYLE} />
+            <button className={CONTROLS_BUTTON} onClick={suggestClusters}
                 disabled={clusterPhase !== 'idle' || nodeCount === 0}
                 title={clusterStrings.labels.suggestClusters} aria-label={clusterStrings.labels.suggestClusters}>
                 <ClusterIcon size={20} />
             </button>
             {hasActiveClusters && <>
-                <div className={styles.divider} />
-                <button className={styles.button} onClick={clearClusters}
+                <div className={CONTROLS_DIVIDER} style={CONTROLS_DIVIDER_STYLE} />
+                <button className={CONTROLS_BUTTON} onClick={clearClusters}
                     title={clusterStrings.labels.clearClusters} aria-label={clusterStrings.labels.clearClusters}>
                     <EraserIcon size={20} />
                 </button>
             </>}
-            <div className={styles.divider} />
+            <div className={CONTROLS_DIVIDER} style={CONTROLS_DIVIDER_STYLE} />
             <ClearCanvasButton nodeCount={nodeCount} />
-            <div className={styles.divider} />
+            <div className={CONTROLS_DIVIDER} style={CONTROLS_DIVIDER_STYLE} />
             <WorkspacePoolButton />
-            <div className={styles.divider} />
+            <div className={CONTROLS_DIVIDER} style={CONTROLS_DIVIDER_STYLE} />
             <DeleteWorkspaceButton />
         </div>
     );
