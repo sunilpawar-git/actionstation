@@ -56,6 +56,9 @@ export const IP_RATE_LIMIT_GEMINI = 30;
 /** Rate limit: max upload requests per IP per window */
 export const IP_RATE_LIMIT_UPLOAD = 20;
 
+/** Rate limit: max captcha-verify requests per IP per window (pre-auth, so keep low) */
+export const IP_RATE_LIMIT_CAPTCHA = 10;
+
 /** Maximum request body size for Gemini proxy (100 KB) */
 export const GEMINI_MAX_BODY_BYTES = 102_400;
 

@@ -688,11 +688,71 @@ This fires for bot detections, prompt injection, IP blocks, and threat spikes.
 
 ### What still requires external services (not in code)
 
-| Gap | Action |
+| Gap | Status |
 |---|---|
-| **WAF** | Enable Cloud Armor in GCP Console → attach to Cloud Run service |
-| **Cloudflare Turnstile / reCAPTCHA** | Add `TURNSTILE_SECRET` to Secret Manager; validate token server-side before login/upload |
-| **Immutable backups** | GCS object lock policy on `actionstation-244f0-backups` bucket |
+| **WAF** | ✅ `scripts/setup-cloud-armor.sh` — run once; update DNS to LB IP |
+| **Cloudflare Turnstile / reCAPTCHA** | ✅ `functions/src/verifyTurnstile.ts` deployed; `captchaValidator.ts` shared utility |
+| **Immutable backups** | ✅ `scripts/setup-immutable-backups.sh` — run once; update `BACKUP_BUCKET` in `firestoreBackup.ts` |
+
+---
+
+## 🛡️ WAF / CAPTCHA / IMMUTABLE BACKUPS SPRINT — Mar 17 2026
+
+### New Cloud Function: `verifyTurnstile`
+
+`POST /verifyTurnstile` — Cloudflare Turnstile server-side verification. IP-rate-limited (10 req/min), logs `CAPTCHA_FAILED` events.
+
+**Call before login and upload on the client:**
+```typescript
+const token = await turnstile.getResponse(); // @cloudflare/turnstile-react
+const r = await fetch('/verifyTurnstile', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token }),
+});
+if (!r.ok) throw new Error('Bot challenge failed');
+// proceed with Firebase auth / upload
+```
+
+**One-time secret setup:**
+```bash
+gcloud secrets create TURNSTILE_SECRET --replication-policy="automatic"
+echo -n "YOUR_SECRET" | gcloud secrets versions add TURNSTILE_SECRET --data-file=-
+gcloud secrets add-iam-policy-binding TURNSTILE_SECRET \
+  --member="serviceAccount:actionstation-244f0@appspot.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+firebase deploy --only functions:verifyTurnstile
+```
+
+### reCAPTCHA v3 — same pattern
+
+`verifyRecaptchaToken()` in `functions/src/utils/captchaValidator.ts`:
+- Secret name: `RECAPTCHA_SECRET` (same setup steps as Turnstile)
+- Pass `action` string (`'login'`, `'upload'`) — mismatch = token replay → blocked
+- Score < `RECAPTCHA_MIN_SCORE` (0.5) → blocked (raise to 0.7 for high-risk actions)
+
+### Cloud Armor WAF
+
+Run `scripts/setup-cloud-armor.sh` once per environment:
+- 8 OWASP CRS rule sets: SQLi, XSS, LFI, RFI, RCE, method enforcement, scanner detection, protocol attack
+- IP rate-limit rule: 100 req/min per IP → 5-min ban on breach
+- Serverless NEGs + backend services + HTTPS LB (SSL cert auto-provisioned)
+- **Traffic must route through the LB IP for WAF to apply — update DNS A record**
+
+### Immutable backups
+
+Run `scripts/setup-immutable-backups.sh` once:
+- Creates `actionstation-244f0-firestore-backups-immutable` with 30-day GCS object retention
+- Object versioning enabled; non-current versions deleted after 90 days
+- Optionally locks the policy (irrevocable — run once you're confident in 30-day window)
+- After running: change `BACKUP_BUCKET` in `functions/src/firestoreBackup.ts` → redeploy
+
+### Security rules for captcha endpoints
+
+1. **IP rate limit before captcha check** — `IP_RATE_LIMIT_CAPTCHA = 10 req/min` per IP
+2. **Log `CAPTCHA_FAILED` event** — every failed challenge calls `logSecurityEvent()`
+3. **Pass client IP to `/siteverify`** — Cloudflare and Google use it for additional entropy
+4. **Validate `action` string for reCAPTCHA v3** — prevents cross-action token replay attacks
+5. **Never skip server-side verification** — client-side widget completion alone is not sufficient
 
 ---
 

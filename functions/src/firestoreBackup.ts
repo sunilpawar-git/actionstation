@@ -3,15 +3,33 @@
  * Exports the entire Firestore database to a dedicated Cloud Storage bucket.
  * The export path is dated so each day's backup is a separate, restorable snapshot.
  *
- * Setup required (one-time, already done if FIREBASE_SERVICE_ACCOUNT has the role):
+ * ─── Setup required (one-time, already done if SA has the role) ──────────────
+ *
  *   gcloud projects add-iam-policy-binding actionstation-244f0 \
  *     --member="serviceAccount:actionstation-244f0@appspot.gserviceaccount.com" \
  *     --role="roles/datastore.importExportAdmin"
- *   gsutil mb -p actionstation-244f0 gs://actionstation-244f0-firestore-backups
- *   gsutil lifecycle set storage-lifecycle.json gs://actionstation-244f0-firestore-backups
  *
- * Restore a backup:
- *   gcloud firestore import gs://actionstation-244f0-firestore-backups/YYYY-MM-DD/
+ * ─── Immutable backup bucket ─────────────────────────────────────────────────
+ *
+ * Run scripts/setup-immutable-backups.sh ONCE to create an object-retention
+ * bucket.  After running the script, change BACKUP_BUCKET below to the new
+ * bucket name printed by the script:
+ *
+ *   const BACKUP_BUCKET = `gs://actionstation-244f0-firestore-backups-immutable`;
+ *
+ * The immutable bucket enforces a 30-day minimum retention policy so that
+ * backups cannot be deleted or overwritten — even by project owners — during
+ * the retention window.  After running the script and redeploying, delete the
+ * old bucket:
+ *
+ *   gsutil -m rm -r gs://actionstation-244f0-firestore-backups
+ *   gsutil rb gs://actionstation-244f0-firestore-backups
+ *
+ * Until then, the old bucket serves as a read-only legacy archive.
+ *
+ * ─── Restore a backup ────────────────────────────────────────────────────────
+ *
+ *   gcloud firestore import gs://actionstation-244f0-firestore-backups-immutable/YYYY-MM-DD/
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';

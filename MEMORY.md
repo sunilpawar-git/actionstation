@@ -344,7 +344,84 @@ Bot Detection → IP Rate Limit → Auth → User Rate Limit
 
 ---
 
-## Standing Rules Added to CLAUDE.md
+---
+
+## WAF / CAPTCHA / Immutable Backups Sprint — Mar 17 2026
+
+### Context
+Following the Advanced Security Hardening Sprint, the three remaining external-service gaps (WAF, CAPTCHA, immutable backups) were fully implemented with scripts and Cloud Function code. All are ready to deploy.
+
+---
+
+## Decision 26 — Cloud Armor WAF via Serverless NEG + HTTPS Load Balancer
+
+**Problem:** Cloud Armor policies cannot attach directly to Cloud Run / Firebase Functions URLs — they require a load-balancer backend service. The `*.cloudfunctions.net` endpoints were unprotected at the network edge.
+
+**Decision:** `scripts/setup-cloud-armor.sh` automates the full stack:
+1. Cloud Armor security policy with 8 OWASP CRS v3.3 rule sets (SQLi, XSS, LFI, RFI, RCE, method enforcement, scanner detection, protocol attack) + IP rate-limit rule (100 req/min, 5-min ban).
+2. Serverless NEGs for every Cloud Run service (one NEG per function).
+3. Backend services, each with the security policy attached.
+4. HTTPS load balancer (URL map → path routing → backends) with Google-managed SSL cert.
+
+**DNS step:** After running the script, the DNS A record for `eden.so` must be pointed to the LB IP printed by the script. WAF only protects traffic routed through this LB.
+
+**Cost:** ~$5/month policy + $0.75/million requests + ~$18/month LB base.
+
+---
+
+## Decision 27 — Cloudflare Turnstile `verifyTurnstile` Cloud Function
+
+**Problem:** Login and upload endpoints had no bot-challenge gate. Automated credential-stuffing and upload-spam attacks could proceed directly to Firebase Auth and Cloud Storage.
+
+**Decision:** `functions/src/verifyTurnstile.ts` implements a `POST /verifyTurnstile` endpoint:
+- IP rate-limited to `IP_RATE_LIMIT_CAPTCHA = 10 req/min` (pre-auth, so IP-only limiting)
+- Calls Cloudflare's `POST /siteverify` with the one-time token + client IP
+- On failure: 403 + `CAPTCHA_FAILED` security log event
+- Secret `TURNSTILE_SECRET` held in Google Cloud Secret Manager (never in code)
+
+**Client integration pattern:** Complete Turnstile widget → POST token to this endpoint → check 200 → proceed with Firebase Auth / upload.
+
+---
+
+## Decision 28 — `captchaValidator.ts` Shared Verification Utility
+
+**Problem:** Turnstile and reCAPTCHA v3 both follow the same `/siteverify` pattern. Duplicating the HTTP call + error handling per-function would violate DRY.
+
+**Decision:** `functions/src/utils/captchaValidator.ts` exports two pure functions:
+- `verifyTurnstileToken(token, secret, remoteip?)` → `CaptchaResult`
+- `verifyRecaptchaToken(token, secret, action?, remoteip?)` → `CaptchaResult`
+
+reCAPTCHA v3 specifics:
+- Silent scoring (no UI widget) — score in [0.0, 1.0]; threshold `RECAPTCHA_MIN_SCORE = 0.5`
+- `action` param prevents cross-action token replay (mismatch → `action-mismatch` error code)
+- Raise threshold to 0.7 for high-risk actions (delete, export)
+
+**Secret names in Secret Manager:** `TURNSTILE_SECRET`, `RECAPTCHA_SECRET`.
+
+---
+
+## Decision 29 — GCS Object Retention for Immutable Backups
+
+**Problem:** The existing Firestore backup bucket (`actionstation-244f0-firestore-backups`) had no retention policy. Backups could be deleted by any project owner — including via ransomware or insider action.
+
+**Decision:** `scripts/setup-immutable-backups.sh` creates `actionstation-244f0-firestore-backups-immutable` with:
+- **30-day GCS object retention policy** — objects cannot be deleted or overwritten for 30 days after write
+- **Optional irrevocable lock** — once locked, the 30-day minimum cannot be reduced or removed by anyone (including Google Support)
+- **Object versioning** — overwritten objects become non-current versions; non-current versions deleted after 90 days
+- **Uniform bucket-level access** (required for retention policies)
+
+**Migration path:** After running the script, update `BACKUP_BUCKET` in `functions/src/firestoreBackup.ts` to the new bucket name and redeploy. Keep the old bucket as a read-only archive until all objects exceed 30 days, then delete it.
+
+**Why a new bucket:** Retention policies only apply to objects written _after_ the policy is set. A fresh bucket guarantees every backup object is born under retention protection.
+
+---
+
+## Standing Rules Added (WAF / CAPTCHA Sprint)
+
+1. **`verifyTurnstile` before login/upload** — client must call `POST /verifyTurnstile` and receive 200 before proceeding to Firebase Auth or Cloud Storage upload
+2. **`IP_RATE_LIMIT_CAPTCHA = 10`** — captcha-verify endpoint is public (pre-auth), so IP-only rate limiting at a tighter limit than other endpoints
+3. **Validate reCAPTCHA `action` string** — always pass the action name to detect token replay; mismatch → block
+4. **Immutable bucket for all backups** — `firestoreBackup.ts` must target the `-immutable` bucket; old bucket is read-only archive only
 
 These rules were codified as a result of the sprint:
 

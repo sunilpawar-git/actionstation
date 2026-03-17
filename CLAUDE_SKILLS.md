@@ -428,14 +428,77 @@ Notification channel: email / PagerDuty / Slack webhook
 Threshold: any single occurrence
 ```
 
-### Remaining gaps (require external services)
+### Remaining gaps — ALL RESOLVED ✅
 
-| Gap | Next step |
+| Gap | Resolution |
 |---|---|
-| WAF | Cloud Armor → enable in GCP Console → attach to Cloud Run service |
-| Turnstile / reCAPTCHA | Add `TURNSTILE_SECRET` to Secret Manager; validate server-side before login/upload |
-| Immutable backups | GCS object lock policy on `actionstation-244f0-backups` bucket |
+| ~~WAF~~ | ✅ `scripts/setup-cloud-armor.sh` — OWASP CRS + LB + NEGs |
+| ~~Turnstile / reCAPTCHA~~ | ✅ `functions/src/verifyTurnstile.ts` + `utils/captchaValidator.ts` |
+| ~~Immutable backups~~ | ✅ `scripts/setup-immutable-backups.sh` — 30-day GCS retention |
+
+---
+
+## WAF / CAPTCHA / Immutable Backups Checklist (Sprint — Mar 17 2026)
+
+All items below are permanently complete. Do not remove or bypass.
+
+```
+✅ captchaValidator.ts:    verifyTurnstileToken() + verifyRecaptchaToken() shared utility
+                           Turnstile: POST /siteverify → CaptchaResult { success, errorCodes }
+                           reCAPTCHA v3: action mismatch detection, score < 0.5 → blocked
+✅ verifyTurnstile.ts:     POST /verifyTurnstile Cloud Function
+                           IP rate-limit: IP_RATE_LIMIT_CAPTCHA = 10 req/min
+                           Logs CAPTCHA_FAILED to Cloud Logging on failure
+                           TURNSTILE_SECRET held in Secret Manager (never in code)
+✅ CAPTCHA_FAILED:         New SecurityEventType in securityLogger.ts
+✅ IP_RATE_LIMIT_CAPTCHA:  New constant (10) in securityConstants.ts
+✅ functions/src/index.ts: verifyTurnstile exported
+✅ setup-cloud-armor.sh:   8 OWASP CRS v3.3 rule sets (SQLi/XSS/LFI/RFI/RCE/scanner/protocol/method)
+                           IP rate-limit rule: 100 req/min per IP → 5-min ban
+                           Serverless NEGs for all 9 Cloud Run services
+                           Backend services with Cloud Armor policy attached
+                           HTTPS LB + URL-map path routing + Google-managed SSL cert
+✅ setup-immutable-backups.sh:
+                           New bucket: actionstation-244f0-firestore-backups-immutable
+                           30-day GCS object retention policy
+                           Object versioning (non-current → deleted after 90 days)
+                           Optional irrevocable retention lock
+                           SA write access granted
+✅ firestoreBackup.ts:     Updated JSDoc with immutable bucket migration path + restore command
+✅ TypeScript build:       tsc clean, 0 errors
+```
+
+### Deployment order
+
+```bash
+# 1. Turnstile secret → deploy function
+gcloud secrets create TURNSTILE_SECRET --replication-policy="automatic"
+echo -n "SECRET" | gcloud secrets versions add TURNSTILE_SECRET --data-file=-
+firebase deploy --only functions:verifyTurnstile
+
+# 2. Immutable backup bucket
+bash scripts/setup-immutable-backups.sh
+# → update BACKUP_BUCKET in functions/src/firestoreBackup.ts
+firebase deploy --only functions:firestoreBackup
+
+# 3. Cloud Armor WAF (last — DNS change required)
+bash scripts/setup-cloud-armor.sh
+# → update DNS A record for eden.so to printed LB IP
+```
+
+### Client-side integration for Turnstile
+
+```typescript
+// Before login / upload — call this first
+const token = await turnstile.getResponse();
+const r = await fetch(`${FUNCTIONS_URL}/verifyTurnstile`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token }),
+});
+if (!r.ok) throw new Error('Bot challenge failed');
+```
 
 **Last Updated**: 2026-03-17
-**Skills Version**: 1.2
+**Skills Version**: 1.3
 **Supported**: Claude Code CLI with custom skills support

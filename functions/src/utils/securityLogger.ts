@@ -28,6 +28,8 @@ export const SecurityEventType = {
     THREAT_SPIKE: 'threat_spike',
     /** File upload rejected by validator */
     UPLOAD_REJECTED: 'upload_rejected',
+    /** Cloudflare Turnstile or Google reCAPTCHA challenge failed */
+    CAPTCHA_FAILED: 'captcha_failed',
 } as const;
 
 export type SecurityEventType = (typeof SecurityEventType)[keyof typeof SecurityEventType];
