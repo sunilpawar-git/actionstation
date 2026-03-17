@@ -1,7 +1,12 @@
 /**
  * Structural test: CSP completeness
  *
- * Prevents regression of the Content-Security-Policy meta tag in index.html.
+ * Prevents regression of the Content-Security-Policy HTTP response header
+ * defined in firebase.json hosting.headers.
+ *
+ * The CSP was migrated from an index.html <meta> tag to a response header so
+ * that frame-ancestors is enforced (meta tags cannot express frame-ancestors).
+ *
  * Ensures all required Firebase/Google domains are present in connect-src
  * and dangerous directives (unsafe-eval, bare wildcards) remain absent.
  *
@@ -13,16 +18,27 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { describe, it, expect, beforeAll } from 'vitest';
 
-const INDEX_HTML = join(process.cwd(), 'index.html');
+const FIREBASE_JSON = join(process.cwd(), 'firebase.json');
 
-/** Parse the CSP meta tag content from index.html */
+interface FirebaseHeader { key: string; value: string }
+interface FirebaseHeaderRule { source: string; headers?: FirebaseHeader[] }
+interface FirebaseConfig {
+    hosting?: { headers?: FirebaseHeaderRule[] };
+}
+
+/** Parse the Content-Security-Policy value from firebase.json hosting.headers */
 function extractCsp(): string {
-    const html = readFileSync(INDEX_HTML, 'utf-8');
-    // Use RegExp#exec instead of String#match for ESLint compliance
-    const regex = /http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i;
-    const match = regex.exec(html);
-    if (!match?.[1]) throw new Error('No CSP meta tag found in index.html');
-    return match[1];
+    const raw = readFileSync(FIREBASE_JSON, 'utf-8');
+    const config = JSON.parse(raw) as FirebaseConfig;
+    const rules = config.hosting?.headers ?? [];
+    for (const rule of rules) {
+        const cspHeader = rule.headers?.find(h => h.key === 'Content-Security-Policy');
+        if (cspHeader?.value) return cspHeader.value;
+    }
+    throw new Error(
+        'No Content-Security-Policy header found in firebase.json hosting.headers. ' +
+        'Add it under hosting.headers[].headers with key "Content-Security-Policy".'
+    );
 }
 
 /** Extract a specific directive's value from the full CSP string */
@@ -33,7 +49,7 @@ function getDirective(csp: string, name: string): string {
     return match?.[1]?.trim() ?? '';
 }
 
-describe('CSP Completeness (index.html)', () => {
+describe('CSP Completeness (firebase.json)', () => {
     let csp: string;
     let connectSrc: string;
 
@@ -42,7 +58,7 @@ describe('CSP Completeness (index.html)', () => {
         connectSrc = getDirective(csp, 'connect-src');
     });
 
-    it('should have a CSP meta tag in index.html', () => {
+    it('should have a CSP header in firebase.json hosting.headers', () => {
         expect(csp.length).toBeGreaterThan(0);
     });
 
@@ -69,7 +85,7 @@ describe('CSP Completeness (index.html)', () => {
                 expect(
                     connectSrc,
                     `connect-src is missing "${domain}". ` +
-                    'Add it to the CSP meta tag in index.html.'
+                    'Add it to the Content-Security-Policy header in firebase.json hosting.headers.'
                 ).toContain(domain);
             }
         );
@@ -90,7 +106,7 @@ describe('CSP Completeness (index.html)', () => {
                 expect(
                     imgSrc,
                     `img-src is missing "${source}". ` +
-                    'Add it to the CSP meta tag in index.html.',
+                    'Add it to the Content-Security-Policy header in firebase.json hosting.headers.',
                 ).toContain(source);
             },
         );
@@ -105,6 +121,19 @@ describe('CSP Completeness (index.html)', () => {
             'frame-src must allow https://accounts.google.com for Google Sign-In popup. ' +
             "Using 'none' breaks authentication."
         ).toContain('https://accounts.google.com');
+    });
+
+    // ── frame-ancestors: clickjacking protection ──────────
+    // Note: meta tag CSP cannot enforce frame-ancestors; this MUST be a response header.
+
+    it("frame-ancestors is 'none' (blocks clickjacking)", () => {
+        const frameAncestors = getDirective(csp, 'frame-ancestors');
+        expect(
+            frameAncestors,
+            "frame-ancestors must be 'none'. " +
+            'This requires a response-header CSP (firebase.json) — meta tags cannot enforce frame-ancestors. ' +
+            "If missing, the app is vulnerable to clickjacking."
+        ).toContain("'none'");
     });
 
     // ── worker-src: Sentry replay worker support ──────────

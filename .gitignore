@@ -39,6 +39,13 @@ cors.json
 # TypeScript build info
 *.tsbuildinfo
 
+# Node tool build output (vite.config types etc — not source)
+dist-node/
+
+# Screenshot / documentation images (never in git)
+wave6-*.png
+screenshots/
+
 # Editor/IDE specific
 .claude/
 .playwright-mcp/

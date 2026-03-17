@@ -3,7 +3,7 @@
  * Tests the coordination between Layout, Sidebar, and sidebarStore
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { Layout } from '@/app/components/Layout';
 import { strings } from '@/shared/localization/strings';
 
@@ -86,6 +86,15 @@ vi.mock('@/features/knowledgeBank/components/KnowledgeBankPanel', () => ({
     KnowledgeBankPanel: () => <div data-testid="kb-panel" />,
 }));
 
+/** Renders Layout inside act() to flush the async Suspense resolution from React.lazy(KnowledgeBankPanel). */
+async function renderLayout() {
+    let result!: ReturnType<typeof render>;
+    await act(async () => {
+        result = render(<Layout><div /></Layout>);
+    });
+    return result;
+}
+
 describe('Layout integration - sidebar pin/hover mode', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -99,66 +108,66 @@ describe('Layout integration - sidebar pin/hover mode', () => {
         });
     });
 
-    it('should set data-sidebar-pinned="true" when pinned', () => {
+    it('should set data-sidebar-pinned="true" when pinned', async () => {
         mockIsPinned = true;
-        const { container } = render(<Layout><div /></Layout>);
+        const { container } = await renderLayout();
         const layoutDiv = container.firstElementChild;
         expect(layoutDiv).toHaveAttribute('data-sidebar-pinned', 'true');
     });
 
-    it('should set data-sidebar-pinned="false" when unpinned', () => {
+    it('should set data-sidebar-pinned="false" when unpinned', async () => {
         mockIsPinned = false;
-        const { container } = render(<Layout><div /></Layout>);
+        const { container } = await renderLayout();
         const layoutDiv = container.firstElementChild;
         expect(layoutDiv).toHaveAttribute('data-sidebar-pinned', 'false');
     });
 
-    it('should set data-sidebar-open="false" when hover is closed', () => {
+    it('should set data-sidebar-open="false" when hover is closed', async () => {
         mockIsPinned = false;
         mockIsHoverOpen = false;
-        const { container } = render(<Layout><div /></Layout>);
+        const { container } = await renderLayout();
         const layoutDiv = container.firstElementChild;
         expect(layoutDiv).toHaveAttribute('data-sidebar-open', 'false');
     });
 
-    it('should set data-sidebar-open="true" when hover is open', () => {
+    it('should set data-sidebar-open="true" when hover is open', async () => {
         mockIsPinned = false;
         mockIsHoverOpen = true;
-        const { container } = render(<Layout><div /></Layout>);
+        const { container } = await renderLayout();
         const layoutDiv = container.firstElementChild;
         expect(layoutDiv).toHaveAttribute('data-sidebar-open', 'true');
     });
 
-    it('should always render the topbar header', () => {
+    it('should always render the topbar header', async () => {
         mockIsPinned = false;
-        render(<Layout><div /></Layout>);
+        await renderLayout();
         expect(screen.getByTestId('search-bar')).toBeInTheDocument();
         expect(screen.getByTestId('workspace-controls')).toBeInTheDocument();
     });
 
-    it('should render sidebar with data-pinned attribute', () => {
+    it('should render sidebar with data-pinned attribute', async () => {
         mockIsPinned = false;
-        const { container } = render(<Layout><div /></Layout>);
+        const { container } = await renderLayout();
         const aside = container.querySelector('aside');
         expect(aside).toHaveAttribute('data-pinned', 'false');
     });
 
-    it('should render sidebar with data-pinned true when pinned', () => {
+    it('should render sidebar with data-pinned true when pinned', async () => {
         mockIsPinned = true;
-        const { container } = render(<Layout><div /></Layout>);
+        const { container } = await renderLayout();
         const aside = container.querySelector('aside');
         expect(aside).toHaveAttribute('data-pinned', 'true');
     });
 
-    it('should have sidebar trigger zone wrapper when unpinned', () => {
+    it('should have sidebar trigger zone wrapper when unpinned', async () => {
         mockIsPinned = false;
-        const { container } = render(<Layout><div /></Layout>);
+        const { container } = await renderLayout();
         const triggerZone = container.querySelector('[data-testid="sidebar-trigger-zone"]');
         expect(triggerZone).toBeInTheDocument();
     });
 
-    it('should render app name in sidebar', () => {
-        render(<Layout><div /></Layout>);
+    it('should render app name in sidebar', async () => {
+        await renderLayout();
         expect(screen.getByText(strings.app.name)).toBeInTheDocument();
     });
 
@@ -169,25 +178,25 @@ describe('Layout integration - sidebar pin/hover mode', () => {
             expect(aside).toHaveAttribute('aria-label', strings.sidebar.ariaLabel);
         });
 
-        it('should have aria-expanded on pin toggle button when pinned', () => {
+        it('should have aria-expanded on pin toggle button when pinned', async () => {
             mockIsPinned = true;
-            render(<Layout><div /></Layout>);
+            await renderLayout();
             const pinButton = screen.getByLabelText(strings.sidebar.unpin);
             expect(pinButton).toHaveAttribute('aria-expanded', 'true');
         });
 
-        it('should have aria-expanded false on pin button when unpinned and closed', () => {
+        it('should have aria-expanded false on pin button when unpinned and closed', async () => {
             mockIsPinned = false;
             mockIsHoverOpen = false;
-            render(<Layout><div /></Layout>);
+            await renderLayout();
             const pinButton = screen.getByLabelText(strings.sidebar.pin);
             expect(pinButton).toHaveAttribute('aria-expanded', 'false');
         });
 
-        it('should have aria-expanded true on pin button when unpinned and hover open', () => {
+        it('should have aria-expanded true on pin button when unpinned and hover open', async () => {
             mockIsPinned = false;
             mockIsHoverOpen = true;
-            render(<Layout><div /></Layout>);
+            await renderLayout();
             const pinButton = screen.getByLabelText(strings.sidebar.pin);
             expect(pinButton).toHaveAttribute('aria-expanded', 'true');
         });

@@ -7,12 +7,38 @@ import type { DocumentClassification } from '../types/documentAgent';
 
 const MAX_FILENAME_LENGTH = 200;
 
-/** Patterns that resemble meta-instructions aimed at overriding the system prompt */
+/**
+ * Patterns that resemble meta-instructions aimed at overriding the system prompt.
+ * Covers: exact keywords, obfuscated spacing/punctuation variants,
+ * Unicode Cyrillic homoglyphs, and tool-execution attempts.
+ */
 const INJECTION_PATTERNS = [
+    // Role-claim prefixes — exact and case-insensitive
     /^(SYSTEM|INSTRUCTION|PROMPT|ROLE|ASSISTANT|USER):/gim,
+
+    // Classic override phrases
     /ignore\s+(all\s+)?previous\s+instructions/gi,
     /you\s+are\s+now\s+a/gi,
     /disregard\s+(all\s+)?prior/gi,
+
+    // Obfuscated spacing / punctuation / leet variants
+    /ign[o0]re[\s_-]+(all[\s_-]+)?prev[i1]ous[\s_-]+instr/gi,
+    /override[\s_-]+the[\s_-]+(system|prompt|instructions)/gi,
+    /forget[\s_-]+(all[\s_-]+)?(previous|prior|above)/gi,
+    /new[\s_-]+instructions?[\s_-]*:/gi,
+    /\[\s*new\s+instructions?\s*\]/gi,
+
+    // Tool / execution-mode attempts
+    /system\s+prompt/gi,
+    /developer\s+message/gi,
+    /hidden\s+instructions?/gi,
+    /act\s+as\s+(an?\s+)?(?:ai|assistant|gpt|llm|model)/gi,
+
+    // Note: Cyrillic Unicode homoglyph matching (e.g. ІGNОRЕ → IGNORE) is intentionally
+    // NOT implemented via mixed character-class regex. Character classes like [РP] include
+    // the ASCII equivalent under the `i` flag, causing false positives on normal English
+    // words (e.g. "prompt", "ignore", "system"). Correct defence requires Unicode NFKD
+    // normalization before pattern matching — deferred until the AI layer moves server-side.
 ];
 
 /** Sanitize filename to prevent prompt injection via path traversal */
