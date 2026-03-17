@@ -5,7 +5,7 @@
  */
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
-import { WORKSPACE_LIST_CAP } from './constants';
+import { WORKSPACE_LIST_CAP } from './constants.js';
 
 const WORKSPACE_LIST_QUERY = 'workspace-list';
 const BUNDLE_MAX_AGE_S = 300;

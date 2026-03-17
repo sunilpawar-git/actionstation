@@ -13,3 +13,5 @@ export { geminiProxy } from './geminiProxy.js';
 export { onNodeDeleted } from './onNodeDeleted.js';
 export { scheduledStorageCleanup } from './scheduledStorageCleanup.js';
 export { workspaceBundle } from './workspaceBundle.js';
+export { health } from './health.js';
+export { firestoreBackup } from './firestoreBackup.js';
