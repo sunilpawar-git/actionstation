@@ -32,7 +32,7 @@ export interface IconItemProps {
     onRemove: (zone: ZoneId, id: ActionId) => void;
 }
 
-export function IconItem({
+export const IconItem = React.memo(function IconItem({
     id, zone, index, total, isDragging, isDropTarget,
     onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd,
     onMoveUp, onMoveDown, onRemove,
@@ -95,4 +95,4 @@ export function IconItem({
             </span>
         </div>
     );
-}
+});

@@ -28,7 +28,7 @@ interface UnplacedIconsPoolProps {
     readonly onAddToZone: (zone: ZoneId, id: ActionId) => void;
 }
 
-export function UnplacedIconsPool({
+export const UnplacedIconsPool = React.memo(function UnplacedIconsPool({
     icons, dragId, dragSourceRef, isUtilsBarFull, isContextMenuFull,
     onDragStart, onDragEnd, onZoneDragOver, onRemoveFromZone, onAddToZone,
 }: UnplacedIconsPoolProps) {
@@ -78,7 +78,7 @@ export function UnplacedIconsPool({
                                     title={`Add to ${strings.settings.toolbarUtilsBarZone}`}
                                     type="button"
                                 >
-                                    + Bar
+                                    {strings.settings.toolbarAddToBar}
                                 </button>
                                 <button
                                     className={TB_ADD_BTN}
@@ -88,7 +88,7 @@ export function UnplacedIconsPool({
                                     title={`Add to ${strings.settings.toolbarContextMenuZone}`}
                                     type="button"
                                 >
-                                    + Menu
+                                    {strings.settings.toolbarAddToMenu}
                                 </button>
                             </span>
                         </div>
@@ -97,4 +97,4 @@ export function UnplacedIconsPool({
             )}
         </div>
     );
-}
+});

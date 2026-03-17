@@ -4,13 +4,6 @@
  */
 import type { CSSProperties } from 'react';
 
-/* ─── Description ─── */
-export const TB_DESCRIPTION = 'text-[length:var(--font-size-sm)] leading-[1.5]';
-export const TB_DESCRIPTION_STYLE: CSSProperties = {
-    color: 'var(--color-text-muted)',
-    margin: '0 0 var(--space-sm) 0',
-};
-
 /* ─── Zone header ─── */
 export const TB_ZONE_HEADER = 'flex items-center justify-between';
 export const TB_ZONE_HEADER_STYLE: CSSProperties = {
@@ -30,20 +23,20 @@ export const TB_CAPACITY_BADGE =
 export const TB_CAPACITY_BADGE_STYLE: CSSProperties = {
     color: 'var(--color-text-muted)',
     background: 'var(--color-surface-elevated)',
-    padding: '2px 8px',
+    padding: 'var(--space-xxs) var(--space-sm)',
 };
 export const TB_CAPACITY_BADGE_FULL_STYLE: CSSProperties = {
     color: 'var(--color-warning)',
     borderColor: 'var(--color-warning)',
     background: 'var(--color-warning-bg)',
-    padding: '2px 8px',
+    padding: 'var(--space-xxs) var(--space-sm)',
 };
 
 /* ─── Zone hint / more note ─── */
 export const TB_ZONE_HINT = 'text-[length:var(--font-size-xs)] italic';
 export const TB_ZONE_HINT_STYLE: CSSProperties = {
     color: 'var(--color-text-muted)',
-    margin: '2px 0 var(--space-xs) 0',
+    margin: 'var(--space-xxs) 0 var(--space-xs) 0',
 };
 
 export const TB_MORE_NOTE =
@@ -59,7 +52,7 @@ export const TB_MORE_NOTE_STYLE: CSSProperties = {
 export const TB_BUTTON_LIST =
     'flex flex-col rounded-[var(--radius-md)] border border-[var(--color-border)] min-h-[48px] transition-[border-color] duration-[var(--transition-fast)]';
 export const TB_BUTTON_LIST_STYLE: CSSProperties = {
-    gap: 2,
+    gap: 'var(--space-xxs)',
     background: 'var(--color-surface)',
     padding: 'var(--space-xs)',
 };
@@ -94,7 +87,7 @@ export const TB_BUTTON_LABEL = 'flex-1 text-[length:var(--font-size-sm)] font-[v
 export const TB_BUTTON_LABEL_STYLE: CSSProperties = { color: 'var(--color-text-primary)' };
 
 export const TB_BUTTON_ACTIONS = 'flex items-center shrink-0';
-export const TB_BUTTON_ACTIONS_STYLE: CSSProperties = { gap: 2 };
+export const TB_BUTTON_ACTIONS_STYLE: CSSProperties = { gap: 'var(--space-xxs)' };
 
 /* ─── Action button (up/down/remove) ─── */
 export const TB_ACTION_BTN =
@@ -115,7 +108,7 @@ export const TB_ACTION_BTN_DISABLED_STYLE: CSSProperties = {
 export const TB_HIDDEN_ZONE =
     'flex flex-col rounded-[var(--radius-md)] border-2 border-dashed border-[var(--color-border)] min-h-[48px] transition-all duration-[var(--transition-fast)]';
 export const TB_HIDDEN_ZONE_STYLE: CSSProperties = {
-    gap: 2,
+    gap: 'var(--space-xxs)',
     background: 'var(--color-surface)',
     padding: 'var(--space-sm)',
 };
@@ -141,7 +134,7 @@ export const TB_HIDDEN_ITEM_STYLE: CSSProperties = {
 };
 
 export const TB_ADD_BUTTONS = 'flex shrink-0';
-export const TB_ADD_BUTTONS_STYLE: CSSProperties = { marginLeft: 'auto', gap: 4 };
+export const TB_ADD_BUTTONS_STYLE: CSSProperties = { marginLeft: 'auto', gap: 'var(--space-xs)' };
 
 export const TB_ADD_BTN =
     'rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] cursor-pointer transition-all duration-[var(--transition-fast)] whitespace-nowrap';
@@ -159,13 +152,3 @@ export const TB_ADD_BTN_DISABLED_STYLE: CSSProperties = {
     color: 'var(--color-text-muted)',
 };
 
-/* ─── Reset button ─── */
-export const TB_RESET_BTN =
-    'self-start rounded-[var(--radius-md)] text-[length:var(--font-size-sm)] cursor-pointer transition-all duration-[var(--transition-fast)]';
-export const TB_RESET_BTN_STYLE: CSSProperties = {
-    marginTop: 'var(--space-md)',
-    padding: 'var(--space-sm) var(--space-md)',
-    background: 'transparent',
-    color: 'var(--color-text-secondary)',
-    border: '1px solid var(--color-border)',
-};

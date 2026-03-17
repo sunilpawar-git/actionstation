@@ -30,7 +30,7 @@ interface ToolbarZoneListProps {
     readonly onRemove: (zone: ZoneId, id: ActionId) => void;
 }
 
-export function ToolbarZoneList({
+export const ToolbarZoneList = React.memo(function ToolbarZoneList({
     zone, icons, maxCapacity, dragId, dropTarget,
     onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd,
     onZoneDragOver, onDropOnZone, onMoveUp, onMoveDown, onRemove,
@@ -71,4 +71,4 @@ export function ToolbarZoneList({
             ))}
         </div>
     );
-}
+});

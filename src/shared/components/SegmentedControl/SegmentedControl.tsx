@@ -41,7 +41,7 @@ function SegmentedControlInner<T extends string>({
                                 ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium'
                                 : 'hover:bg-[var(--color-surface-hover)]'
                         )}
-                        style={{ fontSize: 'var(--font-size-sm)', gap: 4, padding: '4px 8px' }}
+                        style={{ fontSize: 'var(--font-size-sm)', gap: 'var(--space-xs)', padding: 'var(--space-xs) var(--space-sm)' }}
                     >
                         <input
                             type="radio"

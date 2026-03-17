@@ -1,5 +1,6 @@
 /**
- * Canvas Section - Canvas display, scroll mode, connector style, auto-save, and AI Memory settings
+ * Canvas Section - Canvas display, scroll mode, connector style, auto-save, and AI Memory settings.
+ * Organized into SettingsGroup cards for clear visual hierarchy.
  */
 import React from 'react';
 import { strings } from '@/shared/localization/strings';
@@ -9,9 +10,10 @@ import { SegmentedControl } from '@/shared/components/SegmentedControl';
 import { ConnectorStylePicker } from './ConnectorStylePicker';
 import { AIMemorySection } from './AIMemorySection';
 import { GridColumnsControl } from '@/features/settings/components/GridColumnsControl';
+import { SettingsGroup } from './SettingsGroup';
 import {
-    SP_SECTION, SP_SECTION_STYLE, SP_SECTION_TITLE, SP_SECTION_TITLE_STYLE,
-    SP_SLIDER_GROUP, SP_SLIDER_GROUP_STYLE, SP_SLIDER_INPUT_STYLE,
+    SP_SECTION, SP_SECTION_STYLE,
+    SP_SLIDER_GROUP, SP_SLIDER_GROUP_STYLE,
     SP_SLIDER_VALUE, SP_SLIDER_VALUE_STYLE,
 } from '../settingsPanelStyles';
 
@@ -31,7 +33,8 @@ function AutoSaveSlider({ interval }: { interval: number }) {
                 value={interval}
                 onChange={(e) => useSettingsStore.getState().setAutoSaveInterval(Number(e.target.value))}
                 aria-label={strings.settings.autoSaveInterval}
-                style={SP_SLIDER_INPUT_STYLE}
+                className="settings-slider"
+                style={{ flex: 1 }}
             />
             <span className={SP_SLIDER_VALUE} style={SP_SLIDER_VALUE_STYLE}>
                 {interval} {strings.settings.seconds}
@@ -51,47 +54,41 @@ export const CanvasSection = React.memo(function CanvasSection() {
 
     return (
         <div className={SP_SECTION} style={SP_SECTION_STYLE}>
-            <h3 className={SP_SECTION_TITLE} style={SP_SECTION_TITLE_STYLE}>
-                {strings.settings.canvasDisplay}
-            </h3>
-            <Toggle id="canvas-grid" checked={canvasGrid}
-                onChange={() => useSettingsStore.getState().toggleCanvasGrid()}
-                label={strings.settings.canvasGrid} />
-            <Toggle id="canvas-free-flow" checked={canvasFreeFlow}
-                onChange={() => useSettingsStore.getState().toggleCanvasFreeFlow()}
-                label={strings.settings.freeFlow} />
-            <GridColumnsControl />
+            <SettingsGroup title={strings.settings.displayGroup}>
+                <Toggle id="canvas-grid" checked={canvasGrid}
+                    onChange={() => useSettingsStore.getState().toggleCanvasGrid()}
+                    label={strings.settings.canvasGrid} />
+                <Toggle id="canvas-free-flow" checked={canvasFreeFlow}
+                    onChange={() => useSettingsStore.getState().toggleCanvasFreeFlow()}
+                    label={strings.settings.freeFlow} />
+                <GridColumnsControl />
+            </SettingsGroup>
 
-            <h3 className={SP_SECTION_TITLE} style={SP_SECTION_TITLE_STYLE}>
-                {strings.settings.canvasScrollMode}
-            </h3>
-            <SegmentedControl name="canvasScrollMode" label={strings.settings.canvasScrollMode}
-                options={SCROLL_MODE_OPTIONS} value={canvasScrollMode}
-                onChange={(v) => useSettingsStore.getState().setCanvasScrollMode(v)} />
+            <SettingsGroup title={strings.settings.canvasScrollMode}>
+                <SegmentedControl name="canvasScrollMode" label={strings.settings.canvasScrollMode}
+                    options={SCROLL_MODE_OPTIONS} value={canvasScrollMode}
+                    onChange={(v) => useSettingsStore.getState().setCanvasScrollMode(v)} />
+            </SettingsGroup>
 
-            <h3 className={SP_SECTION_TITLE} style={SP_SECTION_TITLE_STYLE}>
-                {strings.settings.connectorStyle}
-            </h3>
-            <ConnectorStylePicker value={connectorStyle}
-                onChange={(v) => useSettingsStore.getState().setConnectorStyle(v)} />
+            <SettingsGroup title={strings.settings.connectorStyle}>
+                <ConnectorStylePicker value={connectorStyle}
+                    onChange={(v) => useSettingsStore.getState().setConnectorStyle(v)} />
+            </SettingsGroup>
 
-            <h3 className={SP_SECTION_TITLE} style={SP_SECTION_TITLE_STYLE}>
-                {strings.settings.autoSave}
-            </h3>
-            <Toggle id="canvas-auto-save" checked={autoSave}
-                onChange={() => { const s = useSettingsStore.getState(); s.setAutoSave(!s.autoSave); }}
-                label={strings.settings.autoSave} />
-            {autoSave && <AutoSaveSlider interval={autoSaveInterval} />}
+            <SettingsGroup title={strings.settings.autoSaveGroup}>
+                <Toggle id="canvas-auto-save" checked={autoSave}
+                    onChange={() => { const s = useSettingsStore.getState(); s.setAutoSave(!s.autoSave); }}
+                    label={strings.settings.autoSave} />
+                {autoSave && <AutoSaveSlider interval={autoSaveInterval} />}
+            </SettingsGroup>
 
-            <h3 className={SP_SECTION_TITLE} style={SP_SECTION_TITLE_STYLE}>
-                {strings.settings.canvas}
-            </h3>
-            <Toggle id="canvas-auto-analyze" checked={autoAnalyze}
-                onChange={() => useSettingsStore.getState().toggleAutoAnalyzeDocuments()}
-                label={strings.settings.autoAnalyzeDocuments}
-                description={strings.settings.autoAnalyzeDocumentsHint} />
-
-            <AIMemorySection />
+            <SettingsGroup title={strings.settings.aiDocumentsGroup}>
+                <Toggle id="canvas-auto-analyze" checked={autoAnalyze}
+                    onChange={() => useSettingsStore.getState().toggleAutoAnalyzeDocuments()}
+                    label={strings.settings.autoAnalyzeDocuments}
+                    description={strings.settings.autoAnalyzeDocumentsHint} />
+                <AIMemorySection />
+            </SettingsGroup>
         </div>
     );
 });

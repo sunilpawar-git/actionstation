@@ -1,6 +1,7 @@
 /**
  * AIMemorySection — AI Memory settings subsection for CanvasSection.
  * Shows pooled node count, description, and clear button.
+ * Title is provided by the parent SettingsGroup — this renders content only.
  */
 import React, { useCallback, useMemo } from 'react';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
@@ -9,7 +10,6 @@ import { BrainIcon } from '@/shared/components/icons';
 import { strings } from '@/shared/localization/strings';
 import { toast } from '@/shared/stores/toastStore';
 import {
-    SP_SECTION_TITLE, SP_SECTION_TITLE_STYLE,
     SP_SETTING_DESC, SP_SETTING_DESC_STYLE,
     SP_MEMORY_INFO, SP_MEMORY_INFO_STYLE,
     SP_MEMORY_COUNT, SP_MEMORY_COUNT_STYLE,
@@ -35,11 +35,13 @@ export const AIMemorySection = React.memo(function AIMemorySection() {
     }, []);
 
     return (
-        <>
-            <h3 className={SP_SECTION_TITLE} style={SP_SECTION_TITLE_STYLE}>
+        <div className="flex flex-col" style={{ gap: 'var(--space-sm)' }}>
+            <div className="flex items-center" style={{ gap: 'var(--space-xs)' }}>
                 <BrainIcon size={14} filled={pooledCount > 0} />
-                {' '}{strings.nodePool.settingsTitle}
-            </h3>
+                <span className={SP_SETTING_DESC} style={{ ...SP_SETTING_DESC_STYLE, margin: 0 }}>
+                    {strings.nodePool.settingsTitle}
+                </span>
+            </div>
             <p className={SP_SETTING_DESC} style={SP_SETTING_DESC_STYLE}>
                 {strings.nodePool.settingsDescription}
             </p>
@@ -53,6 +55,6 @@ export const AIMemorySection = React.memo(function AIMemorySection() {
                     </button>
                 )}
             </div>
-        </>
+        </div>
     );
 });
