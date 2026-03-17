@@ -11,6 +11,7 @@ import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table
 import type { Extension } from '@tiptap/core';
 import { DOMParser as PMDOMParser } from '@tiptap/pm/model';
 import { NodeImage } from '../extensions/imageExtension';
+import { FontSizeExtension } from '../extensions/fontSizeExtension';
 import { markdownToHtml, htmlToMarkdown } from '../services/markdownConverter';
 import { sanitizePastedHtml } from '../services/sanitizePastedHtml';
 
@@ -70,6 +71,7 @@ export function useTipTapEditor(options: UseTipTapEditorOptions): UseTipTapEdito
             TableCell,
             TableHeader,
             NodeImage,
+            FontSizeExtension,
             ...extraExtensions,
         ],
         content: initialContent ? markdownToHtml(initialContent) : '',
