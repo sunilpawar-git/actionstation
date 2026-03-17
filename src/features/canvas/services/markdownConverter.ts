@@ -125,6 +125,15 @@ function elementToMarkdown(el: Element, tag: string, childMd: string, depth = 0)
         const style = el.getAttribute('style');
         return style ? `<mark style="${style}">${childMd}</mark>` : childMd;
     }
+    // Font-size spans: serialize as raw inline HTML so the font-size style
+    // survives the markdown round-trip (same approach as <mark> highlights).
+    // Use a precise regex to avoid false-positives from properties like
+    // font-size-adjust that also contain the substring "font-size".
+    if (tag === 'span') {
+        const style = el.getAttribute('style');
+        if (style && /\bfont-size\s*:/.test(style)) return `<span style="${style}">${childMd}</span>`;
+        return childMd;
+    }
     if (tag === 'a') return linkToMarkdown(el, childMd);
     if (tag === 'code') return codeToMarkdown(el, childMd);
     if (tag === 'img') return imageToMarkdown(el);

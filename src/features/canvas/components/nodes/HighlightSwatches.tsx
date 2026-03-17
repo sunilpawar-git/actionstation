@@ -7,7 +7,7 @@
 import React, { useCallback } from 'react';
 import type { Editor } from '@tiptap/react';
 import { strings } from '@/shared/localization/strings';
-import { BUBBLE_BTN_BASE } from './EditorBubbleMenu';
+import { BUBBLE_BTN_BASE } from './bubbleMenuConstants';
 
 const SWATCHES = [
     { varName: 'var(--highlight-yellow)', label: strings.formatting.highlightYellow },

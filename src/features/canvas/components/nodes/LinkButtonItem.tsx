@@ -7,7 +7,7 @@ import React, { useCallback } from 'react';
 import type { Editor } from '@tiptap/react';
 import { strings } from '@/shared/localization/strings';
 import { SAFE_LINK_URL_START } from '../../services/linkUtils';
-import { BUBBLE_BTN_BASE, BUBBLE_BTN_ACTIVE } from './EditorBubbleMenu';
+import { BUBBLE_BTN_BASE, BUBBLE_BTN_ACTIVE } from './bubbleMenuConstants';
 
 interface LinkButtonItemProps {
     editor: Editor;

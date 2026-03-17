@@ -1,6 +1,5 @@
 /**
  * ImageExtension — Delete button tests
- * TDD: RED phase — these tests must fail before the implementation.
  *
  * The NodeImage extension injects a "×" button overlay into every image
  * node view so users can remove the image without selecting it first.

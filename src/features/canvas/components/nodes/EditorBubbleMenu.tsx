@@ -1,6 +1,6 @@
 /**
- * EditorBubbleMenu - Floating formatting toolbar on text selection
- * Renders Bold, Italic, Strikethrough, Code, Link, and Highlight buttons.
+ * EditorBubbleMenu - Floating formatting toolbar for text selections.
+ * Groups: [B I S </>] | [H1 H2 H3] | [A+ A−] | [→] [swatches ×]
  * Tailwind-only: EditorBubbleMenu.module.css has been deleted (Decision 30).
  */
 import React, { useCallback } from 'react';
@@ -10,6 +10,12 @@ import { strings } from '@/shared/localization/strings';
 import { LinkButtonItem } from './LinkButtonItem';
 import { HighlightSwatches } from './HighlightSwatches';
 import { HeadingButtons } from './HeadingButtons';
+import { FontSizeButtons } from './FontSizeButtons';
+import { BUBBLE_BTN_BASE, BUBBLE_BTN_ACTIVE } from './bubbleMenuConstants';
+
+// Re-export so any code that previously imported these from EditorBubbleMenu
+// continues to compile without a migration step.
+export { BUBBLE_BTN_BASE, BUBBLE_BTN_ACTIVE };
 
 interface EditorBubbleMenuProps {
     editor: Editor | null;
@@ -17,13 +23,50 @@ interface EditorBubbleMenuProps {
 
 type FormatAction = (editor: Editor) => void;
 
-/** Shared Tailwind base for every bubble-menu button. Exported for LinkButtonItem. */
-export const BUBBLE_BTN_BASE =
-    'flex items-center justify-center w-[var(--bubble-menu-btn-size)] h-[var(--bubble-menu-btn-size)] rounded-[var(--radius-sm)] bg-transparent text-[var(--color-text-secondary)] cursor-pointer text-[length:var(--font-size-sm)] font-bold transition-[background-color,color] duration-[var(--transition-fast)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]';
+// ─── Thin vertical separator ─────────────────────────────────────────────────
 
-/** Active state appended when a format is currently applied to the selection. */
-export const BUBBLE_BTN_ACTIVE =
-    'active bg-[var(--color-primary)] text-[var(--color-text-on-primary)] hover:bg-[var(--color-primary)] hover:text-[var(--color-text-on-primary)] hover:opacity-[var(--opacity-hover-subtle)]';
+function BubbleDivider() {
+    return (
+        <div
+            aria-hidden="true"
+            style={{ width: 1, alignSelf: 'stretch', background: 'var(--color-border)', margin: '2px 0' }}
+        />
+    );
+}
+
+// ─── Single format button (stable ref per item) ───────────────────────────────
+
+interface FormatButtonProps {
+    label: string;
+    display: string;
+    isActive: boolean;
+    action: FormatAction;
+    editor: Editor;
+}
+
+const FormatButton = React.memo(function FormatButton({ label, display, isActive, action, editor }: FormatButtonProps) {
+    const handleMouseDown = useCallback(
+        (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            action(editor);
+        },
+        [action, editor],
+    );
+
+    return (
+        <button
+            type="button"
+            aria-label={label}
+            className={`${BUBBLE_BTN_BASE}${isActive ? ` ${BUBBLE_BTN_ACTIVE}` : ''}`}
+            onMouseDown={handleMouseDown}
+        >
+            {display}
+        </button>
+    );
+});
+
+// ─── Format item definitions ──────────────────────────────────────────────────
 
 const FORMATS: ReadonlyArray<{
     key: string;
@@ -37,17 +80,9 @@ const FORMATS: ReadonlyArray<{
     { key: 'code',   label: strings.formatting.code,          display: strings.formatting.codeDisplay,          action: (e) => e.chain().focus().toggleCode().run() },
 ];
 
-export const EditorBubbleMenu = React.memo(function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
-    const handleFormat = useCallback(
-        (e: React.MouseEvent, action: FormatAction) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!editor) return;
-            action(editor);
-        },
-        [editor],
-    );
+// ─── Menu ─────────────────────────────────────────────────────────────────────
 
+export const EditorBubbleMenu = React.memo(function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
     if (!editor) return null;
 
     return (
@@ -57,21 +92,24 @@ export const EditorBubbleMenu = React.memo(function EditorBubbleMenu({ editor }:
                 style={{ gap: 'var(--bubble-menu-gap)', padding: 'var(--space-xs)' }}
             >
                 {FORMATS.map(({ key, label, display, action }) => (
-                    <button
+                    <FormatButton
                         key={key}
-                        type="button"
-                        aria-label={label}
-                        className={`${BUBBLE_BTN_BASE}${editor.isActive(key) ? ` ${BUBBLE_BTN_ACTIVE}` : ''}`}
-                        onMouseDown={(e) => handleFormat(e, action)}
-                    >
-                        {display}
-                    </button>
+                        label={label}
+                        display={display}
+                        isActive={editor.isActive(key)}
+                        action={action}
+                        editor={editor}
+                    />
                 ))}
+                <BubbleDivider />
                 <HeadingButtons editor={editor} />
-                <div aria-hidden="true" style={{ width: 1, alignSelf: 'stretch', background: 'var(--color-border)', margin: '2px 0' }} />
+                <BubbleDivider />
+                <FontSizeButtons editor={editor} />
+                <BubbleDivider />
                 <LinkButtonItem editor={editor} />
                 <HighlightSwatches editor={editor} />
             </div>
         </BubbleMenu>
     );
 });
+

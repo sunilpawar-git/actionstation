@@ -7,44 +7,71 @@
 import React, { useCallback } from 'react';
 import type { Editor } from '@tiptap/react';
 import { strings } from '@/shared/localization/strings';
-import { BUBBLE_BTN_BASE, BUBBLE_BTN_ACTIVE } from './EditorBubbleMenu';
+import { BUBBLE_BTN_BASE, BUBBLE_BTN_ACTIVE } from './bubbleMenuConstants';
 
 interface HeadingButtonsProps {
     editor: Editor;
 }
 
-const HEADINGS = [
-    { level: 1 as const, label: strings.formatting.heading1, display: strings.formatting.heading1Display },
-    { level: 2 as const, label: strings.formatting.heading2, display: strings.formatting.heading2Display },
-    { level: 3 as const, label: strings.formatting.heading3, display: strings.formatting.heading3Display },
-] as const;
-
 export const HeadingButtons = React.memo(function HeadingButtons({ editor }: HeadingButtonsProps) {
-    const handleHeading = useCallback(
-        (e: React.MouseEvent, level: 1 | 2 | 3) => {
+    const handleH1 = useCallback(
+        (e: React.MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
-            editor.chain().focus().toggleHeading({ level }).run();
+            editor.chain().focus().toggleHeading({ level: 1 }).run();
         },
         [editor],
     );
 
+    const handleH2 = useCallback(
+        (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            editor.chain().focus().toggleHeading({ level: 2 }).run();
+        },
+        [editor],
+    );
+
+    const handleH3 = useCallback(
+        (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            editor.chain().focus().toggleHeading({ level: 3 }).run();
+        },
+        [editor],
+    );
+
+    const h1Active = editor.isActive('heading', { level: 1 });
+    const h2Active = editor.isActive('heading', { level: 2 });
+    const h3Active = editor.isActive('heading', { level: 3 });
+
     return (
         <>
-            {HEADINGS.map(({ level, label, display }) => {
-                const isActive = editor.isActive('heading', { level });
-                return (
-                    <button
-                        key={level}
-                        type="button"
-                        aria-label={label}
-                        className={`${BUBBLE_BTN_BASE}${isActive ? ` ${BUBBLE_BTN_ACTIVE}` : ''}`}
-                        onMouseDown={(e) => handleHeading(e, level)}
-                    >
-                        {display}
-                    </button>
-                );
-            })}
+            <button
+                type="button"
+                aria-label={strings.formatting.heading1}
+                className={`${BUBBLE_BTN_BASE}${h1Active ? ` ${BUBBLE_BTN_ACTIVE}` : ''}`}
+                onMouseDown={handleH1}
+            >
+                {strings.formatting.heading1Display}
+            </button>
+            <button
+                type="button"
+                aria-label={strings.formatting.heading2}
+                className={`${BUBBLE_BTN_BASE}${h2Active ? ` ${BUBBLE_BTN_ACTIVE}` : ''}`}
+                onMouseDown={handleH2}
+            >
+                {strings.formatting.heading2Display}
+            </button>
+            <button
+                type="button"
+                aria-label={strings.formatting.heading3}
+                className={`${BUBBLE_BTN_BASE}${h3Active ? ` ${BUBBLE_BTN_ACTIVE}` : ''}`}
+                onMouseDown={handleH3}
+            >
+                {strings.formatting.heading3Display}
+            </button>
         </>
     );
 });
+

@@ -31,6 +31,7 @@ function createMockEditor(editable: boolean) {
     return {
         isEditable: editable,
         isActive: vi.fn(() => false),
+        getAttributes: vi.fn(() => ({})),
         chain: vi.fn(() => ({
             focus: vi.fn(() => ({
                 toggleBold: vi.fn(() => ({ run: vi.fn() })),
