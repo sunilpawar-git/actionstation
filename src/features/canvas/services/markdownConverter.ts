@@ -105,14 +105,26 @@ export function attachmentElementToMarkdown(el: Element): string {
     return `<div data-attachment='${escaped.replace(/'/g, '&#39;')}'></div>`;
 }
 
+/** Simple inline wrap tokens keyed by tag name (avoids repeated if/||) */
+const INLINE_WRAPPERS: Partial<Record<string, string>> = {
+    strong: '**', b: '**', em: '*', i: '*', s: '~~', del: '~~',
+};
+
 /** Convert a single element to markdown based on its tag */
 function elementToMarkdown(el: Element, tag: string, childMd: string, depth = 0): string {
     if (tag === 'table') return tableToMarkdown(el);
     // Sub-tags are owned by tableToMarkdown; returning '' prevents double-rendering
     if (TABLE_SUB_TAGS.has(tag)) return '';
-    if (tag === 'strong' || tag === 'b') return `**${childMd}**`;
-    if (tag === 'em' || tag === 'i') return `*${childMd}*`;
-    if (tag === 's' || tag === 'del') return `~~${childMd}~~`;
+    const wrap = INLINE_WRAPPERS[tag];
+    if (wrap) return `${wrap}${childMd}${wrap}`;
+    // Highlight marks: serialize as raw inline HTML so the background-color CSS
+    // variable is preserved through the Markdown round-trip.  Without this the
+    // style attribute is silently dropped and highlights vanish when switching
+    // between focus mode and normal node mode.
+    if (tag === 'mark') {
+        const style = el.getAttribute('style');
+        return style ? `<mark style="${style}">${childMd}</mark>` : childMd;
+    }
     if (tag === 'a') return linkToMarkdown(el, childMd);
     if (tag === 'code') return codeToMarkdown(el, childMd);
     if (tag === 'img') return imageToMarkdown(el);
