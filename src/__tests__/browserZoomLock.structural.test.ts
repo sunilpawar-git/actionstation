@@ -54,6 +54,18 @@ describe('Browser zoom lock — pinch zoom isolation', () => {
         expect(content).toContain('passive: false');
     });
 
+    it('useBrowserZoomLock registers wheel listener in capture phase (stopPropagation regression guard)', () => {
+        // capture: true ensures the document listener fires BEFORE any child
+        // element's stopPropagation() can block the event.  Without this,
+        // IdeaCard's content-scroll handler silently swallows ctrlKey wheel
+        // events and the browser native zoom wins.
+        const content = readFileSync(
+            resolve(SRC_ROOT, 'features/canvas/hooks/useBrowserZoomLock.ts'),
+            'utf-8',
+        );
+        expect(content).toContain('capture: true');
+    });
+
     it('canvas container CSS has touch-action: none', () => {
         const content = readFileSync(
             resolve(SRC_ROOT, 'features/canvas/components/CanvasView.module.css'),
