@@ -1,12 +1,13 @@
 /**
  * LinkButtonItem — Link insert/edit/remove button for TipTap editor
- * Separated from EditorBubbleMenu to keep parent component under 100 lines
+ * Separated from EditorBubbleMenu to keep parent component under 100 lines.
+ * Tailwind-only: EditorBubbleMenu.module.css has been deleted (Decision 30).
  */
 import React, { useCallback } from 'react';
 import type { Editor } from '@tiptap/react';
 import { strings } from '@/shared/localization/strings';
 import { SAFE_LINK_URL_START } from '../../services/linkUtils';
-import styles from './EditorBubbleMenu.module.css';
+import { BUBBLE_BTN_BASE, BUBBLE_BTN_ACTIVE } from './EditorBubbleMenu';
 
 interface LinkButtonItemProps {
     editor: Editor;
@@ -55,7 +56,7 @@ export const LinkButtonItem = React.memo(function LinkButtonItem({ editor }: Lin
         <button
             type="button"
             aria-label={strings.formatting.link}
-            className={`${styles.formatButton}${editor.isActive('link') ? ` ${styles.active}` : ''}`}
+            className={`${BUBBLE_BTN_BASE}${editor.isActive('link') ? ` ${BUBBLE_BTN_ACTIVE}` : ''}`}
             onMouseDown={handleLink}
         >
             {strings.formatting.linkDisplay}

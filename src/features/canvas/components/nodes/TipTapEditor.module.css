@@ -159,6 +159,15 @@
     opacity: 0.65;
 }
 
+/* Text highlight marks — background-color is set as inline style by TipTap's
+ * Highlight extension (e.g. style="background-color: var(--highlight-yellow)").
+ * These rules add minimal shape so the mark is readable across all themes. */
+.tiptapEditor :global(.ProseMirror mark) {
+    border-radius: var(--radius-sm);
+    padding: 0 2px;
+    /* background-color applied by TipTap inline style — theme-aware via CSS var */
+}
+
 /* View mode: images scale proportionally even if TipTap committed inline height.
  * Scoped to [contenteditable="false"] so active resize drags are unaffected. */
 .tiptapEditor :global([contenteditable="false"] .node-image) {

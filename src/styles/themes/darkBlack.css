@@ -71,4 +71,11 @@
   --offline-banner-bg: hsl(38, 30%, 10%);
   --offline-banner-text: hsl(38, 50%, 75%);
   --offline-banner-border: hsl(38, 20%, 20%);
+
+  /* Text Highlight - Dark Black (very deep, AMOLED-safe) */
+  --highlight-yellow: hsl(50, 80%, 18%);
+  --highlight-green:  hsl(142, 55%, 14%);
+  --highlight-blue:   hsl(213, 70%, 16%);
+  --highlight-pink:   hsl(340, 60%, 18%);
+  --highlight-purple: hsl(270, 60%, 18%);
 }

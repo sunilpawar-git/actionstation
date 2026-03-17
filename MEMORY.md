@@ -423,6 +423,36 @@ reCAPTCHA v3 specifics:
 3. **Validate reCAPTCHA `action` string** — always pass the action name to detect token replay; mismatch → block
 4. **Immutable bucket for all backups** — `firestoreBackup.ts` must target the `-immutable` bucket; old bucket is read-only archive only
 
+---
+
+## Decision 30 — Tailwind-First, No New CSS Module Files (Mar 17 2026)
+
+**Problem:** Ongoing Tailwind migration left some component `.tsx` files still importing `.module.css` files. New features were being implemented in a mix of CSS modules and Tailwind, causing inconsistency and double-maintenance.
+
+**Decision:** All new component styling uses **Tailwind utility classes only**. No new `.module.css` files are created. When a `.tsx` file is modified for any reason, its entire `.module.css` is migrated to Tailwind in the same commit and the `.module.css` file deleted.
+
+**Critical spacing rule (CLAUDE.md §CSS→TAILWIND):**
+`src/styles/global.css` has a bare `* { margin: 0; padding: 0 }` reset that overrides Tailwind's `@layer utilities`. This means **Tailwind spacing utilities (`mt-*`, `px-*`, `gap-*`) produce zero spacing** and must never be used. Use `style` props for all `margin`, `padding`, and `gap` values.
+
+```tsx
+// ❌ FORBIDDEN — zeroed by global * reset
+<div className="p-4 gap-2 mt-3">
+
+// ✅ CORRECT — spacing via style prop; layout/color via Tailwind
+<div className="flex items-center rounded-[var(--radius-md)] bg-[var(--color-surface)]"
+     style={{ padding: 'var(--space-md)', gap: 'var(--space-sm)' }}>
+```
+
+**What NEVER gets migrated to Tailwind:**
+- `src/styles/variables.css` / `src/styles/themes/*.css` — design tokens and runtime theme switching
+- `src/styles/global.css` / `src/styles/semanticZoom.css` — global resets, canvas viewport rules
+- ProseMirror/TipTap global selectors (`:global(.ProseMirror ...)`) — must stay in `TipTapEditor.module.css`
+- Canvas layout with `position: absolute`, ReactFlow transforms — Tailwind insufficient
+
+**Highlight feature (Mar 17 2026):** `EditorBubbleMenu.module.css` deleted; `EditorBubbleMenu.tsx`, `LinkButtonItem.tsx`, `HighlightSwatches.tsx` are Tailwind-only. `TipTapEditor.module.css` retains the `.ProseMirror mark` rule because it is a ProseMirror global selector.
+
+---
+
 These rules were codified as a result of the sprint:
 
 1. **Primitive selectors in `useEffect` deps** — select `s.user?.id`, not `s.user`
