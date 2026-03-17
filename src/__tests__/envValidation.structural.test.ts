@@ -13,6 +13,7 @@ describe('validateProductionEnv', () => {
         'VITE_FIREBASE_MESSAGING_SENDER_ID',
         'VITE_FIREBASE_APP_ID',
         'VITE_CLOUD_FUNCTIONS_URL',
+        'VITE_GOOGLE_CLIENT_ID',
     ];
 
     let originalEnv: Record<string, string | undefined>;
@@ -32,7 +33,7 @@ describe('validateProductionEnv', () => {
         vi.resetModules();
     });
 
-    it('returns errors for all 7 vars when they are empty in production', async () => {
+    it('returns errors for all 8 vars when they are empty in production', async () => {
         vi.stubEnv('VITE_APP_ENV', 'production');
         for (const key of REQUIRED_VARS) {
             vi.stubEnv(key, '');
