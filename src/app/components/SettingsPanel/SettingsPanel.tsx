@@ -54,6 +54,7 @@ interface SettingsPanelProps {
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     const activeTab = useSettingsStore((s) => s.lastSettingsTab);
     const sectionRef = useRef<HTMLDivElement>(null);
+    const innerRef = useRef<HTMLDivElement>(null);
 
     useEscapeLayer(ESCAPE_PRIORITY.SETTINGS_PANEL, isOpen, onClose);
 
@@ -63,16 +64,19 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }, [activeTab]);
 
     useEffect(() => {
-        const el = sectionRef.current;
-        if (!el) return;
+        const scrollEl = sectionRef.current;
+        const innerEl = innerRef.current;
+        if (!scrollEl || !innerEl) return;
 
         const clampScroll = () => {
-            const maxScroll = el.scrollHeight - el.clientHeight;
-            if (el.scrollTop > maxScroll) el.scrollTop = Math.max(0, maxScroll);
+            requestAnimationFrame(() => {
+                const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+                if (scrollEl.scrollTop > maxScroll) scrollEl.scrollTop = Math.max(0, maxScroll);
+            });
         };
 
-        const observer = new MutationObserver(clampScroll);
-        observer.observe(el, { childList: true, subtree: true });
+        const observer = new ResizeObserver(clampScroll);
+        observer.observe(innerEl);
         return () => observer.disconnect();
     }, [isOpen]);
 
@@ -112,7 +116,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         ))}
                     </nav>
                     <div ref={sectionRef} className={SP_SECTION_CONTENT} style={SP_SECTION_CONTENT_STYLE}>
-                        <SectionForTab tab={activeTab} />
+                        <div ref={innerRef}>
+                            <SectionForTab tab={activeTab} />
+                        </div>
                     </div>
                 </div>
             </div>

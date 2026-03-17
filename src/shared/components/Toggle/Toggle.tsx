@@ -49,7 +49,7 @@ export const Toggle = React.memo(function Toggle({ checked, onChange, label, des
     }), [checked]);
 
     return (
-        <label className="flex items-start justify-between cursor-pointer" style={{ gap: 16 }} htmlFor={id}>
+        <label className="relative flex items-start justify-between cursor-pointer" style={{ gap: 16 }} htmlFor={id}>
             <span className="flex flex-col flex-1 min-w-0" style={{ gap: 2 }}>
                 <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-primary)' }}>{label}</span>
                 {description != null && (
