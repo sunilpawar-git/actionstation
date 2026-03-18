@@ -19,9 +19,10 @@ interface ConnectorStyleOption {
 }
 
 const OPTIONS: ConnectorStyleOption[] = [
-    { value: 'solid', label: strings.settings.connectorSolid },
-    { value: 'subtle', label: strings.settings.connectorSubtle },
-    { value: 'thick', label: strings.settings.connectorThick },
+    { value: 'ghost', label: strings.settings.connectorGhost },
+    { value: 'regular', label: strings.settings.connectorRegular },
+    { value: 'light', label: strings.settings.connectorLight },
+    { value: 'bold', label: strings.settings.connectorBold },
     { value: 'dashed', label: strings.settings.connectorDashed },
     { value: 'dotted', label: strings.settings.connectorDotted },
 ];

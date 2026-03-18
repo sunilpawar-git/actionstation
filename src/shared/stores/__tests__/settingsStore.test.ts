@@ -37,7 +37,7 @@ describe('SettingsStore', () => {
             expect(state.autoSaveInterval).toBe(30);
             expect(state.compactMode).toBe(false);
             expect(state.canvasScrollMode).toBe('zoom');
-            expect(state.connectorStyle).toBe('solid');
+            expect(state.connectorStyle).toBe('regular');
             expect(state.lastSettingsTab).toBe('appearance');
         });
     });
@@ -92,13 +92,13 @@ describe('SettingsStore', () => {
     });
 
     describe('connector style', () => {
-        it('should default to solid style', () => {
-            expect(useSettingsStore.getState().connectorStyle).toBe('solid');
+        it('should default to regular style', () => {
+            expect(useSettingsStore.getState().connectorStyle).toBe('regular');
         });
 
-        it('should set connector style to thick', () => {
-            useSettingsStore.getState().setConnectorStyle('thick');
-            expect(useSettingsStore.getState().connectorStyle).toBe('thick');
+        it('should set connector style to bold', () => {
+            useSettingsStore.getState().setConnectorStyle('bold');
+            expect(useSettingsStore.getState().connectorStyle).toBe('bold');
         });
 
         it('should persist connectorStyle to localStorage', () => {
