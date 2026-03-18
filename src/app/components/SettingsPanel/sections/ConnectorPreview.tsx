@@ -1,29 +1,17 @@
 /**
  * ConnectorPreview — Inline SVG preview for connector styles.
  * Uses currentColor so it inherits from parent CSS color.
+ * Derives all visual values from CONNECTOR_STYLE_DEFS — the single source of truth.
  */
 import type { ConnectorStyle } from '@/shared/stores/settingsStore';
+import { CONNECTOR_STYLE_DEFS } from '@/config/connectorStyleConfig';
 
 interface ConnectorPreviewProps {
     style: ConnectorStyle;
 }
 
-interface LineAttrs {
-    strokeDasharray?: string;
-    strokeOpacity?: string;
-    strokeWidth?: string;
-}
-
-const STYLE_ATTRS: Record<ConnectorStyle, LineAttrs> = {
-    solid: {},
-    subtle: { strokeDasharray: '4 2', strokeOpacity: '0.5' },
-    thick: { strokeWidth: '3' },
-    dashed: { strokeDasharray: '8 4' },
-    dotted: { strokeDasharray: '2 4' },
-};
-
 export function ConnectorPreview({ style }: ConnectorPreviewProps) {
-    const attrs = STYLE_ATTRS[style];
+    const def = CONNECTOR_STYLE_DEFS[style];
     return (
         <svg
             width="40"
@@ -36,10 +24,10 @@ export function ConnectorPreview({ style }: ConnectorPreviewProps) {
                 x2="38"
                 y2="6"
                 stroke="currentColor"
-                strokeWidth={attrs.strokeWidth ?? '2'}
-                strokeLinecap="round"
-                {...(attrs.strokeDasharray ? { strokeDasharray: attrs.strokeDasharray } : {})}
-                {...(attrs.strokeOpacity ? { strokeOpacity: attrs.strokeOpacity } : {})}
+                strokeWidth={def.strokeWidth !== undefined ? String(def.strokeWidth) : '2'}
+                {...(def.strokeDasharray              ? { strokeDasharray: def.strokeDasharray }           : {})}
+                {...(def.strokeOpacity !== undefined  ? { strokeOpacity:   String(def.strokeOpacity) }     : {})}
+                {...(def.strokeLinecap                ? { strokeLinecap:   def.strokeLinecap }             : {})}
             />
         </svg>
     );

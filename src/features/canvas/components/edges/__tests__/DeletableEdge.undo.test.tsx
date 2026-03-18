@@ -27,7 +27,7 @@ vi.mock('@/shared/stores/toastStore', () => ({
 
 vi.mock('@/shared/stores/settingsStore', () => ({
     useSettingsStore: vi.fn((selector?: (s: { connectorStyle: string }) => unknown) => {
-        const s = { connectorStyle: 'solid' };
+        const s = { connectorStyle: 'regular' };
         return typeof selector === 'function' ? selector(s) : s;
     }),
 }));
@@ -37,7 +37,7 @@ vi.mock('./DeletableEdge.module.css', () => ({
         deleteButtonWrapper: 'deleteButtonWrapper',
         visible: 'visible',
         deleteButton: 'deleteButton',
-        edgeSolid: 'edgeSolid',
+        edgeRegular: 'edgeRegular',
     },
 }));
 
