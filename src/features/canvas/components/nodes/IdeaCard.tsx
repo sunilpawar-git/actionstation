@@ -53,7 +53,7 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
         editor, handleDoubleClick, handleDelete, handleRegenerate, handleConnectClick,
         handleTransform, handleHeadingChange, handleCopy, handleDuplicate, handleShare,
         isSharing, isTransforming, handlePinToggle, handleCollapseToggle, handlePoolToggle, handleColorChange,
-        handleTagOpen, handleFocusClick, handleImageClick, handleAttachmentClick, slashHandler, onSubmitAI, onTagsChange, onKeyDownReact,
+        handleTagOpen, handleFocusClick, handleCmdClick, handleImageClick, handleAttachmentClick, slashHandler, onSubmitAI, onTagsChange, onKeyDownReact,
         hasContent, isEditing, onHeadingBlur, calendar, focusBody, registerProximityLostFn,
     } = api;
     const nodeColorKey = normalizeNodeColorKey(resolvedData.colorKey);
@@ -63,6 +63,7 @@ export const IdeaCard = React.memo(function IdeaCard({ id, data: rfData, selecte
 
     return (
         <div ref={cardWrapperRef}
+            data-testid="idea-card-wrapper" onClick={handleCmdClick}
             className={`${styles.cardWrapper} ${handleStyles.resizerWrapper} ${isCollapsed ? styles.cardWrapperCollapsed : ''} ${isPinned ? RF_NO_DRAG : ''}`}
             onContextMenu={contextMenu.openAtCursor}
             onTouchStart={contextMenu.onTouchStart} onTouchMove={contextMenu.onTouchMove}
