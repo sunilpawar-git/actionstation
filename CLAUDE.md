@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > **CRITICAL**: ZERO TECH DEBT policy. All rules are NON-NEGOTIABLE.
 
-## Development Commands
+## 🛠️ Development Commands
 
 ```bash
 # Dev server
@@ -45,7 +45,7 @@ cd functions && npm test              # vitest run
 
 **Cloud Functions**: Separate Node 22 package in `functions/` with its own tsconfig, eslint, and vitest config. Exports from `functions/src/index.ts`.
 
-## Product Context — Building a Second Brain (BASB)
+## 🧠 Product Context — Building a Second Brain (BASB)
 
 ActionStation is a **Building a Second Brain** (BASB) application — an infinite canvas for capturing, connecting, and synthesising ideas. Every feature must serve this philosophy:
 
@@ -56,7 +56,7 @@ ActionStation is a **Building a Second Brain** (BASB) application — an infinit
 
 When building features, ask: *"Does this reduce friction between thought and capture, or between capture and insight?"* If not, it doesn't belong.
 
-## Available Skills (Slash Commands)
+## 🔧 Available Skills (Slash Commands)
 
 Use these skills proactively during development — invoke via `/skillname`.
 
@@ -418,9 +418,9 @@ service cloud.firestore {
 4. COMMIT: Only when tests pass
 ```
 
-### 🔴 CRITICAL: Acceptance Criteria Before Tests
+### 🔴 CRITICAL: Acceptance Criteria Before Feature Tests
 
-**ALWAYS ask for acceptance criteria before designing tests.** Do not infer what to test — the user defines what "done" means. Tests must validate acceptance criteria, not what the LLM assumes is correct.
+**ALWAYS ask for acceptance criteria before designing feature/fix tests.** Do not infer what to test — the user defines what "done" means.
 
 ```
 // Workflow:
@@ -431,7 +431,7 @@ service cloud.firestore {
 5. Implement code to pass those tests
 ```
 
-Tests that do not trace back to an explicit acceptance criterion are waste. Do not write tests for implementation details, internal method signatures, or hypothetical edge cases the user hasn't specified.
+This applies to feature and integration tests. Structural tests (selector anti-patterns, Firestore query caps, CSP completeness) and unit tests for utils/services still follow standard coverage requirements above.
 
 ### Test Coverage Requirements
 | Layer | Minimum Coverage |
@@ -662,27 +662,16 @@ const migrations: Migration[] = [
 Every Firestore read/write and every Gemini API call costs money. Treat them as scarce resources.
 
 ### Firestore cost rules
-- **Query caps**: ALL `getDocs` calls must use `limit()` from `FIRESTORE_QUERY_CAP` — enforced by structural test
-- **Spatial chunking**: Load only visible tiles, evict stale ones — reduces reads by 80-95%
-- **Bundle-first loading**: `loadWorkspaceBundle()` serves cached data before hitting Firestore
-- **Batch writes**: Use `chunkedBatchWrite()` (auto-chunks at 500) — never write documents in unbatched loops
-- **Debounce saves**: Canvas auto-save uses dirty-tile tracking — only changed tiles are written
+Firestore cost controls are enforced via the rules in **Firestore Patterns** and **Spatial Chunking** sections above (query caps, batch writes, bundle-first loading, tile eviction). Additionally:
 - **Avoid full-collection reads**: Always scope queries to user path (`users/{userId}/...`), never read entire collections
-- **Listener cleanup**: Every `onSnapshot` listener must be unsubscribed in cleanup functions
+- **Listener cleanup**: Every `onSnapshot` listener must be unsubscribed in cleanup functions — prefer one-time reads (`getDocs`) for data that changes infrequently
 
 ### Gemini cost rules
-- **Token caps**: `geminiProxy` Cloud Function enforces max input/output token limits
-- **Prompt size**: Strip unnecessary context before sending — use `stripBase64Images()` to remove inline images
 - **No speculative calls**: Never call Gemini for background/predictive features without explicit user action
 - **Cache AI results**: Store generated content in Firestore — never regenerate the same synthesis twice
 - **KB context injection**: `getKBContext()` provides focused context rather than sending entire workspace content
-- **User rate limit**: Per-user rate limiting in Cloud Functions prevents runaway costs from any single account
-
-### Cost-awareness during development
-- When adding a new Firestore query, verify it uses `limit()` and is scoped to the narrowest collection path
-- When adding a new Gemini call, confirm it goes through the `geminiProxy` Cloud Function (never direct client-side)
+- **All calls via proxy**: Every Gemini call must go through the `geminiProxy` Cloud Function (never direct client-side) — token caps and rate limits are enforced there
 - Prefer client-side computation (TF-IDF in Web Worker) over API calls when possible
-- New `onSnapshot` listeners must justify real-time need — prefer one-time reads (`getDocs`) for data that changes infrequently
 
 ## 🧹 LOGGING & ERROR HANDLING
 
