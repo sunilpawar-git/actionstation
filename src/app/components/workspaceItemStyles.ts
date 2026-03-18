@@ -4,6 +4,9 @@ export const WI_ITEM = [
     'cursor-pointer',
     'transition-colors duration-150 ease-in-out',
     'hover:bg-[var(--color-surface-hover)]',
+    // Reserve left border space so no layout shift when item becomes active
+    'border-l-[3px]',
+    'border-l-transparent',
 ].join(' ');
 
 export const WI_ITEM_STYLE = {
@@ -16,6 +19,9 @@ export const WI_ACTIVE = [
     'bg-[var(--color-primary-light)]',
     'text-[var(--color-primary)]',
     'font-[var(--font-weight-semibold)]',
+    // Left accent bar: vivid --color-primary works across all 6 themes
+    // !important ensures it overrides WI_ITEM's border-l-transparent
+    '!border-l-[var(--color-primary)]',
 ].join(' ');
 
 export const WI_DRAGGING = [

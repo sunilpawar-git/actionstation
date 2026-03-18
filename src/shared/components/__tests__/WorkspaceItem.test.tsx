@@ -36,6 +36,25 @@ describe('WorkspaceItem', () => {
         expect(element.className).not.toContain('bg-[var(--color-primary-light)]');
     });
 
+    it('shows left accent border when isActive is true', () => {
+        const { container } = render(<WorkspaceItem {...defaultProps} isActive={true} />);
+        const element = container.firstChild as HTMLElement;
+        expect(element.className).toContain('!border-l-[var(--color-primary)]');
+    });
+
+    it('does not show left accent border when isActive is false', () => {
+        const { container } = render(<WorkspaceItem {...defaultProps} isActive={false} />);
+        const element = container.firstChild as HTMLElement;
+        expect(element.className).not.toContain('!border-l-[var(--color-primary)]');
+    });
+
+    it('reserves left border space on inactive items to prevent layout shift', () => {
+        const { container } = render(<WorkspaceItem {...defaultProps} isActive={false} />);
+        const element = container.firstChild as HTMLElement;
+        expect(element.className).toContain('border-l-[3px]');
+        expect(element.className).toContain('border-l-transparent');
+    });
+
     it('calls onSelect when clicked', () => {
         render(<WorkspaceItem {...defaultProps} />);
         fireEvent.click(screen.getByText('Test Workspace'));
