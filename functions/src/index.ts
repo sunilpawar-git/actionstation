@@ -16,3 +16,8 @@ export { workspaceBundle } from './workspaceBundle.js';
 export { health } from './health.js';
 export { firestoreBackup } from './firestoreBackup.js';
 export { verifyTurnstile } from './verifyTurnstile.js';
+export { exchangeCalendarCode, disconnectCalendar } from './calendarAuth.js';
+export {
+    calendarCreateEvent, calendarUpdateEvent,
+    calendarDeleteEvent, calendarListEvents,
+} from './calendarEvents.js';

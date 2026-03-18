@@ -4,8 +4,8 @@
  */
 
 const ALLOWED_ORIGINS: string[] = [
-    'https://eden-so.web.app',
-    'https://eden-so.firebaseapp.com',
+    'https://actionstation-244f0.web.app',
+    'https://actionstation-244f0.firebaseapp.com',
 ];
 
 if (process.env.FUNCTIONS_EMULATOR === 'true') {

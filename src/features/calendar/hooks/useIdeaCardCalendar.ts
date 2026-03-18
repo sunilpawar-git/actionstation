@@ -22,7 +22,10 @@ export function useIdeaCardCalendar({ nodeId, calendarEvent }: UseIdeaCardCalend
         const { id, type, title, date, endDate, notes } = calendarEvent;
 
         if (!useAuthStore.getState().isCalendarConnected) {
-            const ok = await connectGoogleCalendar();
+            // Yield to the event loop so any in-flight autosave debounce can
+            // flush its Firestore write before the browser navigates away.
+            await new Promise<void>((resolve) => setTimeout(resolve, 300));
+            const ok = connectGoogleCalendar();
             if (!ok) return;
         }
 

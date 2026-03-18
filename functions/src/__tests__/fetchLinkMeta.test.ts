@@ -13,7 +13,7 @@ vi.mock('../utils/securityConstants.js', async (importOriginal) => {
     const actual = await importOriginal<Record<string, unknown>>();
     return {
         ...actual,
-        FUNCTIONS_BASE_URL: 'https://us-central1-eden-so.cloudfunctions.net',
+        FUNCTIONS_BASE_URL: 'https://us-central1-actionstation-244f0.cloudfunctions.net',
     };
 });
 

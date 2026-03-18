@@ -22,8 +22,8 @@ describe('corsConfig', () => {
 
         const { ALLOWED_ORIGINS } = await import('../corsConfig.js');
 
-        expect(ALLOWED_ORIGINS).toContain('https://eden-so.web.app');
-        expect(ALLOWED_ORIGINS).toContain('https://eden-so.firebaseapp.com');
+        expect(ALLOWED_ORIGINS).toContain('https://actionstation-244f0.web.app');
+        expect(ALLOWED_ORIGINS).toContain('https://actionstation-244f0.firebaseapp.com');
     });
 
     it('excludes localhost when not in emulator mode', async () => {
@@ -62,7 +62,7 @@ describe('corsConfig', () => {
 
         const { ALLOWED_ORIGINS } = await import('../corsConfig.js');
 
-        expect(ALLOWED_ORIGINS).toContain('https://eden-so.web.app');
+        expect(ALLOWED_ORIGINS).toContain('https://actionstation-244f0.web.app');
         expect(ALLOWED_ORIGINS.length).toBe(2);
     });
 
