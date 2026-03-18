@@ -16,6 +16,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { checkRateLimit } from './utils/rateLimiter.js';
 import { logSecurityEvent, SecurityEventType } from './utils/securityLogger.js';
 import { CALENDAR_AUTH_RATE_LIMIT } from './utils/securityConstants.js';
+import { ALLOWED_ORIGINS } from './utils/corsConfig.js';
 
 const gclientId = defineSecret('GOOGLE_CLIENT_ID');
 const gclientSecret = defineSecret('GOOGLE_CLIENT_SECRET');
@@ -57,9 +58,6 @@ export async function handleExchangeCalendarCode(
     }
 
     try {
-        // Diagnostic: log credential lengths to detect trailing-newline corruption
-        console.info('[calendarAuth] clientId length:', clientId.length, 'ends:', JSON.stringify(clientId.slice(-4)));
-        console.info('[calendarAuth] clientSecret length:', clientSecret.length, 'starts:', clientSecret.startsWith('GOCSPX-'));
         const oauth2 = new OAuth2Client(clientId, clientSecret, redirectUri);
         const { tokens } = await oauth2.getToken(code);
 
@@ -82,9 +80,7 @@ export async function handleExchangeCalendarCode(
         return { connected: true };
     } catch (err) {
         if (err instanceof HttpsError) throw err;
-        // Log the raw Google error so we can diagnose token exchange failures
         const googleErr = err as { message?: string; response?: { data?: unknown } };
-        console.error('[calendarAuth] getToken error:', googleErr.message, JSON.stringify(googleErr.response?.data ?? {}));
         logSecurityEvent({
             type: SecurityEventType.AUTH_FAILURE,
             uid,
@@ -119,7 +115,7 @@ export async function handleDisconnectCalendar(uid: string): Promise<{ disconnec
  * Stores the refresh token in Firestore. Returns { connected: true }.
  */
 export const exchangeCalendarCode = onCall(
-    { secrets: [...CALENDAR_SECRETS] },
+    { secrets: [...CALENDAR_SECRETS], cors: ALLOWED_ORIGINS },
     async (request) => {
         const uid = request.auth?.uid;
         if (!uid) throw new HttpsError('unauthenticated', 'Authentication required');
@@ -137,7 +133,7 @@ export const exchangeCalendarCode = onCall(
  * Remove the Google Calendar integration from Firestore.
  */
 export const disconnectCalendar = onCall(
-    { secrets: [...CALENDAR_SECRETS] },
+    { secrets: [...CALENDAR_SECRETS], cors: ALLOWED_ORIGINS },
     async (request) => {
         const uid = request.auth?.uid;
         if (!uid) throw new HttpsError('unauthenticated', 'Authentication required');

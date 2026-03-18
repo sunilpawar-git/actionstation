@@ -15,6 +15,7 @@ import { checkRateLimit } from './utils/rateLimiter.js';
 import { logSecurityEvent, SecurityEventType } from './utils/securityLogger.js';
 import { CALENDAR_EVENTS_RATE_LIMIT } from './utils/securityConstants.js';
 import { getCalendarAccessToken, CALENDAR_NOT_CONNECTED } from './utils/calendarTokenHelper.js';
+import { ALLOWED_ORIGINS } from './utils/corsConfig.js';
 
 const gclientId = defineSecret('GOOGLE_CLIENT_ID');
 const gclientSecret = defineSecret('GOOGLE_CLIENT_SECRET');
@@ -53,6 +54,12 @@ function buildEventBody(title: string, date: string, endDate?: string, notes?: s
 
 async function withToken<T>(uid: string, fn: (token: string) => Promise<T>): Promise<T> {
     if (!await checkRateLimit(uid, 'calendarEvents', CALENDAR_EVENTS_RATE_LIMIT)) {
+        logSecurityEvent({
+            type: SecurityEventType.RATE_LIMIT_VIOLATION,
+            uid,
+            endpoint: 'calendarEvents',
+            message: 'Calendar events rate limit exceeded',
+        });
         throw new HttpsError('resource-exhausted', 'Too many requests. Please try again later.');
     }
     try {
@@ -61,8 +68,20 @@ async function withToken<T>(uid: string, fn: (token: string) => Promise<T>): Pro
     } catch (err) {
         if (err instanceof HttpsError) throw err;
         if (err instanceof Error && err.message === CALENDAR_NOT_CONNECTED) {
+            logSecurityEvent({
+                type: SecurityEventType.AUTH_FAILURE,
+                uid,
+                endpoint: 'calendarEvents',
+                message: 'Calendar not connected — REAUTH_REQUIRED',
+            });
             throw new HttpsError('unauthenticated', 'REAUTH_REQUIRED');
         }
+        logSecurityEvent({
+            type: SecurityEventType.AUTH_FAILURE,
+            uid,
+            endpoint: 'calendarEvents',
+            message: `Calendar token error: ${err instanceof Error ? err.message : 'unknown'}`,
+        });
         throw new HttpsError('internal', err instanceof Error ? err.message : 'Calendar API error');
     }
 }
@@ -79,7 +98,7 @@ async function gcalFetch<T>(token: string, path: string, init: RequestInit = {})
 }
 
 /** Create a Google Calendar event. */
-export const calendarCreateEvent = onCall({ secrets: [...SECRETS] }, async (request) => {
+export const calendarCreateEvent = onCall({ secrets: [...SECRETS], cors: ALLOWED_ORIGINS }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Authentication required');
 
@@ -98,7 +117,7 @@ export const calendarCreateEvent = onCall({ secrets: [...SECRETS] }, async (requ
 });
 
 /** Update an existing Google Calendar event. */
-export const calendarUpdateEvent = onCall({ secrets: [...SECRETS] }, async (request) => {
+export const calendarUpdateEvent = onCall({ secrets: [...SECRETS], cors: ALLOWED_ORIGINS }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Authentication required');
 
@@ -118,7 +137,7 @@ export const calendarUpdateEvent = onCall({ secrets: [...SECRETS] }, async (requ
 });
 
 /** Delete a Google Calendar event. */
-export const calendarDeleteEvent = onCall({ secrets: [...SECRETS] }, async (request) => {
+export const calendarDeleteEvent = onCall({ secrets: [...SECRETS], cors: ALLOWED_ORIGINS }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Authentication required');
 
@@ -134,7 +153,7 @@ export const calendarDeleteEvent = onCall({ secrets: [...SECRETS] }, async (requ
 interface GCalListItem { id?: string; summary?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string } }
 
 /** List Google Calendar events within a time range. */
-export const calendarListEvents = onCall({ secrets: [...SECRETS] }, async (request) => {
+export const calendarListEvents = onCall({ secrets: [...SECRETS], cors: ALLOWED_ORIGINS }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Authentication required');
 
@@ -157,5 +176,3 @@ export const calendarListEvents = onCall({ secrets: [...SECRETS] }, async (reque
         }));
     });
 });
-
-export { logSecurityEvent, SecurityEventType };

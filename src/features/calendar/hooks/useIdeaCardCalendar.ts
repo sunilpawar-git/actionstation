@@ -9,6 +9,13 @@ import { connectGoogleCalendar } from '@/features/auth/services/calendarAuthServ
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import type { CalendarEventMetadata } from '../types/calendarEvent';
 
+/**
+ * How long to yield to the event loop before triggering OAuth redirect.
+ * Gives any in-flight autosave debounce time to flush its Firestore write
+ * before the browser navigates away, preventing the node from disappearing.
+ */
+const AUTOSAVE_YIELD_MS = 300;
+
 interface UseIdeaCardCalendarOptions {
     nodeId: string;
     calendarEvent?: CalendarEventMetadata;
@@ -24,7 +31,7 @@ export function useIdeaCardCalendar({ nodeId, calendarEvent }: UseIdeaCardCalend
         if (!useAuthStore.getState().isCalendarConnected) {
             // Yield to the event loop so any in-flight autosave debounce can
             // flush its Firestore write before the browser navigates away.
-            await new Promise<void>((resolve) => setTimeout(resolve, 300));
+            await new Promise<void>((resolve) => setTimeout(resolve, AUTOSAVE_YIELD_MS));
             const ok = connectGoogleCalendar();
             if (!ok) return;
         }

@@ -10,6 +10,11 @@ import { useEffect, useRef, useState } from 'react';
 import { handleCalendarCallback } from '../services/calendarAuthService';
 import { logger } from '@/shared/services/logger';
 
+/** How long to show the error screen before redirecting back (ms). */
+const ERROR_REDIRECT_DELAY_MS = 2000;
+/** How long to show the success screen before redirecting back (ms). */
+const SUCCESS_REDIRECT_DELAY_MS = 800;
+
 export function CalendarCallback() {
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const hasRun = useRef(false);
@@ -26,16 +31,6 @@ export function CalendarCallback() {
             const state = params.get('state');
             const error = params.get('error');
 
-            // Diagnostic: log all URL params so DevTools shows exactly what arrived
-            logger.warn('[CalendarCallback] params', undefined, {
-                hasCode: !!code,
-                codeLen: code?.length,
-                hasState: !!state,
-                hasError: !!error,
-                errorVal: error,
-                storedState: !!sessionStorage.getItem('oauth_state'),
-            });
-
             if (error || !code || !state) {
                 logger.warn('[CalendarCallback] OAuth error or missing params', undefined, { error, hasCode: !!code, hasState: !!state });
                 setStatus('error');
@@ -43,20 +38,18 @@ export function CalendarCallback() {
                     const returnTo = sessionStorage.getItem('oauth_return_to') ?? '/';
                     sessionStorage.removeItem('oauth_return_to');
                     window.location.replace(returnTo);
-                }, 2000);
+                }, ERROR_REDIRECT_DELAY_MS);
                 return;
             }
 
-            logger.warn('[CalendarCallback] calling exchangeCalendarCode Cloud Function...');
             const ok = await handleCalendarCallback(code, state);
-            logger.warn('[CalendarCallback] result', undefined, { ok });
             setStatus(ok ? 'success' : 'error');
 
             setTimeout(() => {
                 const returnTo = sessionStorage.getItem('oauth_return_to') ?? '/';
                 sessionStorage.removeItem('oauth_return_to');
                 window.location.replace(returnTo);
-            }, ok ? 800 : 2000);
+            }, ok ? SUCCESS_REDIRECT_DELAY_MS : ERROR_REDIRECT_DELAY_MS);
         };
 
         run().catch((err: unknown) => {
