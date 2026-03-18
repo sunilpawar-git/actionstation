@@ -7,7 +7,11 @@ import React from 'react';
 import type { ConnectorStyle } from '@/shared/stores/settingsStore';
 import { ConnectorPreview } from './ConnectorPreview';
 import { strings } from '@/shared/localization/strings';
-import styles from './ConnectorStylePicker.module.css';
+import './connectorFocus.css';
+import {
+    CSP_CONTAINER, CSP_OPTION, CSP_OPTION_STYLE, CSP_OPTION_ACTIVE_STYLE,
+    CSP_HIDDEN_RADIO, CSP_PREVIEW, CSP_LABEL, CSP_CHECKMARK, CSP_CHECKMARK_STYLE,
+} from './connectorStylePickerStyles';
 
 interface ConnectorStyleOption {
     value: ConnectorStyle;
@@ -15,9 +19,10 @@ interface ConnectorStyleOption {
 }
 
 const OPTIONS: ConnectorStyleOption[] = [
-    { value: 'solid', label: strings.settings.connectorSolid },
-    { value: 'subtle', label: strings.settings.connectorSubtle },
-    { value: 'thick', label: strings.settings.connectorThick },
+    { value: 'ghost', label: strings.settings.connectorGhost },
+    { value: 'regular', label: strings.settings.connectorRegular },
+    { value: 'light', label: strings.settings.connectorLight },
+    { value: 'bold', label: strings.settings.connectorBold },
     { value: 'dashed', label: strings.settings.connectorDashed },
     { value: 'dotted', label: strings.settings.connectorDotted },
 ];
@@ -33,7 +38,7 @@ export const ConnectorStylePicker = React.memo(function ConnectorStylePicker({
 }: ConnectorStylePickerProps) {
     return (
         <div
-            className={styles.container}
+            className={CSP_CONTAINER}
             role="radiogroup"
             aria-label={strings.settings.connectorStyle}
         >
@@ -42,7 +47,8 @@ export const ConnectorStylePicker = React.memo(function ConnectorStylePicker({
                 return (
                     <label
                         key={option.value}
-                        className={`${styles.option} ${isActive ? styles.optionActive : ''}`}
+                        className={`${CSP_OPTION} connector-option`}
+                        style={isActive ? CSP_OPTION_ACTIVE_STYLE : CSP_OPTION_STYLE}
                     >
                         <input
                             type="radio"
@@ -50,15 +56,15 @@ export const ConnectorStylePicker = React.memo(function ConnectorStylePicker({
                             value={option.value}
                             checked={isActive}
                             onChange={() => onChange(option.value)}
-                            className={styles.hiddenRadio}
+                            className={CSP_HIDDEN_RADIO}
                             aria-label={option.label}
                         />
-                        <span className={styles.preview}>
+                        <span className={CSP_PREVIEW}>
                             <ConnectorPreview style={option.value} />
                         </span>
-                        <span className={styles.label}>{option.label}</span>
+                        <span className={CSP_LABEL}>{option.label}</span>
                         {isActive && (
-                            <span className={styles.checkmark} aria-hidden="true">✓</span>
+                            <span className={CSP_CHECKMARK} style={CSP_CHECKMARK_STYLE} aria-hidden="true">✓</span>
                         )}
                     </label>
                 );

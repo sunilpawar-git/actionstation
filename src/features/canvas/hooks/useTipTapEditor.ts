@@ -6,10 +6,12 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Highlight from '@tiptap/extension-highlight';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import type { Extension } from '@tiptap/core';
 import { DOMParser as PMDOMParser } from '@tiptap/pm/model';
 import { NodeImage } from '../extensions/imageExtension';
+import { FontSizeExtension } from '../extensions/fontSizeExtension';
 import { markdownToHtml, htmlToMarkdown } from '../services/markdownConverter';
 import { sanitizePastedHtml } from '../services/sanitizePastedHtml';
 
@@ -63,11 +65,13 @@ export function useTipTapEditor(options: UseTipTapEditorOptions): UseTipTapEdito
                 },
             }),
             Placeholder.configure({ placeholder: () => placeholderRef.current }),
+            Highlight.configure({ multicolor: true }),
             Table.configure({ resizable: false }),
             TableRow,
             TableCell,
             TableHeader,
             NodeImage,
+            FontSizeExtension,
             ...extraExtensions,
         ],
         content: initialContent ? markdownToHtml(initialContent) : '',

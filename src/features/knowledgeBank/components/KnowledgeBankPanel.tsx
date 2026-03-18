@@ -12,7 +12,11 @@ import { KBEntryList } from './KBEntryList';
 import { useEscapeLayer } from '@/shared/hooks/useEscapeLayer';
 import { ESCAPE_PRIORITY } from '@/shared/hooks/escapePriorities';
 import { strings } from '@/shared/localization/strings';
-import styles from './KnowledgeBankPanel.module.css';
+import {
+    KB_PANEL, KB_PANEL_HEADER, KB_PANEL_HEADER_STYLE,
+    KB_PANEL_TITLE, KB_PANEL_TITLE_STYLE,
+    KB_CLOSE_BUTTON, KB_CLOSE_BUTTON_STYLE,
+} from './kbPanelStyles';
 
 /** Slide-out panel for browsing, searching, and managing Knowledge Bank entries. */
 export function KnowledgeBankPanel() {
@@ -51,7 +55,7 @@ export function KnowledgeBankPanel() {
             : 'var(--sidebar-width)';
 
     return (
-        <div className={styles.panel} style={{ left: leftOffset, transition: `left var(--sidebar-transition)` }}>
+        <div className={KB_PANEL} style={{ left: leftOffset, transition: `left var(--sidebar-transition)` }}>
             <PanelHeader onClose={() => useKnowledgeBankStore.getState().setPanelOpen(false)} />
             {entries.length > 0 && <KBSearchBar />}
             <KBEntryList
@@ -73,10 +77,11 @@ export function KnowledgeBankPanel() {
 /** Header row with title and close button for the Knowledge Bank panel. */
 function PanelHeader({ onClose }: { onClose: () => void }) {
     return (
-        <div className={styles.panelHeader}>
-            <h4 className={styles.panelTitle}>{strings.knowledgeBank.title}</h4>
+        <div className={KB_PANEL_HEADER} style={KB_PANEL_HEADER_STYLE}>
+            <h4 className={KB_PANEL_TITLE} style={KB_PANEL_TITLE_STYLE}>{strings.knowledgeBank.title}</h4>
             <button
-                className={styles.closeButton}
+                className={KB_CLOSE_BUTTON}
+                style={KB_CLOSE_BUTTON_STYLE}
                 onClick={onClose}
                 aria-label={strings.settings.close}
             >

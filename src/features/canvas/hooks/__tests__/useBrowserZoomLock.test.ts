@@ -62,6 +62,38 @@ describe('useBrowserZoomLock', () => {
         expect(options.passive).toBe(false);
     });
 
+    // ── REGRESSION: capture-phase guard ─────────────────────────────────────
+    // Bug: wheel listener was registered in the bubble phase.  A card's
+    // content-scroll handler calls e.stopPropagation(), which prevented the
+    // document listener from ever firing.  The browser's native zoom then won
+    // the race and scaled the entire viewport instead of just the canvas.
+    // Fix: register on the CAPTURE phase (capture: true) so the listener fires
+    // before any child handler can suppress propagation.
+
+    it('registers wheel listener in capture phase (stopPropagation regression)', () => {
+        renderHook(() => useBrowserZoomLock());
+        const wheelCall = addSpy.mock.calls.find(([type]) => type === 'wheel');
+        expect(wheelCall).toBeDefined();
+        const options = wheelCall![2] as AddEventListenerOptions;
+        expect(options.capture).toBe(true);
+    });
+
+    it('registers gesturestart listener in capture phase', () => {
+        renderHook(() => useBrowserZoomLock());
+        const call = addSpy.mock.calls.find(([type]) => type === 'gesturestart');
+        expect(call).toBeDefined();
+        const options = call![2] as AddEventListenerOptions;
+        expect(options.capture).toBe(true);
+    });
+
+    it('registers gesturechange listener in capture phase', () => {
+        renderHook(() => useBrowserZoomLock());
+        const call = addSpy.mock.calls.find(([type]) => type === 'gesturechange');
+        expect(call).toBeDefined();
+        const options = call![2] as AddEventListenerOptions;
+        expect(options.capture).toBe(true);
+    });
+
     it('registers gesturestart listener on document (Safari pinch)', () => {
         renderHook(() => useBrowserZoomLock());
         const calls = addSpy.mock.calls.filter(([type]) => type === 'gesturestart');
@@ -80,6 +112,56 @@ describe('useBrowserZoomLock', () => {
         renderHook(() => useBrowserZoomLock());
         const event = fireWheelEvent({ ctrlKey: true, deltaY: -100 });
         expect(event.defaultPrevented).toBe(true);
+    });
+
+    // ── KEY REGRESSION TEST ─────────────────────────────────────────────────
+    // Reproduces the original bug:  a child element (e.g. IdeaCard content
+    // scroll area) calls e.stopPropagation() on the wheel event, which
+    // previously prevented the document bubble-phase listener from ever firing.
+    // With capture: true the document listener runs BEFORE the child's handler,
+    // so preventDefault() is always called on ctrlKey wheel events regardless
+    // of what child handlers do.
+    it('calls preventDefault on ctrlKey wheel even when a child calls stopPropagation (capture-phase regression)', () => {
+        renderHook(() => useBrowserZoomLock());
+
+        // Simulate a child element that calls stopPropagation() — just like
+        // useIdeaCardActions does on card content scroll areas.
+        const child = document.createElement('div');
+        document.body.appendChild(child);
+        child.addEventListener('wheel', (e) => e.stopPropagation());
+
+        const event = new WheelEvent('wheel', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            deltaY: -100,
+        });
+        child.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+
+        document.body.removeChild(child);
+    });
+
+    it('does NOT preventDefault on child ctrlKey wheel that stops propagation when unmounted', () => {
+        const { unmount } = renderHook(() => useBrowserZoomLock());
+        unmount();
+
+        const child = document.createElement('div');
+        document.body.appendChild(child);
+        child.addEventListener('wheel', (e) => e.stopPropagation());
+
+        const event = new WheelEvent('wheel', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            deltaY: -100,
+        });
+        child.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(false);
+
+        document.body.removeChild(child);
     });
 
     it('does NOT call preventDefault on normal wheel events (no ctrlKey)', () => {

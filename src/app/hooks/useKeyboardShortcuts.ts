@@ -33,6 +33,10 @@ interface KeyboardShortcutsOptions {
     isNodeCreationLocked?: () => boolean;
     /** Ref to the SearchBar component for ⌘+K focus (Phase 8) */
     searchInputRef?: React.RefObject<{ focus: () => void; select: () => void }>;
+    /** Cmd/Ctrl+[ — zoom in the canvas viewport */
+    onZoomIn?: () => void;
+    /** Cmd/Ctrl+] — zoom out the canvas viewport */
+    onZoomOut?: () => void;
 }
 
 function hasModifier(e: KeyboardEvent): boolean {
@@ -47,14 +51,14 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
     // every individual node select/deselect during drag-select operations.
     const hasSelection = useCanvasStore((s) => s.selectedNodeIds.size > 0);
     const editingNodeId = useCanvasStore((s) => s.editingNodeId);
-    const { onOpenSettings, onAddNode, onQuickCapture, onDeleteNodes, isNodeCreationLocked, searchInputRef } = options;
+    const { onOpenSettings, onAddNode, onQuickCapture, onDeleteNodes, isNodeCreationLocked, searchInputRef, onZoomIn, onZoomOut } = options;
 
     // NOTE: `selectedNodeIds` is read via getState() inside handlePlainShortcuts
     // (not closed over here) so the handler identity stays stable and we avoid
     // re-registering the document listener on every selection change.
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
-            if (handleModifierShortcuts(e, onQuickCapture, onOpenSettings, searchInputRef)) {
+            if (handleModifierShortcuts(e, onQuickCapture, onOpenSettings, searchInputRef, onZoomIn, onZoomOut)) {
                 return;
             }
 
@@ -63,7 +67,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
 
             handlePlainShortcuts(e, onAddNode, onDeleteNodes, isNodeCreationLocked);
         },
-        [editingNodeId, onOpenSettings, onAddNode, onQuickCapture, onDeleteNodes, isNodeCreationLocked, searchInputRef]
+        [editingNodeId, onOpenSettings, onAddNode, onQuickCapture, onDeleteNodes, isNodeCreationLocked, searchInputRef, onZoomIn, onZoomOut]
     );
 
     useEffect(() => {
@@ -112,8 +116,26 @@ function handleModifierShortcuts(
     onQuickCapture?: () => void,
     onOpenSettings?: () => void,
     searchInputRef?: React.RefObject<{ focus: () => void; select: () => void } | null>,
+    onZoomIn?: () => void,
+    onZoomOut?: () => void,
 ): boolean {
     if (!hasModifier(e)) return false;
+
+    // ⌘+[ / Ctrl+[ : Zoom in the canvas
+    if (e.key === '[') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onZoomIn?.();
+        return true;
+    }
+
+    // ⌘+] / Ctrl+] : Zoom out the canvas
+    if (e.key === ']') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onZoomOut?.();
+        return true;
+    }
 
     // ⌘+K / Ctrl+K: Focus search input (Phase 8)
     if (e.key === 'k' || e.key === 'K') {

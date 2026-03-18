@@ -36,14 +36,21 @@ export function useBrowserZoomLock(): void {
             e.preventDefault();
         }
 
-        document.addEventListener('wheel', handleWheel, { passive: false });
-        document.addEventListener('gesturestart', handleGesture, { passive: false } as AddEventListenerOptions);
-        document.addEventListener('gesturechange', handleGesture, { passive: false } as AddEventListenerOptions);
+        // capture: true  ← fires during the CAPTURE phase, before any child
+        // element's stopPropagation() (e.g. card content scroll handler) can
+        // block the event from reaching this listener.  Without this, the
+        // document bubble-phase listener is skipped when a node's content area
+        // calls e.stopPropagation(), letting the browser's native zoom win.
+        document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+        document.addEventListener('gesturestart', handleGesture, { passive: false, capture: true } as AddEventListenerOptions);
+        document.addEventListener('gesturechange', handleGesture, { passive: false, capture: true } as AddEventListenerOptions);
 
         return () => {
-            document.removeEventListener('wheel', handleWheel);
-            document.removeEventListener('gesturestart', handleGesture);
-            document.removeEventListener('gesturechange', handleGesture);
+            // removeEventListener must pass the same capture flag used during
+            // addEventListener, otherwise the listener is NOT removed.
+            document.removeEventListener('wheel', handleWheel, { capture: true });
+            document.removeEventListener('gesturestart', handleGesture, { capture: true } as EventListenerOptions);
+            document.removeEventListener('gesturechange', handleGesture, { capture: true } as EventListenerOptions);
         };
     }, []);
 }

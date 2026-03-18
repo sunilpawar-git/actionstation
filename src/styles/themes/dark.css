@@ -74,6 +74,13 @@
   /* Text alias - Dark */
   --color-text: var(--color-text-primary);
 
+  /* Text Highlight - Dark (deep, readable on dark backgrounds) */
+  --highlight-yellow: hsl(50, 60%, 25%);
+  --highlight-green:  hsl(142, 40%, 22%);
+  --highlight-blue:   hsl(213, 55%, 25%);
+  --highlight-pink:   hsl(340, 45%, 28%);
+  --highlight-purple: hsl(270, 45%, 28%);
+
   /* Offline Banner - Dark */
   --offline-banner-bg: hsl(38, 40%, 18%);
   --offline-banner-text: hsl(38, 60%, 80%);

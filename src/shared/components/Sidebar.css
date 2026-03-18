@@ -1,0 +1,26 @@
+/**
+ * Sidebar positioning — data-attribute selectors for pinned/unpinned modes.
+ * These rules use complex calc() + CSS variable transforms that Tailwind
+ * utilities cannot express. Must remain in plain CSS (Learning 4).
+ */
+
+.sidebar {
+    transition: transform var(--sidebar-transition), box-shadow var(--sidebar-transition);
+}
+
+.sidebar[data-pinned="false"] {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: var(--z-modal);
+    transform: translateX(calc(-1 * var(--sidebar-width) + var(--sidebar-hover-trigger-width)));
+}
+
+.sidebar[data-pinned="false"][data-open="true"] {
+    transform: translateX(0);
+    box-shadow: var(--shadow-xl);
+}
+
+.sidebar-new-ws-btn:hover:not(:disabled) {
+    background-color: var(--color-primary-hover) !important;
+}

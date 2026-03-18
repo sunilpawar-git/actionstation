@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import clsx from 'clsx';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { useWorkspaceStore, DEFAULT_WORKSPACE_ID } from '../stores/workspaceStore';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
@@ -7,7 +8,7 @@ import { TrashIcon } from '@/shared/components/icons';
 import { toast } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
 import { useConfirm } from '@/shared/stores/confirmStore';
-import styles from './WorkspaceControls.module.css';
+import { CONTROLS_BUTTON, CONTROLS_DELETE_BUTTON } from './workspaceControlsStyles';
 import { logger } from '@/shared/services/logger';
 
 export function DeleteWorkspaceButton() {
@@ -37,7 +38,6 @@ export function DeleteWorkspaceButton() {
         setIsDeleting(true);
         try {
             await deleteWorkspace(userId, currentWorkspaceId);
-            // Use getState() for actions - stable references, no re-render dependency
             useWorkspaceStore.getState().removeWorkspace(currentWorkspaceId);
 
             const remainingWorkspaces = workspaces.filter(ws => ws.id !== currentWorkspaceId);
@@ -60,7 +60,7 @@ export function DeleteWorkspaceButton() {
 
     return (
         <button
-            className={`${styles.button} ${styles.deleteButton}`}
+            className={clsx(CONTROLS_BUTTON, CONTROLS_DELETE_BUTTON)}
             onClick={handleDeleteWorkspace}
             disabled={isDeleting}
             title={strings.workspace.deleteWorkspaceTooltip}

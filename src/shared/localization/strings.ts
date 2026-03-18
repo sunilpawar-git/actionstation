@@ -13,6 +13,7 @@ import { contextMenuStrings } from './contextMenuStrings';
 import { slashCommandStrings } from './slashCommandStrings';
 import { searchStrings } from '@/features/search/strings/searchStrings';
 import { onboardingStrings } from '@/features/onboarding/strings/onboardingStrings';
+import { shortcutStrings } from './shortcutStrings';
 
 export const strings = {
     app: {
@@ -74,16 +75,7 @@ export const strings = {
         undo: 'Undo',
     },
     settings: settingsStrings,
-    shortcuts: {
-        openSettings: 'Open Settings',
-        addNode: 'Add Node',
-        quickCapture: 'Quick Capture',
-        deleteNode: 'Delete Node',
-        clearSelection: 'Clear Selection',
-        undo: 'Undo',
-        redo: 'Redo',
-        search: 'Open Search',
-    },
+    shortcuts: shortcutStrings,
     search: searchStrings,
     tags: {
         addTag: 'Add tag',
@@ -265,6 +257,23 @@ export const strings = {
         codeDisplay: '</>',
         linkDisplay: '→',
         linkPrompt: 'Enter URL:',
+        highlight: 'Highlight color',
+        highlightYellow: 'Highlight yellow',
+        highlightGreen: 'Highlight green',
+        highlightBlue: 'Highlight blue',
+        highlightPink: 'Highlight pink',
+        highlightPurple: 'Highlight purple',
+        removeHighlight: 'Remove highlight',
+        heading1: 'Heading 1',
+        heading2: 'Heading 2',
+        heading3: 'Heading 3',
+        heading1Display: 'H1',
+        heading2Display: 'H2',
+        heading3Display: 'H3',
+        fontSizeIncrease: 'Increase font size',
+        fontSizeDecrease: 'Decrease font size',
+        fontSizeIncreaseDisplay: 'A+',
+        fontSizeDecreaseDisplay: 'A\u2212',
     },
     knowledgeBank: knowledgeBankStrings,
     nodePool: nodePoolStrings,

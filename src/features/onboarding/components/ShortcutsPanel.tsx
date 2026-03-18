@@ -29,6 +29,9 @@ const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     { action: strings.shortcuts.undo,           keys: formatShortcut('Z') },
     { action: strings.shortcuts.redo,           keys: formatShortcut('Shift + Z') },
     { action: strings.shortcuts.openSettings,   keys: formatShortcut(',') },
+    { action: strings.shortcuts.zoomIn,         keys: formatShortcut('[') },
+    { action: strings.shortcuts.zoomOut,        keys: formatShortcut(']') },
+    { action: strings.shortcuts.focusModeClick, keys: formatShortcut('Click') },
 ];
 
 /** Renders the keyboard shortcut reference list as an accessible <ul>. */

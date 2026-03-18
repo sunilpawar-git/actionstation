@@ -24,6 +24,7 @@ export const canvasStrings = {
     docDownload: 'Download',
     docOpenNewTab: 'Open in new tab',
     docRemove: 'Remove attachment',
+    imageRemove: 'Remove image',
     docFormatNotSupported: 'This format is not yet supported. Use PDF, TXT, or CSV.',
     docAuthUnavailable: 'Authentication or workspace context unavailable.',
     docReadHeaderFailed: 'Failed to read file header.',

@@ -72,11 +72,29 @@
     margin: var(--space-xs) 0;
 }
 
-/* List styles */
-.tiptapEditor :global(.ProseMirror ul),
-.tiptapEditor :global(.ProseMirror ol) {
+/* List styles — list-style-type MUST be explicit here.
+ * Tailwind's preflight (`@import "tailwindcss"` in global.css) resets
+ * `ol, ul { list-style: none }`, stripping bullets/numbers from every node card.
+ * These rules restore the correct markers after that reset. */
+.tiptapEditor :global(.ProseMirror ul) {
+    list-style-type: disc;
     padding-left: var(--space-lg);
     margin: var(--space-xs) 0;
+}
+
+.tiptapEditor :global(.ProseMirror ol) {
+    list-style-type: decimal;
+    padding-left: var(--space-lg);
+    margin: var(--space-xs) 0;
+}
+
+/* Nested list marker variety */
+.tiptapEditor :global(.ProseMirror ul ul) {
+    list-style-type: circle;
+}
+
+.tiptapEditor :global(.ProseMirror ul ul ul) {
+    list-style-type: square;
 }
 
 /* Blockquote */
@@ -141,10 +159,55 @@
     opacity: 0.65;
 }
 
+/* Text highlight marks — background-color is set as inline style by TipTap's
+ * Highlight extension (e.g. style="background-color: var(--highlight-yellow)").
+ * These rules add minimal shape so the mark is readable across all themes. */
+.tiptapEditor :global(.ProseMirror mark) {
+    border-radius: var(--radius-sm);
+    padding: 0 2px;
+    /* background-color applied by TipTap inline style — theme-aware via CSS var */
+}
+
 /* View mode: images scale proportionally even if TipTap committed inline height.
  * Scoped to [contenteditable="false"] so active resize drags are unaffected. */
 .tiptapEditor :global([contenteditable="false"] .node-image) {
     height: auto !important;
+}
+
+/* Image delete button — positioned top-right, visible on container hover.
+ * The container gets position:relative from applyImageDeleteButton() in imageExtension.ts. */
+.tiptapEditor :global(.node-image-delete-btn) {
+    position: absolute;
+    top: var(--space-xs);
+    right: var(--space-xs);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-base);
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--transition-fast), background-color var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Show on hover of the image's wrapper container */
+.tiptapEditor :global(*:hover > .node-image-delete-btn),
+.tiptapEditor :global(.node-image-delete-btn:focus) {
+    opacity: 1;
+}
+
+.tiptapEditor :global(.node-image-delete-btn:hover) {
+    background: var(--color-error-hover-bg);
+    color: var(--color-error);
+    opacity: 1;
 }
 
 /* Table styles */

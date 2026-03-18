@@ -47,8 +47,23 @@ export const ALLOWED_IMAGE_TYPES = [
 /** Rate limit: max Gemini proxy requests per window per user */
 export const GEMINI_RATE_LIMIT = 60;
 
+/** Rate limit: max requests per IP per window (all endpoints combined) */
+export const IP_RATE_LIMIT = 120;
+
+/** Rate limit: max Gemini requests per IP per window (tighter — inference is expensive) */
+export const IP_RATE_LIMIT_GEMINI = 30;
+
+/** Rate limit: max upload requests per IP per window */
+export const IP_RATE_LIMIT_UPLOAD = 20;
+
+/** Rate limit: max captcha-verify requests per IP per window (pre-auth, so keep low) */
+export const IP_RATE_LIMIT_CAPTCHA = 10;
+
 /** Maximum request body size for Gemini proxy (100 KB) */
 export const GEMINI_MAX_BODY_BYTES = 102_400;
+
+/** Maximum file upload size in bytes (50 MB hard ceiling before per-type checks) */
+export const UPLOAD_MAX_BODY_BYTES = 52_428_800;
 
 /** Maximum output tokens the client may request */
 export const GEMINI_MAX_OUTPUT_TOKENS = 2048;

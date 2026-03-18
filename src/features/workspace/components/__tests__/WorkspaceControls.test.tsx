@@ -114,7 +114,7 @@ describe('WorkspaceControls', () => {
         it('should render dividers between buttons', () => {
             const { container } = render(<WorkspaceControls />);
 
-            const dividers = container.querySelectorAll('[class*="divider"]');
+            const dividers = container.querySelectorAll('[class*="w-px"]');
             expect(dividers.length).toBe(6);
         });
     });

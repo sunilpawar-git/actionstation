@@ -1,0 +1,8 @@
+/**
+ * Focus-visible rule for ConnectorStylePicker radio options.
+ * Uses :has() pseudo-class which cannot be expressed in Tailwind.
+ */
+.connector-option:has(.sr-only:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}

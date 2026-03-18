@@ -17,7 +17,7 @@ const mockToggleAutoAnalyzeDocuments = vi.fn();
 
 function buildCanvasSettingsState(overrides?: Record<string, unknown>) {
     return createMockSettingsState({
-        connectorStyle: 'solid' as const,
+        connectorStyle: 'regular' as const,
         toggleCanvasGrid: mockToggleCanvasGrid,
         toggleCanvasFreeFlow: mockToggleCanvasFreeFlow,
         setAutoSave: mockSetAutoSave,
@@ -122,24 +122,25 @@ describe('CanvasSection', () => {
 
     it('should display solid, subtle, thick, dashed, and dotted connector options', () => {
         render(<CanvasSection />);
-        expect(screen.getByLabelText(strings.settings.connectorSolid)).toBeInTheDocument();
-        expect(screen.getByLabelText(strings.settings.connectorSubtle)).toBeInTheDocument();
-        expect(screen.getByLabelText(strings.settings.connectorThick)).toBeInTheDocument();
+        expect(screen.getByLabelText(strings.settings.connectorGhost)).toBeInTheDocument();
+        expect(screen.getByLabelText(strings.settings.connectorRegular)).toBeInTheDocument();
+        expect(screen.getByLabelText(strings.settings.connectorLight)).toBeInTheDocument();
+        expect(screen.getByLabelText(strings.settings.connectorBold)).toBeInTheDocument();
         expect(screen.getByLabelText(strings.settings.connectorDashed)).toBeInTheDocument();
         expect(screen.getByLabelText(strings.settings.connectorDotted)).toBeInTheDocument();
     });
 
-    it('should have solid style selected by default', () => {
+    it('should have regular style selected by default', () => {
         render(<CanvasSection />);
-        const solidOption = screen.getByLabelText(strings.settings.connectorSolid);
-        expect(solidOption).toBeChecked();
+        const regularOption = screen.getByLabelText(strings.settings.connectorRegular);
+        expect(regularOption).toBeChecked();
     });
 
-    it('should call setConnectorStyle when thick is selected', () => {
+    it('should call setConnectorStyle when bold is selected', () => {
         render(<CanvasSection />);
-        const thickOption = screen.getByLabelText(strings.settings.connectorThick);
-        fireEvent.click(thickOption);
-        expect(mockSetConnectorStyle).toHaveBeenCalledWith('thick');
+        const boldOption = screen.getByLabelText(strings.settings.connectorBold);
+        fireEvent.click(boldOption);
+        expect(mockSetConnectorStyle).toHaveBeenCalledWith('bold');
     });
 
     it('should render auto-analyze documents toggle', () => {

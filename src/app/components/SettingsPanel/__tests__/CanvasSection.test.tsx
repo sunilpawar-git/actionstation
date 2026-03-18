@@ -30,7 +30,7 @@ describe('CanvasSection', () => {
 
     it('renders display section with grid and free flow toggles', () => {
         render(<CanvasSection />);
-        expect(screen.getByText(strings.settings.canvasDisplay)).toBeInTheDocument();
+        expect(screen.getByText(strings.settings.displayGroup)).toBeInTheDocument();
         expect(screen.getByText(strings.settings.canvasGrid)).toBeInTheDocument();
         expect(screen.getByText(strings.settings.freeFlow)).toBeInTheDocument();
     });

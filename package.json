@@ -29,6 +29,7 @@
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.64.2",
     "@tiptap/extension-file-handler": "^3.20.0",
+    "@tiptap/extension-highlight": "^3.20.4",
     "@tiptap/extension-image": "^3.20.0",
     "@tiptap/extension-placeholder": "^3.19.0",
     "@tiptap/extension-table": "^3.20.0",
@@ -84,5 +85,8 @@
     "vite": "^6.0.7",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^3.0.4"
+  },
+  "overrides": {
+    "serialize-javascript": ">=7.0.3"
   }
 }

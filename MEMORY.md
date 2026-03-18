@@ -210,7 +210,248 @@ useEffect(() => { ... }, [userId, workspaceId]);
 
 ---
 
-## Standing Rules Added to CLAUDE.md
+---
+
+## Production Hardening Sprint — Mar 17 2026
+
+### Context
+A full production readiness audit was run (20 sections). All critical findings were fixed in a single sprint. All 5050 tests green. 0 npm vulnerabilities.
+
+---
+
+## Decision 16 — CSP via HTTP Header, Not Meta Tag
+
+**Problem:** CSP was delivered via `<meta http-equiv="Content-Security-Policy">`. Meta-tag CSP cannot enforce `frame-ancestors` (ignored by browsers).
+
+**Decision:** Move CSP to `firebase.json` hosting headers block. Remove meta tag from `index.html` entirely.
+
+**Enforcement:** `cspCompleteness.structural.test.ts` reads from `firebase.json` headers — not `index.html`. If the meta tag is re-added, the test must not be updated to read from it.
+
+---
+
+## Decision 17 — Gemini API Key Never Reaches Browser in Production
+
+**Problem:** `VITE_GEMINI_API_KEY` was potentially exposable via the Vite build.
+
+**Decision:** `VITE_GEMINI_API_KEY` is intentionally absent from `deploy.yml`. In production all Gemini calls route: Frontend → `VITE_CLOUD_FUNCTIONS_URL/geminiProxy` → Cloud Function → Gemini (key held in Google Secret Manager). Direct API key is dev-only fallback.
+
+**Enforcement:** `geminiKeyIsolation.structural.test.ts` — only `geminiClient.ts` may reference the env var. CI deploy workflow has no `VITE_GEMINI_API_KEY` entry.
+
+---
+
+## Decision 18 — envValidation REQUIRED_VARS has a Test Mirror
+
+**Problem:** `envValidation.ts` REQUIRED_VARS was updated (added `VITE_GOOGLE_CLIENT_ID`) but the structural test maintained a hardcoded copy — causing CI failure.
+
+**Rule:** Whenever a var is added to or removed from `REQUIRED_VARS` in `src/config/envValidation.ts`, the array in `src/__tests__/envValidation.structural.test.ts` **must be updated in the same commit**.
+
+Current list (8 vars): `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, `VITE_CLOUD_FUNCTIONS_URL`, `VITE_GOOGLE_CLIENT_ID`.
+
+---
+
+## Decision 19 — Cyrillic Homoglyph Patterns Require NFKD Normalization
+
+**Problem:** Character-class regex patterns like `/[\u0420P][\u0420R]/gi` (mixing Cyrillic + ASCII in same class) caused false positives — ASCII words like `prompt` were filtered by the PROMPT detection pattern.
+
+**Decision:** Removed all 3 Cyrillic character-class patterns from `INJECTION_PATTERNS`. Left comment in code explaining correct approach: `text.normalize('NFKD')` before pattern matching, then strip combining characters. Deferred to a dedicated security sprint.
+
+**File:** `src/features/documentAgent/services/documentAgentPrompts.ts`
+
+---
+
+## Decision 20 — React.lazy Requires async act() in Tests
+
+**Problem:** Converting `KnowledgeBankPanel` to `React.lazy` broke all 14 `Layout.integration.test.tsx` tests — Suspense resolution fires as async microtask after `render()` returns.
+
+**Decision:** All Layout integration tests use an `async renderLayout()` helper:
+```tsx
+async function renderLayout() {
+    let result!: ReturnType<typeof render>;
+    await act(async () => { result = render(<Layout><div /></Layout>); });
+    return result;
+}
+```
+**Rule:** Any test that renders a component tree containing a `React.lazy` boundary must wrap `render()` in `await act(async () => {})`.
+
+---
+
+## Decision 21 — /health Endpoint for Uptime Monitoring
+
+**Decision:** `functions/src/health.ts` exports a `health` Cloud Function (no auth, CORS-allowed) returning `{status, version, timestamp}`. Used for uptime monitoring services (BetterUptime, Checkly etc.).
+
+**URL:** `https://us-central1-actionstation-244f0.cloudfunctions.net/health`
+
+---
+
+---
+
+## Advanced Security Hardening Sprint — Mar 17 2026
+
+### Context
+Following the Production Hardening Sprint, a second targeted sprint addressed advanced security gaps: WAF-layer bot detection, distributed abuse protection, AI prompt safety, file upload security, and threat monitoring.
+
+---
+
+## Decision 22 — Six-Layer Security Stack for Cloud Functions
+
+**Problem:** Per-user rate limiting alone cannot stop distributed multi-account attacks (100 IPs × 10k req/hr). No visibility into security events. AI endpoints lacked prompt injection protection. No file upload validation.
+
+**Decision:** Six new utilities implement defence-in-depth at the Cloud Function edge, applied in strict order:
+
+```
+Bot Detection → IP Rate Limit → Auth → User Rate Limit
+→ Body Size → Prompt Filter → Token Cap → Output Scan
+```
+
+**Files created:**
+- `functions/src/utils/securityLogger.ts` — structured JSON events to Cloud Logging. Severity: WARNING (auth fail, rate limit), ERROR (bot, injection, IP block), CRITICAL (spike alerts). All entries carry `labels.eden_security: "true"` for Cloud Monitoring log-based alert policy.
+- `functions/src/utils/botDetector.ts` — 24 scanner/automation UA patterns (sqlmap, nikto, masscan, nuclei, Burp, ZAP, curl, python-requests, Go-http-client…) + 6 headless browser patterns (HeadlessChrome, Playwright, Puppeteer, Selenium…) + heuristic header checks. Rejects before auth → zero Firestore cost for bots.
+- `functions/src/utils/ipRateLimiter.ts` — per-IP sliding window (30 req/min Gemini). Firestore-backed in production (survives cold starts, consistent across instances). Same pattern as `firestoreRateLimiter.ts`. Stops the "100 IPs × 10k req/hr" scenario that bypasses per-user limits.
+- `functions/src/utils/promptFilter.ts` — **Input layer:** 14 injection regexes (DAN mode, jailbreak, `[SYSTEM]`, `<|im_start|>`, ignore-previous-instructions, forget-everything, act-as-evil…) + 5 exfiltration patterns (repeat system prompt, print API key, reveal credentials…) + 50k/100k char limits. **Output layer:** scans Gemini responses for GCP API keys (`AIza…`), Bearer tokens, private key headers before forwarding to client.
+- `functions/src/utils/fileUploadValidator.ts` — magic-byte detection for 12 types (PNG/JPEG/GIF/WEBP/PDF/ZIP/GZ/RAR/7Z/ELF/PE/MZ), archive hard-block (zip bomb vector), polyglot detection (ZIP/EXE inside image claim), MIME mismatch blocking, 30 dangerous extension blocks (.exe/.sh/.php/.py…), per-type size limits (1 MB text, 10 MB image, 20 MB PDF).
+- `functions/src/utils/threatMonitor.ts` — in-process spike counters with per-minute thresholds: 429 spike (50/min), 500 spike (20/min), auth failure (30/min), bot (10/min). Writes CRITICAL log on threshold → Cloud Monitoring alert fires.
+
+**New constants in `securityConstants.ts`:**
+- `IP_RATE_LIMIT = 120` — general per-IP ceiling
+- `IP_RATE_LIMIT_GEMINI = 30` — Gemini-specific (inference is expensive)
+- `UPLOAD_MAX_BODY_BYTES = 52_428_800` — 50 MB hard ceiling before per-type checks
+
+**Tests:** 225 passing (all new files have full test coverage). TypeScript clean (`tsc` 0 errors).
+
+---
+
+## Decision 23 — Bot Rejection Before Auth
+
+**Problem:** Bots reaching `verifyAuthToken()` trigger Firebase Admin SDK calls (and Firestore rate limit reads). Under scanner load, this wastes Cloud Function compute.
+
+**Decision:** `detectBot(req)` runs as the first check in every HTTP handler, before any auth or Firestore call. Only `confidence: 'high'` and `confidence: 'medium'` detections are hard-blocked (403). `confidence: 'low'` is logged but allowed through (avoids false-positive blocking legitimate automation).
+
+---
+
+## Decision 24 — IP Rate Limiting is Separate from User Rate Limiting
+
+**Problem:** User rate limits are keyed on Firebase UID. An attacker with 100 accounts, each under the per-user limit, bypasses user rate limiting entirely.
+
+**Decision:** `ipRateLimiter.ts` is a second independent layer keyed on client IP (from `X-Forwarded-For`). Both layers must pass for a request to proceed. The IP limit is intentionally looser than the user limit (30 vs 60 for Gemini) to avoid blocking legitimate users behind NAT.
+
+---
+
+## Decision 25 — Prompt Output Scanning
+
+**Problem:** A misconfigured system prompt or adversarial input could theoretically cause Gemini to echo back secrets (API keys, private keys) that were injected into the function environment.
+
+**Decision:** `filterPromptOutput()` scans the serialised Gemini response JSON for GCP API key patterns (`AIza[0-9A-Za-z_-]{35}`), Bearer tokens, and `-----BEGIN PRIVATE KEY-----` fragments before the response is forwarded to the client. On match: 502 + RULE_DENIAL security log.
+
+---
+
+---
+
+## WAF / CAPTCHA / Immutable Backups Sprint — Mar 17 2026
+
+### Context
+Following the Advanced Security Hardening Sprint, the three remaining external-service gaps (WAF, CAPTCHA, immutable backups) were fully implemented with scripts and Cloud Function code. All are ready to deploy.
+
+---
+
+## Decision 26 — Cloud Armor WAF via Serverless NEG + HTTPS Load Balancer
+
+**Problem:** Cloud Armor policies cannot attach directly to Cloud Run / Firebase Functions URLs — they require a load-balancer backend service. The `*.cloudfunctions.net` endpoints were unprotected at the network edge.
+
+**Decision:** `scripts/setup-cloud-armor.sh` automates the full stack:
+1. Cloud Armor security policy with 8 OWASP CRS v3.3 rule sets (SQLi, XSS, LFI, RFI, RCE, method enforcement, scanner detection, protocol attack) + IP rate-limit rule (100 req/min, 5-min ban).
+2. Serverless NEGs for every Cloud Run service (one NEG per function).
+3. Backend services, each with the security policy attached.
+4. HTTPS load balancer (URL map → path routing → backends) with Google-managed SSL cert.
+
+**DNS step:** After running the script, the DNS A record for `eden.so` must be pointed to the LB IP printed by the script. WAF only protects traffic routed through this LB.
+
+**Cost:** ~$5/month policy + $0.75/million requests + ~$18/month LB base.
+
+---
+
+## Decision 27 — Cloudflare Turnstile `verifyTurnstile` Cloud Function
+
+**Problem:** Login and upload endpoints had no bot-challenge gate. Automated credential-stuffing and upload-spam attacks could proceed directly to Firebase Auth and Cloud Storage.
+
+**Decision:** `functions/src/verifyTurnstile.ts` implements a `POST /verifyTurnstile` endpoint:
+- IP rate-limited to `IP_RATE_LIMIT_CAPTCHA = 10 req/min` (pre-auth, so IP-only limiting)
+- Calls Cloudflare's `POST /siteverify` with the one-time token + client IP
+- On failure: 403 + `CAPTCHA_FAILED` security log event
+- Secret `TURNSTILE_SECRET` held in Google Cloud Secret Manager (never in code)
+
+**Client integration pattern:** Complete Turnstile widget → POST token to this endpoint → check 200 → proceed with Firebase Auth / upload.
+
+---
+
+## Decision 28 — `captchaValidator.ts` Shared Verification Utility
+
+**Problem:** Turnstile and reCAPTCHA v3 both follow the same `/siteverify` pattern. Duplicating the HTTP call + error handling per-function would violate DRY.
+
+**Decision:** `functions/src/utils/captchaValidator.ts` exports two pure functions:
+- `verifyTurnstileToken(token, secret, remoteip?)` → `CaptchaResult`
+- `verifyRecaptchaToken(token, secret, action?, remoteip?)` → `CaptchaResult`
+
+reCAPTCHA v3 specifics:
+- Silent scoring (no UI widget) — score in [0.0, 1.0]; threshold `RECAPTCHA_MIN_SCORE = 0.5`
+- `action` param prevents cross-action token replay (mismatch → `action-mismatch` error code)
+- Raise threshold to 0.7 for high-risk actions (delete, export)
+
+**Secret names in Secret Manager:** `TURNSTILE_SECRET`, `RECAPTCHA_SECRET`.
+
+---
+
+## Decision 29 — GCS Object Retention for Immutable Backups
+
+**Problem:** The existing Firestore backup bucket (`actionstation-244f0-firestore-backups`) had no retention policy. Backups could be deleted by any project owner — including via ransomware or insider action.
+
+**Decision:** `scripts/setup-immutable-backups.sh` creates `actionstation-244f0-firestore-backups-immutable` with:
+- **30-day GCS object retention policy** — objects cannot be deleted or overwritten for 30 days after write
+- **Optional irrevocable lock** — once locked, the 30-day minimum cannot be reduced or removed by anyone (including Google Support)
+- **Object versioning** — overwritten objects become non-current versions; non-current versions deleted after 90 days
+- **Uniform bucket-level access** (required for retention policies)
+
+**Migration path:** After running the script, update `BACKUP_BUCKET` in `functions/src/firestoreBackup.ts` to the new bucket name and redeploy. Keep the old bucket as a read-only archive until all objects exceed 30 days, then delete it.
+
+**Why a new bucket:** Retention policies only apply to objects written _after_ the policy is set. A fresh bucket guarantees every backup object is born under retention protection.
+
+---
+
+## Standing Rules Added (WAF / CAPTCHA Sprint)
+
+1. **`verifyTurnstile` before login/upload** — client must call `POST /verifyTurnstile` and receive 200 before proceeding to Firebase Auth or Cloud Storage upload
+2. **`IP_RATE_LIMIT_CAPTCHA = 10`** — captcha-verify endpoint is public (pre-auth), so IP-only rate limiting at a tighter limit than other endpoints
+3. **Validate reCAPTCHA `action` string** — always pass the action name to detect token replay; mismatch → block
+4. **Immutable bucket for all backups** — `firestoreBackup.ts` must target the `-immutable` bucket; old bucket is read-only archive only
+
+---
+
+## Decision 30 — Tailwind-First, No New CSS Module Files (Mar 17 2026)
+
+**Problem:** Ongoing Tailwind migration left some component `.tsx` files still importing `.module.css` files. New features were being implemented in a mix of CSS modules and Tailwind, causing inconsistency and double-maintenance.
+
+**Decision:** All new component styling uses **Tailwind utility classes only**. No new `.module.css` files are created. When a `.tsx` file is modified for any reason, its entire `.module.css` is migrated to Tailwind in the same commit and the `.module.css` file deleted.
+
+**Critical spacing rule (CLAUDE.md §CSS→TAILWIND):**
+`src/styles/global.css` has a bare `* { margin: 0; padding: 0 }` reset that overrides Tailwind's `@layer utilities`. This means **Tailwind spacing utilities (`mt-*`, `px-*`, `gap-*`) produce zero spacing** and must never be used. Use `style` props for all `margin`, `padding`, and `gap` values.
+
+```tsx
+// ❌ FORBIDDEN — zeroed by global * reset
+<div className="p-4 gap-2 mt-3">
+
+// ✅ CORRECT — spacing via style prop; layout/color via Tailwind
+<div className="flex items-center rounded-[var(--radius-md)] bg-[var(--color-surface)]"
+     style={{ padding: 'var(--space-md)', gap: 'var(--space-sm)' }}>
+```
+
+**What NEVER gets migrated to Tailwind:**
+- `src/styles/variables.css` / `src/styles/themes/*.css` — design tokens and runtime theme switching
+- `src/styles/global.css` / `src/styles/semanticZoom.css` — global resets, canvas viewport rules
+- ProseMirror/TipTap global selectors (`:global(.ProseMirror ...)`) — must stay in `TipTapEditor.module.css`
+- Canvas layout with `position: absolute`, ReactFlow transforms — Tailwind insufficient
+
+**Highlight feature (Mar 17 2026):** `EditorBubbleMenu.module.css` deleted; `EditorBubbleMenu.tsx`, `LinkButtonItem.tsx`, `HighlightSwatches.tsx` are Tailwind-only. `TipTapEditor.module.css` retains the `.ProseMirror mark` rule because it is a ProseMirror global selector.
+
+---
 
 These rules were codified as a result of the sprint:
 

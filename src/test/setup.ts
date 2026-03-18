@@ -2,6 +2,13 @@ import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 import 'fake-indexeddb/auto';
 
+// jsdom does not implement ResizeObserver — provide a no-op stub
+global.ResizeObserver = class ResizeObserver {
+    observe() { /* no-op */ }
+    unobserve() { /* no-op */ }
+    disconnect() { /* no-op */ }
+};
+
 // Provide dummy API keys for tests to prevent CI failures
 vi.stubEnv('VITE_GEMINI_API_KEY', 'dummy_test_key');
 vi.stubEnv('VITE_FIREBASE_API_KEY', 'dummy_test_key');

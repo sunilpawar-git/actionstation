@@ -46,7 +46,7 @@ export const DEFAULT_SETTINGS_STATE = {
     autoSaveInterval: 30,
     compactMode: false,
     canvasScrollMode: 'zoom' as const,
-    connectorStyle: 'solid' as const,
+    connectorStyle: 'regular' as const,
     isCanvasLocked: false,
     canvasFreeFlow: false,
     lastSettingsTab: 'appearance' as const,

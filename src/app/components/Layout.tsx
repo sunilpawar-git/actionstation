@@ -3,7 +3,7 @@
  * Manages pinned/hover sidebar mode with elastic topbar
  */
 import type { ReactNode } from 'react';
-import { useCallback } from 'react';
+import { lazy, Suspense, useCallback } from 'react';
 import { Sidebar } from '@/shared/components/Sidebar';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { OfflineBanner } from './OfflineBanner';
@@ -11,12 +11,19 @@ import { SearchBar } from '@/features/search';
 import { useSearchInputRef } from '@/features/search/hooks/useSearchInputRef';
 import { WorkspaceControls } from '@/features/workspace/components/WorkspaceControls';
 import { KnowledgeBankAddButton } from '@/features/knowledgeBank/components/KnowledgeBankAddButton';
-import { KnowledgeBankPanel } from '@/features/knowledgeBank/components/KnowledgeBankPanel';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import { useWorkspaceStore } from '@/features/workspace/stores/workspaceStore';
 import { useSidebarStore } from '@/shared/stores/sidebarStore';
 import { useSidebarHover } from '@/shared/hooks/useSidebarHover';
 import './Layout.css';
+
+// Lazy-loaded: splits the entire KnowledgeBank feature tree into its own chunk,
+// preventing knowledgeBankService / storageService from being pulled into the
+// initial bundle by their static imports in useDocumentGroupHandlers et al.
+const KnowledgeBankPanel = lazy(() =>
+    import('@/features/knowledgeBank/components/KnowledgeBankPanel')
+        .then(m => ({ default: m.KnowledgeBankPanel }))
+);
 
 interface LayoutProps {
     children: ReactNode;
@@ -55,7 +62,9 @@ export function Layout({ children, onSettingsClick }: LayoutProps) {
             >
                 <Sidebar onSettingsClick={onSettingsClick} />
             </div>
-            <KnowledgeBankPanel />
+            <Suspense fallback={null}>
+                <KnowledgeBankPanel />
+            </Suspense>
             <div className="layout-main-area flex-1 flex flex-col overflow-hidden">
                 <header
                     className="flex items-center gap-[var(--space-md)] bg-[var(--color-surface-elevated)] border-b border-[var(--color-border)] z-[var(--z-sticky)] shrink-0"

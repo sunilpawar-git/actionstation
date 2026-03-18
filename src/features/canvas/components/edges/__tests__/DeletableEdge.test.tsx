@@ -1,5 +1,9 @@
 /**
- * DeletableEdge Component Tests - Component integrity validation
+ * DeletableEdge Component Tests — Connector style inline-style validation.
+ *
+ * After Phase 5 refactor, connector styles are applied as inline SVG styles
+ * via CONNECTOR_STYLE_DEFS (single source of truth), not CSS class names.
+ * Tests assert on computed style properties rather than class presence.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
@@ -8,7 +12,6 @@ import { DeletableEdge } from '../DeletableEdge';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { createMockSettingsState } from '@/shared/__tests__/helpers/mockSettingsState';
 import type { ConnectorStyle } from '@/shared/stores/settingsStore';
-import styles from '../DeletableEdge.module.css';
 
 // Mock the settings store with getState() support
 vi.mock('@/shared/stores/settingsStore', () => {
@@ -33,7 +36,7 @@ const mockEdgeProps = {
     targetY: 100,
     sourcePosition: Position.Bottom,
     targetPosition: Position.Top,
-    style: { stroke: 'red' }, // Custom inline style test
+    style: { stroke: 'red' }, // Custom inline style — must always win over connector base stroke
 };
 
 describe('DeletableEdge ConnectorStyles', () => {
@@ -57,39 +60,49 @@ describe('DeletableEdge ConnectorStyles', () => {
         );
     };
 
-    it('should apply edgeSolid class by default', () => {
-        setupWithStyle('solid');
-        // BaseEdge adds its own react-flow__edge-path class and assigns our class manually
-        // We find the path by its data-testid inside BaseEdge or by the className we passed
-        // Wait, BaseEdge doesn't natively expose data-testid. 
-        // We will just search the DOM for the class using container query.
-        const path = document.querySelector(`.react-flow__edge-path.${styles.edgeSolid}`);
+    it('user stroke override wins for regular style', () => {
+        setupWithStyle('regular');
+        const path = document.querySelector('.react-flow__edge-path');
         expect(path).toBeInTheDocument();
-        // Check if inline style overrides persist
+        // User style.stroke overrides the connector base stroke
         expect(path).toHaveStyle({ stroke: 'red' });
+        expect(path).toHaveStyle({ strokeWidth: 2 });
     });
 
-    it('should apply edgeSubtle class when style is subtle', () => {
-        setupWithStyle('subtle');
-        const path = document.querySelector(`.react-flow__edge-path.${styles.edgeSubtle}`);
+    it('applies faint solid line for light style', () => {
+        setupWithStyle('light');
+        const path = document.querySelector('.react-flow__edge-path');
         expect(path).toBeInTheDocument();
+        expect(path).toHaveStyle({ strokeWidth: 1 });
+        expect(path).toHaveStyle({ strokeOpacity: 0.5 });
     });
 
-    it('should apply edgeThick class when style is thick', () => {
-        setupWithStyle('thick');
-        const path = document.querySelector(`.react-flow__edge-path.${styles.edgeThick}`);
+    it('applies thick line for bold style', () => {
+        setupWithStyle('bold');
+        const path = document.querySelector('.react-flow__edge-path');
         expect(path).toBeInTheDocument();
+        expect(path).toHaveStyle({ strokeWidth: 4 });
     });
 
-    it('should apply edgeDashed class when style is dashed', () => {
+    it('applies dash pattern for dashed style', () => {
         setupWithStyle('dashed');
-        const path = document.querySelector(`.react-flow__edge-path.${styles.edgeDashed}`);
+        const path = document.querySelector('.react-flow__edge-path');
         expect(path).toBeInTheDocument();
+        expect(path).toHaveStyle({ strokeDasharray: '6 6' });
     });
 
-    it('should apply edgeDotted class when style is dotted', () => {
+    it('applies dot pattern for dotted style', () => {
         setupWithStyle('dotted');
-        const path = document.querySelector(`.react-flow__edge-path.${styles.edgeDotted}`);
+        const path = document.querySelector('.react-flow__edge-path');
         expect(path).toBeInTheDocument();
+        expect(path).toHaveStyle({ strokeDasharray: '2 6' });
+    });
+
+    it('applies near-invisible line for ghost style', () => {
+        setupWithStyle('ghost');
+        const path = document.querySelector('.react-flow__edge-path');
+        expect(path).toBeInTheDocument();
+        expect(path).toHaveStyle({ strokeWidth: 0.75 });
+        expect(path).toHaveStyle({ strokeOpacity: 0.22 });
     });
 });

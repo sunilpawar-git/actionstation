@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import type { MouseEvent as ReactMouseEvent, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useCanvasStore } from '../stores/canvasStore';
 import { enterFocusWithEditing } from '../stores/focusStore';
 import { toggleContentModeWithUndo } from '../services/contentModeToggleService';
@@ -43,6 +44,10 @@ export function useIdeaCardHandlers(params: UseIdeaCardHandlersParams) {
     }, [id]);
     const handleTagOpen = useCallback(() => { setShowTagInput(true); }, [setShowTagInput]);
     const handleFocusClick = useCallback(() => { enterFocusWithEditing(id); }, [id]);
+    const handleCmdClick = useCallback((e: ReactMouseEvent) => {
+        if (!e.metaKey && !e.ctrlKey) return;
+        enterFocusWithEditing(id);
+    }, [id]);
 
     const focusBody = useCallback(() => { if (editor) editor.commands.focus(); }, [editor]);
     const focusHeading = useCallback(() => { headingRef.current?.focus(); }, [headingRef]);
@@ -63,13 +68,13 @@ export function useIdeaCardHandlers(params: UseIdeaCardHandlersParams) {
         handleTagsChange(ids);
         if (ids.length === 0) setShowTagInput(false);
     }, [handleTagsChange, setShowTagInput]);
-    const onKeyDownReact = useCallback((e: React.KeyboardEvent) => handleKeyDown(e.nativeEvent), [handleKeyDown]);
+    const onKeyDownReact = useCallback((e: ReactKeyboardEvent) => handleKeyDown(e.nativeEvent), [handleKeyDown]);
 
     return {
         slashHandler, handleImageClick, handleAttachmentClick, documentInsertFn, handleAfterImageInsert, handleDelete, handleRegenerate,
         handleConnectClick, handleTransform, handleHeadingChange, handleCopy, handleDuplicate,
         handleShare, isSharing, isTransforming, handlePinToggle, handleCollapseToggle,
-        handlePoolToggle, handleColorChange, handleTagOpen, handleFocusClick, handleDoubleClick,
-        onSubmitAI, onTagsChange, onKeyDownReact, focusBody,
+        handlePoolToggle, handleColorChange, handleTagOpen, handleFocusClick, handleCmdClick,
+        handleDoubleClick, onSubmitAI, onTagsChange, onKeyDownReact, focusBody,
     };
 }

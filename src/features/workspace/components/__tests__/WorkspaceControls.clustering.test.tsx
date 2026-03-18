@@ -70,7 +70,7 @@ describe('WorkspaceControls - Clear themes button', () => {
     it('renders 7 dividers when clusters are active (vs 6 without)', () => {
         useCanvasStore.setState({ clusterGroups: [CLUSTER_FIXTURE] });
         const { container } = render(<WorkspaceControls />);
-        const dividers = container.querySelectorAll('[class*="divider"]');
+        const dividers = container.querySelectorAll('[class*="w-px"]');
         expect(dividers.length).toBe(7);
     });
 });

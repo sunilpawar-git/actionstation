@@ -3,7 +3,7 @@
  * Store is the single source of truth, ReactFlow syncs to it
  */
 import { useMemo, useRef, useReducer, memo, useEffect, useCallback } from 'react';
-import { ReactFlow, Background, BackgroundVariant, ConnectionLineType, SelectionMode, PanOnScrollMode, type Node, type Viewport } from '@xyflow/react';
+import { ReactFlow, Background, BackgroundVariant, ConnectionLineType, SelectionMode, PanOnScrollMode, Panel, type Node, type Viewport } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { useCanvasStore } from '../stores/canvasStore';
@@ -140,10 +140,14 @@ function CanvasViewInner() {
                 panActivationKeyCode={PAN_ACTIVATION_KEY}
                 multiSelectionKeyCode={MULTI_SELECT_KEY}
                 onlyRenderVisibleElements
+                proOptions={{ hideAttribution: true }}
             >
                 <ViewportSync viewport={viewport} />
                 {canvasGrid && <Background variant={BackgroundVariant.Dots} gap={BACKGROUND_GAP} size={BACKGROUND_DOT_SIZE} />}
                 <ZoomControls />
+                <Panel position="bottom-right" style={{ margin: '0 8px 8px 0', fontSize: '11px', color: 'var(--color-text-muted)', userSelect: 'none', pointerEvents: 'none' }}>
+                    Action Station
+                </Panel>
             </ReactFlow>
             <ClusterOverlay />
             <SelectionToolbar />

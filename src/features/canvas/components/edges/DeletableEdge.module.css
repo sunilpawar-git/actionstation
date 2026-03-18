@@ -43,29 +43,3 @@
     outline-offset: 2px;
 }
 
-/* Edge Connector Styles */
-.edgeSolid {
-    stroke: var(--color-border);
-}
-
-.edgeSubtle {
-    stroke: var(--color-border);
-    opacity: 0.5;
-    stroke-width: 1px;
-}
-
-.edgeThick {
-    stroke: var(--color-border);
-    stroke-width: 4px;
-}
-
-.edgeDashed {
-    stroke: var(--color-border);
-    stroke-dasharray: 6, 6;
-}
-
-.edgeDotted {
-    stroke: var(--color-border);
-    stroke-dasharray: 2, 6;
-    stroke-linecap: round;
-}

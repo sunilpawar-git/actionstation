@@ -1,6 +1,6 @@
 import { strings } from '@/shared/localization/strings';
 import { PinIcon } from '@/shared/components/icons';
-import styles from './Sidebar.module.css';
+import { SB_HEADER, SB_HEADER_STYLE, SB_LOGO, SB_APP_NAME, SB_APP_NAME_STYLE, SB_PIN_TOGGLE } from './sidebarStyles';
 
 interface SidebarHeaderProps {
     isPinned: boolean;
@@ -10,8 +10,8 @@ interface SidebarHeaderProps {
 
 export function SidebarHeader({ isPinned, isHoverOpen, onTogglePin }: SidebarHeaderProps) {
     return (
-        <div className={styles.header}>
-            <div className={styles.logo}>
+        <div className={SB_HEADER} style={SB_HEADER_STYLE}>
+            <div className={SB_LOGO}>
                 <svg
                     width="32"
                     height="32"
@@ -29,9 +29,9 @@ export function SidebarHeader({ isPinned, isHoverOpen, onTogglePin }: SidebarHea
                     />
                 </svg>
             </div>
-            <span className={styles.appName}>{strings.app.name}</span>
+            <span className={SB_APP_NAME} style={SB_APP_NAME_STYLE}>{strings.app.name}</span>
             <button
-                className={styles.pinToggleButton}
+                className={SB_PIN_TOGGLE}
                 onClick={onTogglePin}
                 aria-label={isPinned ? strings.sidebar.unpin : strings.sidebar.pin}
                 aria-pressed={isPinned}

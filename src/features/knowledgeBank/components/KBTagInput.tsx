@@ -5,7 +5,19 @@
 import React, { useState, useCallback } from 'react';
 import { strings } from '@/shared/localization/strings';
 import { KB_MAX_TAGS_PER_ENTRY, KB_MAX_TAG_LENGTH } from '../types/knowledgeBank';
-import styles from './KBTagInput.module.css';
+import {
+    KB_TAG_INPUT_STYLE,
+    KB_TAG_LIST,
+    KB_TAG_LIST_STYLE,
+    KB_TAG,
+    KB_TAG_STYLE,
+    KB_TAG_REMOVE,
+    KB_TAG_REMOVE_STYLE,
+    KB_TAG_FIELD,
+    KB_TAG_FIELD_STYLE,
+    KB_TAG_LIMIT,
+    KB_TAG_LIMIT_STYLE,
+} from './kbTagInputStyles';
 
 interface KBTagInputProps {
     tags: string[];
@@ -40,13 +52,14 @@ export const KBTagInput = React.memo(function KBTagInput({ tags, onChange }: KBT
     const atLimit = tags.length >= KB_MAX_TAGS_PER_ENTRY;
 
     return (
-        <div className={styles.tagInput}>
-            <div className={styles.tagList}>
+        <div style={KB_TAG_INPUT_STYLE}>
+            <div className={KB_TAG_LIST} style={KB_TAG_LIST_STYLE}>
                 {tags.map((tag) => (
-                    <span key={tag} className={styles.tag}>
+                    <span key={tag} className={KB_TAG} style={KB_TAG_STYLE}>
                         {tag}
                         <button
-                            className={styles.tagRemove}
+                            className={KB_TAG_REMOVE}
+                            style={KB_TAG_REMOVE_STYLE}
                             onClick={() => removeTag(tag)}
                             aria-label={`${ts.removeTag} ${tag}`}
                         >
@@ -58,7 +71,8 @@ export const KBTagInput = React.memo(function KBTagInput({ tags, onChange }: KBT
             {!atLimit && (
                 <input
                     type="text"
-                    className={styles.tagField}
+                    className={KB_TAG_FIELD}
+                    style={KB_TAG_FIELD_STYLE}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -68,7 +82,7 @@ export const KBTagInput = React.memo(function KBTagInput({ tags, onChange }: KBT
                 />
             )}
             {atLimit && (
-                <span className={styles.tagLimit}>{ts.maxReached}</span>
+                <span className={KB_TAG_LIMIT} style={KB_TAG_LIMIT_STYLE}>{ts.maxReached}</span>
             )}
         </div>
     );

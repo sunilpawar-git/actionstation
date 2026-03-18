@@ -72,4 +72,11 @@
   --offline-banner-bg: hsl(38, 30%, 90%);
   --offline-banner-text: hsl(38, 20%, 25%);
   --offline-banner-border: hsl(38, 20%, 78%);
+
+  /* Text Highlight - Grey (desaturated, clean) */
+  --highlight-yellow: hsl(50, 60%, 80%);
+  --highlight-green:  hsl(142, 30%, 78%);
+  --highlight-blue:   hsl(213, 40%, 80%);
+  --highlight-pink:   hsl(340, 40%, 82%);
+  --highlight-purple: hsl(270, 35%, 82%);
 }

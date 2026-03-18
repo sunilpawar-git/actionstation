@@ -3,7 +3,7 @@
  * Single interactive control: a visually hidden checkbox with role="switch".
  * The track/knob are purely visual (aria-hidden).
  */
-import React from 'react';
+import React, { useMemo, type CSSProperties } from 'react';
 import clsx from 'clsx';
 
 interface ToggleProps {
@@ -15,18 +15,45 @@ interface ToggleProps {
     id: string;
 }
 
-const TOGGLE_KNOB_SIZE = 16;
+const KNOB_TRAVEL = 16;
 
-/** Accessible pill-style toggle switch with optional description; uses a visually-hidden checkbox with role="switch". */
+const TRACK_BASE: CSSProperties = {
+    padding: 0,
+    marginTop: 2,
+};
+
+const KNOB_BASE: CSSProperties = {
+    position: 'absolute',
+    top: 2,
+    left: 2,
+    width: 16,
+    height: 16,
+    borderRadius: '50%',
+    background: 'var(--color-text-on-primary)',
+    transition: 'transform 150ms ease-in-out',
+};
+
 export const Toggle = React.memo(function Toggle({ checked, onChange, label, description, disabled = false, id }: ToggleProps) {
     const descriptionId = description ? `${id}-desc` : undefined;
 
+    const trackStyle = useMemo<CSSProperties>(() => ({
+        ...TRACK_BASE,
+        backgroundColor: checked ? 'var(--color-primary)' : 'var(--color-border)',
+        opacity: disabled ? 0.5 : undefined,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+    }), [checked, disabled]);
+
+    const knobStyle = useMemo<CSSProperties>(() => ({
+        ...KNOB_BASE,
+        transform: checked ? `translateX(${String(KNOB_TRAVEL)}px)` : 'translateX(0)',
+    }), [checked]);
+
     return (
-        <label className="flex items-start justify-between cursor-pointer" style={{ gap: 16 }} htmlFor={id}>
+        <label className="relative flex items-start justify-between cursor-pointer" style={{ gap: 'var(--space-md)' }} htmlFor={id}>
             <span className="flex flex-col flex-1 min-w-0" style={{ gap: 2 }}>
-                <span className="text-[var(--color-text-primary)]" style={{ fontSize: 'var(--font-size-sm)' }}>{label}</span>
+                <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-primary)' }}>{label}</span>
                 {description != null && (
-                    <span id={descriptionId} className="text-[var(--color-text-muted)]" style={{ fontSize: 'var(--font-size-xs)' }}>{description}</span>
+                    <span id={descriptionId} style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>{description}</span>
                 )}
             </span>
             <input
@@ -42,19 +69,13 @@ export const Toggle = React.memo(function Toggle({ checked, onChange, label, des
             />
             <span
                 className={clsx(
-                    'relative w-9 h-5 min-w-[36px] rounded-[10px] cursor-pointer transition-colors duration-150 ease-in-out shrink-0 peer-focus-visible:outline-2 peer-focus-visible:outline-[var(--color-primary)] peer-focus-visible:outline-offset-2',
-                    checked ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]',
-                    disabled && 'opacity-50 cursor-not-allowed'
+                    'relative w-9 h-5 min-w-[36px] rounded-[10px] shrink-0 transition-colors duration-150 ease-in-out',
+                    'peer-focus-visible:outline-2 peer-focus-visible:outline-[var(--color-primary)] peer-focus-visible:outline-offset-2',
                 )}
-                style={{ padding: 0, marginTop: 2 }}
+                style={trackStyle}
                 aria-hidden="true"
             >
-                <span
-                    className={clsx(
-                        'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[var(--color-text-on-primary)] transition-transform duration-150 ease-in-out',
-                        checked && `translate-x-[${String(TOGGLE_KNOB_SIZE)}px]`
-                    )}
-                />
+                <span style={knobStyle} />
             </span>
         </label>
     );

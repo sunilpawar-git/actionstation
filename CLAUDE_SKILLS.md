@@ -350,6 +350,155 @@ A: `/test` runs only tests. `/build` runs the complete CI pipeline (types → li
 
 ---
 
-**Last Updated**: 2026-03-06
-**Skills Version**: 1.0
+---
+
+## Production Hardening Checklist (Sprint — Mar 17 2026)
+
+All items below are permanently complete. Do not revert.
+
+```
+✅ npm audit: 0 vulnerabilities (was 12 HIGH/MODERATE)
+✅ CI audit gate: npm audit --audit-level=high blocks build on new vulns
+✅ Security headers: HSTS, X-Frame-Options, CSP, Referrer-Policy,
+                   Permissions-Policy, X-Content-Type-Options in firebase.json
+✅ CSP: HTTP header only (not meta tag). frame-ancestors 'none' enforced
+✅ VITE_GOOGLE_CLIENT_ID: in REQUIRED_VARS, deploy.yml, GitHub Secrets
+✅ VITE_CLOUD_FUNCTIONS_URL: in REQUIRED_VARS, deploy.yml, GitHub Secrets
+✅ VITE_GEMINI_API_KEY: absent from deploy.yml (prod-safe)
+✅ KnowledgeBankPanel: React.lazy chunk (~20 KB separated)
+✅ AI injection patterns: 12+ obfuscated variants (no Cyrillic false-positives)
+✅ /health endpoint: deployed to us-central1-actionstation-244f0.cloudfunctions.net
+✅ Firestore daily backup: scheduled export → actionstation-244f0-backups GCS bucket
+✅ Build artifacts: removed from git (dist-node/, *.tsbuildinfo, wave6-*.png)
+✅ Test suite: 5050/5050 green after all hardening changes
+```
+
+### Live verification commands
+```bash
+# Confirm headers are live
+curl -sI https://actionstation-244f0.web.app | grep -i "strict-transport\|x-frame\|content-security\|referrer\|permissions\|x-content"
+
+# Confirm health endpoint
+curl -s https://us-central1-actionstation-244f0.cloudfunctions.net/health
+
+# Confirm 0 vulns
+npm audit
+
+# Full test suite
+npm run check
+```
+
+---
+
+## Advanced Security Hardening Checklist (Sprint — Mar 17 2026)
+
+All items below are permanently complete. Do not remove or bypass.
+
+```
+✅ securityLogger.ts:      structured JSON → Cloud Logging, WARNING/ERROR/CRITICAL routing
+                           labels.eden_security=true on all entries
+✅ botDetector.ts:         24 scanner UAs (sqlmap/nikto/masscan/nuclei/Burp/ZAP/curl/wget…)
+                           6 headless browser patterns (HeadlessChrome/Playwright/Puppeteer…)
+                           heuristic: wildcard Accept + no Accept-Language
+✅ ipRateLimiter.ts:       per-IP sliding window, 30 req/min Gemini
+                           Firestore-backed (production), in-memory (tests)
+                           stops multi-account distributed abuse
+✅ promptFilter.ts:        14 injection patterns (DAN/jailbreak/[SYSTEM]/<|im_start|>/ignore…)
+                           5 exfiltration patterns (print API key / reveal system prompt…)
+                           50k/100k char limits per-part and total
+                           output scan: GCP API keys, Bearer tokens, private key fragments
+✅ fileUploadValidator.ts: magic-byte detection (PNG/JPEG/GIF/WEBP/PDF/ZIP/GZ/RAR/7Z/ELF/PE)
+                           archive hard-block (zip bomb vector)
+                           polyglot detection (archive/executable disguised as image)
+                           MIME mismatch block
+                           30 dangerous extensions blocked (.exe/.sh/.php/.py/.ps1…)
+                           per-type size limits (text 1 MB, image 10 MB, PDF 20 MB)
+✅ threatMonitor.ts:       429 spike (50/min), 500 spike (20/min),
+                           auth failure (30/min), bot (10/min) → CRITICAL log alert
+✅ geminiProxy.ts:         all 6 layers wired: bot→IP→auth→user-rate→body→prompt→token→output
+✅ securityConstants.ts:   IP_RATE_LIMIT=120, IP_RATE_LIMIT_GEMINI=30, UPLOAD_MAX_BODY_BYTES
+✅ Tests:                  225/225 passing, tsc clean
+```
+
+### Cloud Monitoring alert setup (manual — one-time in GCP Console)
+
+```
+Log filter: jsonPayload.labels.eden_security="true" AND severity>="ERROR"
+Notification channel: email / PagerDuty / Slack webhook
+Threshold: any single occurrence
+```
+
+### Remaining gaps — ALL RESOLVED ✅
+
+| Gap | Resolution |
+|---|---|
+| ~~WAF~~ | ✅ `scripts/setup-cloud-armor.sh` — OWASP CRS + LB + NEGs |
+| ~~Turnstile / reCAPTCHA~~ | ✅ `functions/src/verifyTurnstile.ts` + `utils/captchaValidator.ts` |
+| ~~Immutable backups~~ | ✅ `scripts/setup-immutable-backups.sh` — 30-day GCS retention |
+
+---
+
+## WAF / CAPTCHA / Immutable Backups Checklist (Sprint — Mar 17 2026)
+
+All items below are permanently complete. Do not remove or bypass.
+
+```
+✅ captchaValidator.ts:    verifyTurnstileToken() + verifyRecaptchaToken() shared utility
+                           Turnstile: POST /siteverify → CaptchaResult { success, errorCodes }
+                           reCAPTCHA v3: action mismatch detection, score < 0.5 → blocked
+✅ verifyTurnstile.ts:     POST /verifyTurnstile Cloud Function
+                           IP rate-limit: IP_RATE_LIMIT_CAPTCHA = 10 req/min
+                           Logs CAPTCHA_FAILED to Cloud Logging on failure
+                           TURNSTILE_SECRET held in Secret Manager (never in code)
+✅ CAPTCHA_FAILED:         New SecurityEventType in securityLogger.ts
+✅ IP_RATE_LIMIT_CAPTCHA:  New constant (10) in securityConstants.ts
+✅ functions/src/index.ts: verifyTurnstile exported
+✅ setup-cloud-armor.sh:   8 OWASP CRS v3.3 rule sets (SQLi/XSS/LFI/RFI/RCE/scanner/protocol/method)
+                           IP rate-limit rule: 100 req/min per IP → 5-min ban
+                           Serverless NEGs for all 9 Cloud Run services
+                           Backend services with Cloud Armor policy attached
+                           HTTPS LB + URL-map path routing + Google-managed SSL cert
+✅ setup-immutable-backups.sh:
+                           New bucket: actionstation-244f0-firestore-backups-immutable
+                           30-day GCS object retention policy
+                           Object versioning (non-current → deleted after 90 days)
+                           Optional irrevocable retention lock
+                           SA write access granted
+✅ firestoreBackup.ts:     Updated JSDoc with immutable bucket migration path + restore command
+✅ TypeScript build:       tsc clean, 0 errors
+```
+
+### Deployment order
+
+```bash
+# 1. Turnstile secret → deploy function
+gcloud secrets create TURNSTILE_SECRET --replication-policy="automatic"
+echo -n "SECRET" | gcloud secrets versions add TURNSTILE_SECRET --data-file=-
+firebase deploy --only functions:verifyTurnstile
+
+# 2. Immutable backup bucket
+bash scripts/setup-immutable-backups.sh
+# → update BACKUP_BUCKET in functions/src/firestoreBackup.ts
+firebase deploy --only functions:firestoreBackup
+
+# 3. Cloud Armor WAF (last — DNS change required)
+bash scripts/setup-cloud-armor.sh
+# → update DNS A record for eden.so to printed LB IP
+```
+
+### Client-side integration for Turnstile
+
+```typescript
+// Before login / upload — call this first
+const token = await turnstile.getResponse();
+const r = await fetch(`${FUNCTIONS_URL}/verifyTurnstile`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token }),
+});
+if (!r.ok) throw new Error('Bot challenge failed');
+```
+
+**Last Updated**: 2026-03-17
+**Skills Version**: 1.3
 **Supported**: Claude Code CLI with custom skills support

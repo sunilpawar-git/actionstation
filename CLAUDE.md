@@ -1,6 +1,79 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # ActionStation - Project Rules
 
 > **CRITICAL**: ZERO TECH DEBT policy. All rules are NON-NEGOTIABLE.
+
+## 🛠️ Development Commands
+
+```bash
+# Dev server
+npm run dev                          # Start Vite dev server
+
+# Full check (typecheck + lint + test) — run before committing
+npm run check
+
+# Individual checks
+npm run typecheck                    # tsc --noEmit
+npm run lint                         # eslint, zero warnings allowed
+npm run lint:fix                     # Auto-fix lint issues
+npm run test                         # vitest run (all tests, single run)
+npm run test:watch                   # vitest in watch mode
+
+# Run a single test file
+npx vitest run src/path/to/file.test.ts
+
+# Run tests matching a name pattern
+npx vitest run -t "pattern"
+
+# Build
+npm run build                        # typecheck + lint + test + vite build
+npm run build:quick                   # tsc -b + vite build (skip lint/test)
+
+# Cloud Functions (separate package)
+cd functions && npm run check         # lint + test + build
+cd functions && npm test              # vitest run
+```
+
+**Dev server**: `npm run dev` starts Vite at `http://localhost:5173`.
+
+**Path alias**: `@/` maps to `src/` (configured in tsconfig.json and vite.config.ts).
+
+**Test framework**: Vitest + jsdom + React Testing Library. Setup in `src/test/setup.ts`. Tests co-located in `__tests__/` dirs or as `*.test.ts(x)` files.
+
+**Cloud Functions**: Separate Node 22 package in `functions/` with its own tsconfig, eslint, and vitest config. Exports from `functions/src/index.ts`.
+
+## 🧠 Product Context — Building a Second Brain (BASB)
+
+ActionStation is a **Building a Second Brain** (BASB) application — an infinite canvas for capturing, connecting, and synthesising ideas. Every feature must serve this philosophy:
+
+- **Capture**: Nodes are atomic ideas (text, images, documents). Creation must be frictionless — one click or keyboard shortcut.
+- **Organise**: Spatial layout on an infinite canvas replaces folders. Clustering and tagging surface structure organically.
+- **Distil**: AI-powered synthesis (Gemini) condenses selected nodes into new insight. Knowledge Bank entries provide reusable context.
+- **Express**: Branch export, markdown output, and mind-map views transform private notes into shareable artefacts.
+
+When building features, ask: *"Does this reduce friction between thought and capture, or between capture and insight?"* If not, it doesn't belong.
+
+## 🔧 Available Skills (Slash Commands)
+
+Use these skills proactively during development — invoke via `/skillname`.
+
+| Skill | When to use |
+|-------|-------------|
+| `/build` | Run full build pipeline (types + lint + test + build). Use `--quick` to skip tests. |
+| `/ci` | Simulate GitHub CI locally before pushing. Supports `--fast` and `--from <stage>`. |
+| `/test` | Run tests for specific files/patterns. e.g. `/test src/features/canvas/__tests__/` |
+| `/typecheck` | Run `tsc --noEmit` to check type errors without building. |
+| `/lint-fix` | Run ESLint with auto-fix across project or specific files. |
+| `/review` | Audit changed files for CLAUDE.md compliance, tech debt, file size limits, anti-patterns. |
+| `/css-migrate` | Migrate a component's `.module.css` to Tailwind. Follow the Tailwind migration rules below. |
+| `/migration-verify` | Verify a completed CSS-to-Tailwind migration wave (orphaned imports, forbidden patterns). |
+| `/phase <n>` | Load roadmap phase plan (1-10) from `mydocs/PHASE-*.md` for implementation guidance. |
+| `/simplify` | Review changed code for reuse, quality, and efficiency, then fix issues found. |
+
+**Workflow**: After implementing a feature, run `/review` then `/build`. Before pushing, run `/ci`.
 
 ## 🚨 STRICT LIMITS
 
@@ -58,9 +131,9 @@ Every node and edge document stores `userId` + `workspaceId`. Firestore rules va
 ### SOLID Principles Enforcement
 - **S**: One file = One responsibility
 - **O**: Extend via composition, not modification
-- **NO HARDCODED STRINGS**: Use `stringResource(R.string.key)` or `context.getString()`.
-- **NO HARDCODED COLORS**: Use `MaterialTheme.colorScheme.primary`.
-- **NO HARDCODED DIMENSIONS**: Use `dp` or `sp` resources/constants.
+- **NO HARDCODED STRINGS**: Use `strings` from `@/shared/localization/strings`
+- **NO HARDCODED COLORS**: Use CSS variables (`var(--color-*)`) from `src/styles/variables.css`
+- **NO HARDCODED DIMENSIONS**: Use CSS variables (`var(--space-*)`, `var(--radius-*)`) or design tokens
 - **SECURITY: NO SECRETS IN CODE**: NEVER hardcode API keys, passwords, or tokens. Use `.env.local` for local development. Use environment variables in CI/CD.
 - **L**: Interfaces define contracts
 - **I**: Small, focused interfaces
@@ -184,6 +257,35 @@ In Tailwind v4, utilities live in `@layer utilities`. CSS rules declared **outsi
 4. **Theme-aware colors** must use `var(--color-*)` arbitrary syntax, never Tailwind's built-in palette (e.g. `bg-blue-500` → `bg-[var(--color-primary)]`)
 5. **Canvas components stay in CSS** — `IdeaCard`, `CanvasView`, node/edge files are last-resort migrations
 6. **Spacing via `style` props** — `margin`, `padding`, `gap` must use inline `style` props, not Tailwind spacing utilities (see "Global CSS Reset" section above)
+7. **Fixed-height containers must use `overflow-clip`** — never `overflow-hidden` on modals, panels, or dialogs (see section below)
+
+### 🔴 CRITICAL: overflow-hidden vs overflow-clip (Focus-Scroll Bug)
+
+**Root cause discovered during SettingsPanel ConnectorStylePicker migration (Wave 6).**
+
+CSS `overflow: hidden` clips visual overflow but **still allows the browser to programmatically scroll** the element. When a focusable child (e.g. `sr-only` radio input, hidden checkbox) receives focus, the browser walks up the DOM and scrolls every ancestor — including `overflow: hidden` containers — to bring the focused element into view.
+
+This silently sets `scrollTop` on the container, shifting all content upward and creating a blank gap at the bottom.
+
+```tsx
+// ❌ BROKEN — browser can still scroll this container on focus
+<div className="h-[600px] flex flex-col overflow-hidden rounded-xl">
+    ...
+    <input className="sr-only" type="radio" /> {/* focus causes scroll! */}
+</div>
+
+// ✅ CORRECT — overflow-clip prevents ALL scrolling (visual AND programmatic)
+<div className="h-[600px] flex flex-col overflow-clip rounded-xl">
+    ...
+    <input className="sr-only" type="radio" /> {/* no scroll on focus */}
+</div>
+```
+
+**Rule: Any fixed-height container that should NEVER scroll (modals, panels, dialogs, popovers) must use `overflow-clip`, not `overflow-hidden`.** Use `overflow-hidden` only for text truncation (`overflow-hidden text-ellipsis`) or containers where the height matches content exactly.
+
+**Note:** `overflow-clip` also clips to `border-radius`, just like `overflow-hidden`. No visual difference — only the scroll behavior changes.
+
+**Enforcement:** Structural test `overflowClip.structural.test.ts` scans for `overflow-hidden` on height-constrained containers and verifies known modal constants use `overflow-clip`.
 
 ---
 
@@ -344,6 +446,21 @@ service cloud.firestore {
 3. REFACTOR: Clean while green
 4. COMMIT: Only when tests pass
 ```
+
+### 🔴 CRITICAL: Acceptance Criteria Before Feature Tests
+
+**ALWAYS ask for acceptance criteria before designing feature/fix tests.** Do not infer what to test — the user defines what "done" means.
+
+```
+// Workflow:
+1. User requests a feature or fix
+2. ASK: "What are the acceptance criteria for this change?"
+3. User provides criteria (e.g., "clicking X does Y", "error shown when Z")
+4. Write tests that directly verify those criteria
+5. Implement code to pass those tests
+```
+
+This applies to feature and integration tests. Structural tests (selector anti-patterns, Firestore query caps, CSP completeness) and unit tests for utils/services still follow standard coverage requirements above.
 
 ### Test Coverage Requirements
 | Layer | Minimum Coverage |
@@ -569,6 +686,22 @@ const migrations: Migration[] = [
 ### Bundle-first loading
 `loadUserWorkspaces` tries `loadWorkspaceBundle()` first (fast, cached). Bundle cache is invalidated automatically on workspace create/delete. Falls back to direct Firestore queries if bundle is unavailable.
 
+## 💰 COST MINIMISATION (Gemini & Firebase/Firestore)
+
+Every Firestore read/write and every Gemini API call costs money. Treat them as scarce resources.
+
+### Firestore cost rules
+Firestore cost controls are enforced via the rules in **Firestore Patterns** and **Spatial Chunking** sections above (query caps, batch writes, bundle-first loading, tile eviction). Additionally:
+- **Avoid full-collection reads**: Always scope queries to user path (`users/{userId}/...`), never read entire collections
+- **Listener cleanup**: Every `onSnapshot` listener must be unsubscribed in cleanup functions — prefer one-time reads (`getDocs`) for data that changes infrequently
+
+### Gemini cost rules
+- **No speculative calls**: Never call Gemini for background/predictive features without explicit user action
+- **Cache AI results**: Store generated content in Firestore — never regenerate the same synthesis twice
+- **KB context injection**: `getKBContext()` provides focused context rather than sending entire workspace content
+- **All calls via proxy**: Every Gemini call must go through the `geminiProxy` Cloud Function (never direct client-side) — token caps and rate limits are enforced there
+- Prefer client-side computation (TF-IDF in Web Worker) over API calls when possible
+
 ## 🧹 LOGGING & ERROR HANDLING
 
 **Always use the structured logger — never `console.*` directly:**
@@ -610,7 +743,153 @@ async function load() {
 }
 ```
 
-## 🚫 TECH DEBT PREVENTION
+## � PRODUCTION HARDENING SPRINT — Mar 2026
+
+### What was done (all permanent, non-negotiable)
+
+| Area | Change |
+|---|---|
+| **Security headers** | Full HTTP header block in `firebase.json`: HSTS, X-Frame-Options, CSP, Referrer-Policy, Permissions-Policy, X-Content-Type-Options |
+| **CSP** | Moved from `<meta>` tag → Firebase Hosting HTTP header only. `frame-ancestors 'none'` enforced |
+| **Dependencies** | `npm audit fix` — resolved all 12 HIGH/MODERATE vulns (0 remain). No `--force` needed |
+| **CI audit gate** | `.github/workflows/ci.yml` now runs `npm audit --audit-level=high`; build job depends on it |
+| **Deploy env vars** | `VITE_CLOUD_FUNCTIONS_URL` + `VITE_GOOGLE_CLIENT_ID` added to `deploy.yml` and GitHub Secrets |
+| **Env validation** | `VITE_GOOGLE_CLIENT_ID` added to `REQUIRED_VARS` in `envValidation.ts`; made non-optional in `vite-env.d.ts` |
+| **Bundle** | `KnowledgeBankPanel` converted to `React.lazy` — own chunk ~20 KB; main bundle reduced |
+| **AI injection** | `INJECTION_PATTERNS` expanded with 12+ obfuscated variants. Cyrillic char-class patterns removed (false positives — NFKD normalization is the correct approach) |
+| **Health endpoint** | `functions/src/health.ts` deployed: `GET /health` → `{status,version,timestamp}` |
+| **Firestore backup** | Daily scheduled export: Firestore → Cloud Storage bucket `actionstation-244f0-backups` (30-day retention) |
+| **Repo hygiene** | Build artifacts (`dist-node/`, `*.tsbuildinfo`, `wave6-*.png`) removed from git |
+
+### Structural tests that guard these invariants
+
+- `cspCompleteness.structural.test.ts` — reads CSP from `firebase.json` headers block
+- `envValidation.structural.test.ts` — mirrors `REQUIRED_VARS` (currently 8 vars); update both together
+- `noHardcodedSecrets.structural.test.ts` — blocks `AIza…` / `sk-…` patterns in source
+- `geminiKeyIsolation.structural.test.ts` — only `geminiClient.ts` may reference `VITE_GEMINI_API_KEY`
+
+### Invariants for future sprints
+
+1. `VITE_GEMINI_API_KEY` must **never** appear in `deploy.yml` — Gemini calls go through Cloud Functions proxy only
+2. CSP lives **only** in `firebase.json` headers — never re-add a `<meta http-equiv>` CSP tag
+3. Any new required env var must be added to **both** `envValidation.ts` AND `envValidation.structural.test.ts` REQUIRED_VARS
+4. New Cloud Functions must export from `functions/src/index.ts`
+5. `npm audit` must stay at 0 — CI will block the build otherwise
+
+---
+
+## 🛡️ ADVANCED SECURITY HARDENING — Mar 17 2026
+
+Six new Cloud Function utilities implement WAF-level defence. All are **non-negotiable** — do not remove or bypass them.
+
+### Security layer order in `geminiProxy` (and any future AI endpoint)
+
+```
+Request → Bot Detection → IP Rate Limit → Auth → User Rate Limit
+        → Body Size Cap → Prompt Filter → Token Cap → Output Scan → Response
+```
+
+### New utilities (all in `functions/src/utils/`)
+
+| File | Purpose |
+|---|---|
+| `securityLogger.ts` | Structured JSON events to Cloud Logging — WARNING / ERROR / CRITICAL severity routing |
+| `botDetector.ts` | Scanner UA (sqlmap/nikto/curl/masscan/nuclei/Burp/ZAP), headless browsers (Playwright/Puppeteer/HeadlessChrome), heuristic header checks |
+| `ipRateLimiter.ts` | Per-IP sliding window — 30 req/min on Gemini. Firestore-backed in production, in-memory for tests |
+| `promptFilter.ts` | Input: 14 injection patterns (DAN/jailbreak/`[SYSTEM]`/`<\|im_start\|>`/ignore-all-instructions) + 5 exfiltration patterns. Output: scans response for GCP API keys, Bearer tokens, private key fragments |
+| `fileUploadValidator.ts` | Magic-byte MIME detection, polyglot/archive/ELF/PE detection, dangerous extension block (.exe/.sh/.php…), per-type size limits |
+| `threatMonitor.ts` | Per-type spike counters (50×429/min, 20×500/min, 30×auth-fail/min, 10×bot/min) — fires CRITICAL log alert on threshold breach |
+
+### Security rules for new Cloud Functions
+
+1. **Bot check before auth** — bots must be rejected before any Firestore or auth SDK call (cheap rejection)
+2. **IP rate limit before user rate limit** — per-IP check catches multi-account distributed abuse
+3. **All security events logged** — every 401/403/429 must call `logSecurityEvent()` with correct `SecurityEventType`
+4. **Threat counters on every 4xx/5xx** — call `recordThreatEvent()` for `429_spike`, `500_spike`, `auth_failure_spike`, `bot_spike`
+5. **Upload endpoints must call `validateUpload()`** — never accept raw bytes without magic-byte + extension + size checks
+6. **AI endpoints must call `filterPromptInput()` before forwarding** and `filterPromptOutput()` before returning
+
+### Cloud Logging alert setup (manual — one-time)
+
+In Google Cloud Console → Monitoring → Alerting, create a log-based alert on:
+```
+resource.type="cloud_run_revision"
+jsonPayload.labels.eden_security="true"
+severity>="ERROR"
+```
+This fires for bot detections, prompt injection, IP blocks, and threat spikes.
+
+### What still requires external services (not in code)
+
+| Gap | Status |
+|---|---|
+| **WAF** | ✅ `scripts/setup-cloud-armor.sh` — run once; update DNS to LB IP |
+| **Cloudflare Turnstile / reCAPTCHA** | ✅ `functions/src/verifyTurnstile.ts` deployed; `captchaValidator.ts` shared utility |
+| **Immutable backups** | ✅ `scripts/setup-immutable-backups.sh` — run once; update `BACKUP_BUCKET` in `firestoreBackup.ts` |
+
+---
+
+## 🛡️ WAF / CAPTCHA / IMMUTABLE BACKUPS SPRINT — Mar 17 2026
+
+### New Cloud Function: `verifyTurnstile`
+
+`POST /verifyTurnstile` — Cloudflare Turnstile server-side verification. IP-rate-limited (10 req/min), logs `CAPTCHA_FAILED` events.
+
+**Call before login and upload on the client:**
+```typescript
+const token = await turnstile.getResponse(); // @cloudflare/turnstile-react
+const r = await fetch('/verifyTurnstile', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token }),
+});
+if (!r.ok) throw new Error('Bot challenge failed');
+// proceed with Firebase auth / upload
+```
+
+**One-time secret setup:**
+```bash
+gcloud secrets create TURNSTILE_SECRET --replication-policy="automatic"
+echo -n "YOUR_SECRET" | gcloud secrets versions add TURNSTILE_SECRET --data-file=-
+gcloud secrets add-iam-policy-binding TURNSTILE_SECRET \
+  --member="serviceAccount:actionstation-244f0@appspot.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+firebase deploy --only functions:verifyTurnstile
+```
+
+### reCAPTCHA v3 — same pattern
+
+`verifyRecaptchaToken()` in `functions/src/utils/captchaValidator.ts`:
+- Secret name: `RECAPTCHA_SECRET` (same setup steps as Turnstile)
+- Pass `action` string (`'login'`, `'upload'`) — mismatch = token replay → blocked
+- Score < `RECAPTCHA_MIN_SCORE` (0.5) → blocked (raise to 0.7 for high-risk actions)
+
+### Cloud Armor WAF
+
+Run `scripts/setup-cloud-armor.sh` once per environment:
+- 8 OWASP CRS rule sets: SQLi, XSS, LFI, RFI, RCE, method enforcement, scanner detection, protocol attack
+- IP rate-limit rule: 100 req/min per IP → 5-min ban on breach
+- Serverless NEGs + backend services + HTTPS LB (SSL cert auto-provisioned)
+- **Traffic must route through the LB IP for WAF to apply — update DNS A record**
+
+### Immutable backups
+
+Run `scripts/setup-immutable-backups.sh` once:
+- Creates `actionstation-244f0-firestore-backups-immutable` with 30-day GCS object retention
+- Object versioning enabled; non-current versions deleted after 90 days
+- Optionally locks the policy (irrevocable — run once you're confident in 30-day window)
+- After running: change `BACKUP_BUCKET` in `functions/src/firestoreBackup.ts` → redeploy
+
+### Security rules for captcha endpoints
+
+1. **IP rate limit before captcha check** — `IP_RATE_LIMIT_CAPTCHA = 10 req/min` per IP
+2. **Log `CAPTCHA_FAILED` event** — every failed challenge calls `logSecurityEvent()`
+3. **Pass client IP to `/siteverify`** — Cloudflare and Google use it for additional entropy
+4. **Validate `action` string for reCAPTCHA v3** — prevents cross-action token replay attacks
+5. **Never skip server-side verification** — client-side widget completion alone is not sufficient
+
+---
+
+## �🚫 TECH DEBT PREVENTION
 
 Before ANY commit:
 1. `npm run lint` → 0 errors

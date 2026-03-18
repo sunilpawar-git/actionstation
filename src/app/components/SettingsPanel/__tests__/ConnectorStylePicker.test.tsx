@@ -6,7 +6,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ConnectorStylePicker } from '../sections/ConnectorStylePicker';
 import { strings } from '@/shared/localization/strings';
 
-const ALL_STYLES = ['solid', 'subtle', 'thick', 'dashed', 'dotted'] as const;
+const ALL_STYLES = ['ghost', 'regular', 'light', 'bold', 'dashed', 'dotted'] as const;
 type ConnectorStyle = typeof ALL_STYLES[number];
 
 function getRadioByValue(value: ConnectorStyle): HTMLInputElement {
@@ -18,23 +18,24 @@ function getRadioByValue(value: ConnectorStyle): HTMLInputElement {
 
 describe('ConnectorStylePicker', () => {
     it('renders a radiogroup with the connector style aria-label', () => {
-        render(<ConnectorStylePicker value="solid" onChange={vi.fn()} />);
+        render(<ConnectorStylePicker value="regular" onChange={vi.fn()} />);
         expect(
             screen.getByRole('radiogroup', { name: strings.settings.connectorStyle }),
         ).toBeInTheDocument();
     });
 
-    it('renders all 5 radio inputs', () => {
-        render(<ConnectorStylePicker value="solid" onChange={vi.fn()} />);
+    it('renders all 6 radio inputs', () => {
+        render(<ConnectorStylePicker value="regular" onChange={vi.fn()} />);
         const radios = screen.getAllByRole('radio');
-        expect(radios).toHaveLength(5);
+        expect(radios).toHaveLength(6);
     });
 
-    it('renders all 5 option labels as text', () => {
-        render(<ConnectorStylePicker value="solid" onChange={vi.fn()} />);
-        expect(screen.getByText(strings.settings.connectorSolid)).toBeInTheDocument();
-        expect(screen.getByText(strings.settings.connectorSubtle)).toBeInTheDocument();
-        expect(screen.getByText(strings.settings.connectorThick)).toBeInTheDocument();
+    it('renders all 6 option labels as text', () => {
+        render(<ConnectorStylePicker value="regular" onChange={vi.fn()} />);
+        expect(screen.getByText(strings.settings.connectorGhost)).toBeInTheDocument();
+        expect(screen.getByText(strings.settings.connectorRegular)).toBeInTheDocument();
+        expect(screen.getByText(strings.settings.connectorLight)).toBeInTheDocument();
+        expect(screen.getByText(strings.settings.connectorBold)).toBeInTheDocument();
         expect(screen.getByText(strings.settings.connectorDashed)).toBeInTheDocument();
         expect(screen.getByText(strings.settings.connectorDotted)).toBeInTheDocument();
     });
@@ -47,9 +48,9 @@ describe('ConnectorStylePicker', () => {
     });
 
     it('all radios share the same name attribute', () => {
-        render(<ConnectorStylePicker value="solid" onChange={vi.fn()} />);
+        render(<ConnectorStylePicker value="regular" onChange={vi.fn()} />);
         const radios = screen.getAllByRole('radio') as HTMLInputElement[];
-        expect(radios).toHaveLength(5);
+        expect(radios).toHaveLength(6);
         radios.forEach((radio) => {
             expect(radio.name).toBe('connectorStyle');
         });
@@ -57,7 +58,7 @@ describe('ConnectorStylePicker', () => {
 
     it('calls onChange with "dotted" when dotted radio is clicked', () => {
         const onChange = vi.fn();
-        render(<ConnectorStylePicker value="solid" onChange={onChange} />);
+        render(<ConnectorStylePicker value="regular" onChange={onChange} />);
         fireEvent.click(getRadioByValue('dotted'));
         expect(onChange).toHaveBeenCalledWith('dotted');
         expect(onChange).toHaveBeenCalledTimes(1);
@@ -65,8 +66,8 @@ describe('ConnectorStylePicker', () => {
 
     it('calls onChange with the correct value for each option', () => {
         const onChange = vi.fn();
-        render(<ConnectorStylePicker value="solid" onChange={onChange} />);
-        const stylesToClick: ConnectorStyle[] = ['subtle', 'thick', 'dashed'];
+        render(<ConnectorStylePicker value="regular" onChange={onChange} />);
+        const stylesToClick: ConnectorStyle[] = ['light', 'bold', 'dashed'];
         for (const style of stylesToClick) {
             fireEvent.click(getRadioByValue(style));
             expect(onChange).toHaveBeenCalledWith(style);
@@ -75,7 +76,7 @@ describe('ConnectorStylePicker', () => {
     });
 
     it('shows exactly one checkmark for the active option', () => {
-        render(<ConnectorStylePicker value="thick" onChange={vi.fn()} />);
+        render(<ConnectorStylePicker value="bold" onChange={vi.fn()} />);
         expect(screen.getAllByText('✓')).toHaveLength(1);
     });
 
@@ -87,9 +88,9 @@ describe('ConnectorStylePicker', () => {
     });
 
     it('radio inputs are hidden from view (accessible only)', () => {
-        render(<ConnectorStylePicker value="solid" onChange={vi.fn()} />);
+        render(<ConnectorStylePicker value="regular" onChange={vi.fn()} />);
         const radios = screen.getAllByRole('radio');
         // Visually hidden but still accessible via role query
-        expect(radios).toHaveLength(5);
+        expect(radios).toHaveLength(6);
     });
 });

@@ -4,7 +4,12 @@ import { KBDocumentGroup } from './KBDocumentGroup';
 import { groupEntriesByDocument } from '../services/documentGrouper';
 import { strings } from '@/shared/localization/strings';
 import type { KnowledgeBankEntry } from '../types/knowledgeBank';
-import styles from './KnowledgeBankPanel.module.css';
+import {
+    KB_PANEL_ENTRIES, KB_PANEL_ENTRIES_STYLE,
+    KB_EMPTY_STATE, KB_EMPTY_STATE_STYLE,
+    KB_EMPTY_ICON_STYLE, KB_EMPTY_TEXT, KB_EMPTY_TEXT_STYLE,
+    KB_EMPTY_HINT_STYLE,
+} from './kbPanelStyles';
 
 interface KBEntryListProps {
     showEmpty: boolean;
@@ -30,7 +35,7 @@ export function KBEntryList({
     );
 
     return (
-        <div className={styles.panelEntries}>
+        <div className={KB_PANEL_ENTRIES} style={KB_PANEL_ENTRIES_STYLE}>
             {showEmpty && <EmptyState />}
             {showNoResults && <NoResultsState />}
             {grouped.documents.map((group) => (
@@ -64,18 +69,18 @@ export function KBEntryList({
 function EmptyState() {
     const kb = strings.knowledgeBank;
     return (
-        <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>📚</div>
-            <p className={styles.emptyText}>{kb.emptyState}</p>
-            <p className={styles.emptyHint}>{kb.emptyStateDescription}</p>
+        <div className={KB_EMPTY_STATE} style={KB_EMPTY_STATE_STYLE}>
+            <div style={KB_EMPTY_ICON_STYLE}>📚</div>
+            <p className={KB_EMPTY_TEXT} style={KB_EMPTY_TEXT_STYLE}>{kb.emptyState}</p>
+            <p style={KB_EMPTY_HINT_STYLE}>{kb.emptyStateDescription}</p>
         </div>
     );
 }
 
 function NoResultsState() {
     return (
-        <div className={styles.emptyState}>
-            <p className={styles.emptyText}>{strings.knowledgeBank.search.noResults}</p>
+        <div className={KB_EMPTY_STATE} style={KB_EMPTY_STATE_STYLE}>
+            <p className={KB_EMPTY_TEXT} style={KB_EMPTY_TEXT_STYLE}>{strings.knowledgeBank.search.noResults}</p>
         </div>
     );
 }

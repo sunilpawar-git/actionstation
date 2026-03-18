@@ -2,11 +2,14 @@
  * KeyboardShortcutsProvider - Bridge component for keyboard shortcuts
  * Must be rendered inside ReactFlowProvider to access viewport methods
  */
+import { useCallback } from 'react';
+import { useReactFlow } from '@xyflow/react';
 import { useKeyboardShortcuts } from '@/app/hooks/useKeyboardShortcuts';
 import { useAddNode } from '../hooks/useAddNode';
 import { useQuickCapture, isNodeCreationLocked } from '../hooks/useQuickCapture';
 import { useUndoableActions } from '../hooks/useUndoableActions';
 import { useSearchInputRef } from '@/features/search/hooks/useSearchInputRef';
+import { captureError } from '@/shared/services/sentryService';
 
 interface KeyboardShortcutsProviderProps {
     onOpenSettings: () => void;
@@ -19,6 +22,15 @@ export function KeyboardShortcutsProvider({
     const handleQuickCapture = useQuickCapture();
     const { deleteNodeWithUndo } = useUndoableActions();
     const searchInputRef = useSearchInputRef();
+    const { zoomIn, zoomOut } = useReactFlow();
+
+    const handleZoomIn = useCallback(() => {
+        void zoomIn().catch((e: unknown) => captureError(e as Error));
+    }, [zoomIn]);
+
+    const handleZoomOut = useCallback(() => {
+        void zoomOut().catch((e: unknown) => captureError(e as Error));
+    }, [zoomOut]);
 
     useKeyboardShortcuts({
         onOpenSettings,
@@ -27,6 +39,8 @@ export function KeyboardShortcutsProvider({
         onDeleteNodes: deleteNodeWithUndo,
         isNodeCreationLocked,
         searchInputRef,
+        onZoomIn: handleZoomIn,
+        onZoomOut: handleZoomOut,
     });
 
     // This component only provides keyboard shortcuts, no UI

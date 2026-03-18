@@ -118,13 +118,13 @@ describe('KnowledgeBankEntryCard', () => {
             <KnowledgeBankEntryCard {...defaultProps} entry={disabledEntry} />
         );
         const card = container.firstChild as HTMLElement;
-        expect(card.className).toContain('entryDisabled');
+        expect(card.className).toContain('opacity-50');
     });
 
     it('does not apply entryDisabled class when entry is enabled', () => {
         const { container } = render(<KnowledgeBankEntryCard {...defaultProps} />);
         const card = container.firstChild as HTMLElement;
-        expect(card.className).not.toContain('entryDisabled');
+        expect(card.className).not.toContain('opacity-50');
     });
 
     it('renders tags when present', () => {

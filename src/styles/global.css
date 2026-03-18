@@ -132,6 +132,11 @@ a {
     to   { transform: translateY(0);     opacity: 1; }
 }
 
+@keyframes sidebarSlideDown {
+    from { transform: translateY(-4px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
 @keyframes sync-pulse {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.4; }
@@ -160,4 +165,14 @@ a {
 @keyframes toolbarIn {
     from { opacity: 0; transform: translateX(-50%) translateY(8px); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes kbSlideIn {
+    from { transform: translateX(-100%); opacity: 0; }
+    to   { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes kbPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.5; }
 }

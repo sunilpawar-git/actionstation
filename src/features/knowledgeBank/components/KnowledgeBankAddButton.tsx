@@ -15,7 +15,27 @@ import {
     PaperclipIcon, AlertTriangleIcon, FileTextIcon,
     EditIcon, BookOpenIcon,
 } from '@/shared/components/icons';
-import styles from './KnowledgeBankAddButton.module.css';
+import {
+    KB_ADD_CONTAINER,
+    KB_ADD_BUTTON,
+    KB_ADD_BUTTON_STYLE,
+    KB_ADD_ICON_STYLE,
+    KB_ADD_BADGE,
+    KB_ADD_BADGE_STYLE,
+    KB_DROPDOWN,
+    KB_DROPDOWN_STYLE,
+    KB_DROPDOWN_ITEM,
+    KB_DROPDOWN_ITEM_STYLE,
+    KB_DROPDOWN_ICON_STYLE,
+    KB_DIVIDER,
+    KB_DIVIDER_STYLE,
+    KB_MAX_REACHED,
+    KB_MAX_REACHED_STYLE,
+    KB_DROPDOWN_LABEL,
+    KB_DROPDOWN_LABEL_STYLE,
+    KB_DROPDOWN_HINT_STYLE,
+    KB_HIDDEN_INPUT,
+} from './kbAddButtonStyles';
 
 const ACCEPTED_EXTENSIONS = kbParserRegistry.getSupportedExtensions().join(',');
 
@@ -63,17 +83,22 @@ export function KnowledgeBankAddButton() {
 
     return (
         <>
-            <div className={styles.container} ref={containerRef}>
+            <div className={KB_ADD_CONTAINER} ref={containerRef}>
                 <button
-                    className={styles.addButton}
+                    className={KB_ADD_BUTTON}
+                    style={KB_ADD_BUTTON_STYLE}
                     onClick={() => setDropdownOpen(!isDropdownOpen)}
                     title={kb.addButton}
                     disabled={isProcessing}
                 >
-                    <span className={styles.icon}>
+                    <span style={KB_ADD_ICON_STYLE}>
                         <PaperclipIcon size={16} />
                     </span>
-                    {documentCount > 0 && <span className={styles.badge}>{documentCount}</span>}
+                    {documentCount > 0 && (
+                        <span className={KB_ADD_BADGE} style={KB_ADD_BADGE_STYLE}>
+                            {documentCount}
+                        </span>
+                    )}
                 </button>
                 {isDropdownOpen && (
                     <DropdownMenu
@@ -90,7 +115,7 @@ export function KnowledgeBankAddButton() {
                 type="file"
                 accept={ACCEPTED_EXTENSIONS}
                 onChange={handleFileChange}
-                className={styles.hiddenInput}
+                className={KB_HIDDEN_INPUT}
             />
             <PasteTextModal
                 isOpen={isModalOpen}
@@ -108,32 +133,46 @@ function DropdownMenu({ isMaxReached, documentCount, onUpload, onPaste, onView }
 }) {
     const kb = strings.knowledgeBank;
     return (
-        <div className={styles.dropdown}>
+        <div className={KB_DROPDOWN} style={KB_DROPDOWN_STYLE}>
             {isMaxReached ? (
-                <div className={styles.maxReached}>
-                    <span className={styles.dropdownIcon}>
+                <div className={KB_MAX_REACHED} style={KB_MAX_REACHED_STYLE}>
+                    <span style={KB_DROPDOWN_ICON_STYLE}>
                         <AlertTriangleIcon size={14} />
                     </span>
                     <div>
-                        <div className={styles.dropdownLabel}>{kb.maxEntriesReached}</div>
-                        <div className={styles.dropdownHint}>{kb.maxEntriesDescription}</div>
+                        <div className={KB_DROPDOWN_LABEL} style={KB_DROPDOWN_LABEL_STYLE}>
+                            {kb.maxEntriesReached}
+                        </div>
+                        <div style={KB_DROPDOWN_HINT_STYLE}>{kb.maxEntriesDescription}</div>
                     </div>
                 </div>
             ) : (
                 <>
-                    <button className={styles.dropdownItem} onClick={onUpload}>
-                        <span className={styles.dropdownIcon}><FileTextIcon size={14} /></span>
+                    <button
+                        className={KB_DROPDOWN_ITEM}
+                        style={KB_DROPDOWN_ITEM_STYLE}
+                        onClick={onUpload}
+                    >
+                        <span style={KB_DROPDOWN_ICON_STYLE}><FileTextIcon size={14} /></span>
                         {kb.uploadFile}
                     </button>
-                    <button className={styles.dropdownItem} onClick={onPaste}>
-                        <span className={styles.dropdownIcon}><EditIcon size={14} /></span>
+                    <button
+                        className={KB_DROPDOWN_ITEM}
+                        style={KB_DROPDOWN_ITEM_STYLE}
+                        onClick={onPaste}
+                    >
+                        <span style={KB_DROPDOWN_ICON_STYLE}><EditIcon size={14} /></span>
                         {kb.pasteText}
                     </button>
                 </>
             )}
-            <div className={styles.divider} />
-            <button className={styles.dropdownItem} onClick={onView}>
-                <span className={styles.dropdownIcon}><BookOpenIcon size={14} /></span>
+            <div className={KB_DIVIDER} style={KB_DIVIDER_STYLE} />
+            <button
+                className={KB_DROPDOWN_ITEM}
+                style={KB_DROPDOWN_ITEM_STYLE}
+                onClick={onView}
+            >
+                <span style={KB_DROPDOWN_ICON_STYLE}><BookOpenIcon size={14} /></span>
                 {kb.viewBank} ({documentCount})
             </button>
         </div>

@@ -253,6 +253,15 @@
   /* Context-aware max-height: overridden per-container (e.g. focus panel sets focus value) */
   --node-image-applied-max-height: var(--node-image-max-height);
 
+  /* Text Highlight — 5 theme-aware colors for the bubble-menu highlight swatches.
+   * These are stored as CSS variable references in TipTap mark inline styles
+   * (background-color: var(--highlight-yellow)) so they adapt to theme switches. */
+  --highlight-yellow: hsl(50, 95%, 78%);
+  --highlight-green:  hsl(142, 70%, 78%);
+  --highlight-blue:   hsl(213, 85%, 80%);
+  --highlight-pink:   hsl(340, 85%, 82%);
+  --highlight-purple: hsl(270, 80%, 82%);
+
   /* Focus Mode */
   --focus-backdrop-bg: hsla(0, 0%, 0%, 0.5);
   --focus-panel-shadow: 0 24px 48px hsla(220, 13%, 13%, 0.2);

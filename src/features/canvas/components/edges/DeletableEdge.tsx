@@ -12,6 +12,7 @@ import {
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useHistoryStore } from '../../stores/historyStore';
 import { useSettingsStore, type ConnectorStyle } from '@/shared/stores/settingsStore';
+import { CONNECTOR_STYLE_DEFS } from '@/config/connectorStyleConfig';
 import { toastWithAction } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
 import { safeClone } from '@/shared/utils/safeClone';
@@ -52,22 +53,22 @@ function deleteEdgeWithUndo(id: string): void {
 }
 
 /**
- * Returns dynamic CSS class name based on the chosen ConnectorStyle.
+ * Builds inline SVG style from the connector style config.
+ * Merges over the edge's own style prop so user colour overrides always win.
  */
-function getEdgeClassName(styleOption: ConnectorStyle): string {
-    switch (styleOption) {
-        case 'subtle':
-            return styles.edgeSubtle ?? '';
-        case 'thick':
-            return styles.edgeThick ?? '';
-        case 'dashed':
-            return styles.edgeDashed ?? '';
-        case 'dotted':
-            return styles.edgeDotted ?? '';
-        case 'solid':
-        default:
-            return styles.edgeSolid ?? '';
-    }
+function buildEdgeStyle(
+    styleOption: ConnectorStyle,
+    userStyle?: React.CSSProperties,
+): React.CSSProperties {
+    const def = CONNECTOR_STYLE_DEFS[styleOption];
+    const base: React.CSSProperties = {
+        stroke: 'var(--color-border)',
+        ...(def.strokeOpacity  !== undefined && { strokeOpacity:  def.strokeOpacity }),
+        ...(def.strokeWidth    !== undefined && { strokeWidth:    def.strokeWidth }),
+        ...(def.strokeDasharray               && { strokeDasharray: def.strokeDasharray }),
+        ...(def.strokeLinecap                 && { strokeLinecap:  def.strokeLinecap }),
+    };
+    return { ...base, ...userStyle };
 }
 
 export const DeletableEdge = React.memo(function DeletableEdge({
@@ -98,7 +99,10 @@ export const DeletableEdge = React.memo(function DeletableEdge({
     const handleMouseEnter = useCallback(() => setIsHovered(true), []);
     const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
-    const edgeClass = getEdgeClassName(connectorStyle);
+    const mergedEdgeStyle = useMemo(
+        () => buildEdgeStyle(connectorStyle, style),
+        [connectorStyle, style],
+    );
     const labelStyle = useMemo(
         () => ({ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }),
         [labelX, labelY],
@@ -106,7 +110,7 @@ export const DeletableEdge = React.memo(function DeletableEdge({
 
     return (
         <>
-            <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={style} className={edgeClass} />
+            <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={mergedEdgeStyle} />
             {/* Wider invisible path for hover detection */}
             <path
                 d={edgePath}

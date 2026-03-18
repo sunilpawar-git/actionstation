@@ -5,7 +5,13 @@
 import React, { useState, useCallback } from 'react';
 import { strings } from '@/shared/localization/strings';
 import { EditIcon, TrashIcon, PinIcon } from '@/shared/components/icons';
-import styles from './KnowledgeBankPanel.module.css';
+import clsx from 'clsx';
+import {
+    KB_ENTRY_ACTIONS, KB_ENTRY_ACTIONS_STYLE,
+    KB_ACTION_BUTTON, KB_ACTION_BUTTON_STYLE,
+    KB_DELETE_ACTION, KB_PIN_ACTION_STYLE,
+    KB_CONFIRM_TEXT_STYLE,
+} from './kbPanelStyles';
 
 interface EntryCardActionsProps {
     entryId: string;
@@ -31,17 +37,19 @@ export const EntryCardActions = React.memo(function EntryCardActions({
 
     if (isDeleting) {
         return (
-            <div className={styles.entryActions}>
-                <span className={styles.confirmText}>{kb.deleteConfirm}</span>
+            <div className={KB_ENTRY_ACTIONS} style={KB_ENTRY_ACTIONS_STYLE}>
+                <span style={KB_CONFIRM_TEXT_STYLE}>{kb.deleteConfirm}</span>
                 <button
-                    className={`${styles.actionButton} ${styles.deleteAction}`}
+                    className={clsx(KB_ACTION_BUTTON, KB_DELETE_ACTION)}
+                    style={KB_ACTION_BUTTON_STYLE}
                     onClick={handleDelete}
                     autoFocus
                 >
                     {strings.common.confirm}
                 </button>
                 <button
-                    className={styles.actionButton}
+                    className={KB_ACTION_BUTTON}
+                    style={KB_ACTION_BUTTON_STYLE}
                     onClick={() => setIsDeleting(false)}
                 >
                     {strings.common.cancel}
@@ -51,23 +59,26 @@ export const EntryCardActions = React.memo(function EntryCardActions({
     }
 
     return (
-        <div className={styles.entryActions}>
+        <div className={KB_ENTRY_ACTIONS} style={KB_ENTRY_ACTIONS_STYLE}>
             <button
-                className={`${styles.actionButton} ${isPinned ? styles.pinAction : ''}`}
+                className={KB_ACTION_BUTTON}
+                style={isPinned ? { ...KB_ACTION_BUTTON_STYLE, ...KB_PIN_ACTION_STYLE } : KB_ACTION_BUTTON_STYLE}
                 onClick={() => onPin(entryId)}
                 aria-label={isPinned ? kb.unpinEntry : kb.pinEntry}
             >
                 <PinIcon size={16} filled={isPinned} />
             </button>
             <button
-                className={styles.actionButton}
+                className={KB_ACTION_BUTTON}
+                style={KB_ACTION_BUTTON_STYLE}
                 onClick={onEdit}
                 aria-label={kb.editEntry}
             >
                 <EditIcon size={16} />
             </button>
             <button
-                className={`${styles.actionButton} ${styles.deleteAction}`}
+                className={clsx(KB_ACTION_BUTTON, KB_DELETE_ACTION)}
+                style={KB_ACTION_BUTTON_STYLE}
                 onClick={handleDelete}
                 aria-label={kb.deleteEntry}
             >

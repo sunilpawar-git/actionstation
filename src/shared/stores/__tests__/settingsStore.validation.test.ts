@@ -81,7 +81,7 @@ describe('SettingsStore — invalid localStorage values (defense-in-depth)', () 
             return null;
         });
         useSettingsStore.getState().loadFromStorage();
-        expect(useSettingsStore.getState().connectorStyle).toBe('solid');
+        expect(useSettingsStore.getState().connectorStyle).toBe('regular');
     });
 
     it('should reject XSS payload in theme value', () => {
