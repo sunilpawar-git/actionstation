@@ -889,6 +889,82 @@ Run `scripts/setup-immutable-backups.sh` once:
 
 ---
 
+## 📅 CALENDAR SERVER-SIDE OAUTH SPRINT — Mar 18-19 2026
+
+### What was built
+Google Calendar OAuth 2.0 Authorization Code flow with server-side token storage.
+- `exchangeCalendarCode` — exchanges auth code for refresh token, stores in Firestore
+- `disconnectCalendar` — removes integration document
+- `calendarCreateEvent`, `calendarUpdateEvent`, `calendarDeleteEvent`, `calendarListEvents` — proxy all Calendar API calls server-side; access tokens never reach the client
+- `calendarTokenHelper.ts` — caches + refreshes access tokens in Firestore (5-min buffer before expiry)
+- `CalendarCallback.tsx` — handles the OAuth redirect with `hasRun` ref guard against React Strict Mode double-invocation
+- `calendarAuthService.ts` — frontend OAuth initiator; sends `redirectUri` to Cloud Function; uses `CONNECTED_KEY` in localStorage
+
+### Lessons learned — never repeat these mistakes
+
+#### 1. Firebase secret trailing newlines (`printf` not `echo`)
+**Bug:** `echo 'SECRET' | firebase functions:secrets:set KEY` appends `\n`. Google OAuth rejects `client_id\n` with `invalid_client: The OAuth client was not found.`
+**Rule:** **Always use `printf` to set secrets:**
+```bash
+printf 'YOUR_SECRET_VALUE' | firebase functions:secrets:set SECRET_NAME
+```
+**Detection:** `firebase functions:secrets:access KEY | xxd | tail -3` — two `0a` bytes at end means double newline (one from stored value, one from CLI output). One `0a` is just the CLI output newline and is fine.
+
+#### 2. Deploy order matters — secrets must exist BEFORE deploy
+**Bug:** Functions were redeployed before the corrected secret version was created, so they were pinned to the old (wrong) version.
+**Rule:** Always create/update the secret FIRST, then deploy. Firebase pins to the latest version at deploy time.
+```bash
+# Correct order:
+printf 'NEW_VALUE' | firebase functions:secrets:set MY_SECRET  # 1. secret first
+firebase deploy --only functions:myFunction                     # 2. deploy after
+```
+
+#### 3. All `onCall` handlers must declare `cors: ALLOWED_ORIGINS`
+**Bug:** `workspaceBundle`, `calendarCreateEvent`, and all calendar functions were missing `cors:` on their `onCall` config. Browser blocked preflight from `localhost:5173` and `www.actionstation.in`.
+**Rule:** Every `onCall` must include `cors: ALLOWED_ORIGINS` from `utils/corsConfig.ts`. The structural test `calendarFunctionsSecurity.structural.test.ts` now enforces this.
+```typescript
+export const myFunction = onCall({ cors: ALLOWED_ORIGINS, secrets: [...] }, async (req) => { ... });
+```
+
+#### 4. `resource == null` guard required before `resource.data` in Firestore rules
+**Bug:** `resource.data.userId` crashes with a null reference on document creates (`resource` is `null` for new documents). This silently denied all node/edge creates → "Failed to save changes" toast.
+**Rule:** Always guard with `resource == null` first:
+```javascript
+// ✅ Correct — covers creates (resource==null) and updates
+allow write: if request.auth != null && request.auth.uid == userId
+                && (resource == null || !resource.data.userId || resource.data.userId == request.auth.uid);
+
+// ❌ Wrong — crashes on creates
+allow write: if request.auth != null && request.auth.uid == userId
+                && (!resource.data.userId || resource.data.userId == request.auth.uid);
+```
+
+#### 5. React Strict Mode fires `useEffect` twice — use `useRef` guard for single-use operations
+**Bug:** `CalendarCallback.tsx` useEffect ran twice in dev (React Strict Mode), consuming the one-time auth code twice. Second invocation got `invalid_grant`.
+**Rule:** Any `useEffect` that performs a single-use operation (auth code exchange, analytics init, etc.) must use a `useRef` guard:
+```typescript
+const hasRun = useRef(false);
+useEffect(() => {
+    if (hasRun.current) return;
+    hasRun.current = true;
+    // single-use work here
+}, []);
+```
+
+#### 6. `logSecurityEvent` required on every 4xx/5xx — no silent errors
+**Bug:** `calendarEvents.ts` imported `logSecurityEvent` but never called it in `withToken()` on rate-limit or auth failures — security events were invisible in Cloud Logging.
+**Rule:** Every `HttpsError` throw must be preceded by `logSecurityEvent()`. The structural test `calendarFunctionsSecurity.structural.test.ts` enforces this.
+
+#### 7. Remove diagnostic code before merging
+**Debt incurred:** `console.info` credential-length logs and `logger.warn` diagnostic logs were added during debugging and left in code, causing Sentry noise and violating the no-console structural test.
+**Rule:** Any `console.*` or `logger.warn` added for debugging purposes must be removed before the PR is merged. Use git stash or a `// DEBUG:` marker to find them easily.
+
+#### 8. `useCallback` dep arrays must include all referenced callbacks
+**Bug:** `handleRetry` dep array was `[calendarEvent, syncCreate, syncUpdate]` but the body also called `syncDelete` (via `cleanupOnDelete`). Stale closure risk on re-render.
+**Rule:** Every function reference used inside a `useCallback` must appear in its dep array. ESLint `react-hooks/exhaustive-deps` catches this — ensure it's enabled.
+
+---
+
 ## �🚫 TECH DEBT PREVENTION
 
 Before ANY commit:

@@ -132,7 +132,7 @@ describe('useIdeaCardCalendar', () => {
 
         it('skips event creation when connect fails', async () => {
             mockIsCalendarConnected = false;
-            (connectGoogleCalendar as Mock).mockResolvedValue(false);
+            (connectGoogleCalendar as Mock).mockReturnValue(false);
 
             const { result } = renderHook(() =>
                 useIdeaCardCalendar({ nodeId: 'node-1', calendarEvent: pendingMeta }),

@@ -32,6 +32,7 @@ import { useSubscriptionStore } from '@/features/subscription/stores/subscriptio
 import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
 import { strings } from '@/shared/localization/strings';
 import { OnboardingWalkthrough } from '@/features/onboarding';
+import { CalendarCallback } from '@/features/auth/components/CalendarCallback';
 import '@/styles/global.css';
 
 // Lazy load non-critical components for better initial load performance
@@ -106,6 +107,11 @@ function AuthenticatedApp() {
 function AppContent() {
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const authLoading = useAuthStore((s) => s.isLoading);
+
+    // Google Calendar OAuth callback — handle before any auth/workspace checks
+    if (window.location.pathname === '/auth/calendar/callback') {
+        return <CalendarCallback />;
+    }
 
     // Auth loading state
     if (authLoading) {

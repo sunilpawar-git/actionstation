@@ -37,7 +37,7 @@ URL_MAP_NAME="eden-url-map"
 TARGET_HTTPS_PROXY="eden-https-proxy"
 FORWARDING_RULE="eden-https-forwarding-rule"
 SSL_CERT_NAME="eden-ssl-cert"        # managed cert — fill DOMAIN below
-DOMAIN="eden.so"                     # ← change to your actual domain
+DOMAIN="actionstation.so"             # ← change to your actual domain
 
 # Cloud Run service names as deployed by Firebase Functions v2.
 # Run: gcloud run services list --project=$PROJECT_ID --region=$REGION

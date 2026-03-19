@@ -1,11 +1,15 @@
 /**
  * Server Calendar Client - Security Hardening Tests
- * Tests validation of event IDs to prevent path traversal and injection attacks
+ * Validates client-side event ID sanitisation before the httpsCallable is invoked.
+ * The new serverCalendarClient delegates to Cloud Functions instead of calling
+ * Google Calendar API directly, but still validates event IDs client-side.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('@/features/auth/services/calendarAuthService', () => ({
-    getCalendarToken: vi.fn(() => 'valid-token'),
+// Mock Firebase Functions — the security tests only care about validation BEFORE the call
+vi.mock('firebase/functions', () => ({
+    getFunctions: vi.fn(() => ({})),
+    httpsCallable: vi.fn(() => vi.fn().mockResolvedValue({ data: { id: 'test-event' } })),
 }));
 
 vi.mock('../localization/calendarStrings', () => ({
@@ -21,87 +25,83 @@ vi.mock('../localization/calendarStrings', () => ({
 }));
 
 // eslint-disable-next-line import-x/first
-import { serverUpdateEvent, serverDeleteEvent } from '../services/serverCalendarClient';
-
-global.fetch = vi.fn();
+import { serverUpdateEvent, serverDeleteEvent, validateEventId } from '../services/serverCalendarClient';
 
 describe('serverCalendarClient - Security Validation', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-            ok: true,
-            status: 200,
-            json: async () => ({ id: 'test-event' }),
+    });
+
+    describe('validateEventId — path-traversal protection', () => {
+        it('rejects event ID with path traversal (..)', () => {
+            expect(() => validateEventId('../other-calendar')).toThrow('Invalid event ID');
+        });
+
+        it('rejects event ID with forward slash', () => {
+            expect(() => validateEventId('calendar/events/malicious')).toThrow('Invalid event ID');
+        });
+
+        it('rejects event ID with URL-encoded characters', () => {
+            expect(() => validateEventId('event%2F%2E%2E%2Fmalicious')).toThrow('Invalid event ID');
+        });
+
+        it('rejects event ID with special characters', () => {
+            expect(() => validateEventId('event<script>alert(1)</script>')).toThrow('Invalid event ID');
+        });
+
+        it('rejects blank string', () => {
+            expect(() => validateEventId('')).toThrow('Invalid event ID');
+        });
+
+        it('accepts valid Google Calendar event ID (alphanumeric, dash, underscore)', () => {
+            expect(() => validateEventId('abc123_xyz-789')).not.toThrow();
+        });
+
+        it('accepts event ID with mixed case and digits', () => {
+            expect(() => validateEventId('event_123-ABC-xyz_789')).not.toThrow();
         });
     });
 
-    describe('Event ID Validation - Path Traversal Protection', () => {
-        it('should reject event ID with path traversal (..) attempt', async () => {
+    describe('serverUpdateEvent — rejects before calling Cloud Function', () => {
+        it('throws on path traversal in eventId', async () => {
             await expect(
                 serverUpdateEvent('../other-calendar', 'event', 'Test', '2026-01-01'),
             ).rejects.toThrow('Invalid event ID');
         });
 
-        it('should reject event ID with forward slash', async () => {
+        it('throws on slash in eventId', async () => {
             await expect(
                 serverUpdateEvent('calendar/events/malicious', 'event', 'Test', '2026-01-01'),
             ).rejects.toThrow('Invalid event ID');
         });
 
-        it('should reject event ID with URL encoding attempt', async () => {
-            await expect(
-                serverUpdateEvent('event%2F%2E%2E%2Fmalicious', 'event', 'Test', '2026-01-01'),
-            ).rejects.toThrow('Invalid event ID');
-        });
+        it('calls httpsCallable with valid eventId', async () => {
+            const { httpsCallable } = await import('firebase/functions');
+            const mockFn = vi.fn().mockResolvedValue({ data: {} });
+            vi.mocked(httpsCallable).mockReturnValue(mockFn as never);
 
-        it('should reject event ID with special characters', async () => {
-            await expect(
-                serverUpdateEvent('event<script>alert(1)</script>', 'event', 'Test', '2026-01-01'),
-            ).rejects.toThrow('Invalid event ID');
-        });
-
-        it('should accept valid Google Calendar event ID format', async () => {
-            const validEventId = 'abc123_xyz-789';
-            await serverUpdateEvent(validEventId, 'event', 'Test', '2026-01-01T10:00:00Z');
-
-            expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining(`/calendars/primary/events/${validEventId}`),
-                expect.any(Object),
-            );
-        });
-
-        it('should accept event ID with alphanumeric, dashes, and underscores', async () => {
-            const validEventId = 'event_123-ABC-xyz_789';
-            await serverUpdateEvent(validEventId, 'event', 'Meeting', '2026-01-01T10:00:00Z');
-
-            expect(global.fetch).toHaveBeenCalled();
+            await serverUpdateEvent('valid_event_123', 'event', 'Title', '2026-01-01T10:00:00Z');
+            expect(mockFn).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'valid_event_123' }));
         });
     });
 
-    describe('Delete Event - Path Traversal Protection', () => {
-        beforeEach(() => {
-            (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-                ok: true,
-                status: 204,
-            });
-        });
-
-        it('should reject delete with path traversal attempt', async () => {
+    describe('serverDeleteEvent — rejects before calling Cloud Function', () => {
+        it('throws on path traversal', async () => {
             await expect(serverDeleteEvent('../other-event')).rejects.toThrow('Invalid event ID');
         });
 
-        it('should reject delete with forward slash', async () => {
+        it('throws on forward slash', async () => {
             await expect(serverDeleteEvent('calendar/malicious')).rejects.toThrow('Invalid event ID');
         });
 
-        it('should accept valid event ID for deletion', async () => {
-            const validEventId = 'valid_event_123';
-            await serverDeleteEvent(validEventId);
+        it('calls httpsCallable with valid eventId', async () => {
+            const { httpsCallable } = await import('firebase/functions');
+            const mockFn = vi.fn().mockResolvedValue({ data: null });
+            vi.mocked(httpsCallable).mockReturnValue(mockFn as never);
 
-            expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining(`/calendars/primary/events/${validEventId}`),
-                expect.objectContaining({ method: 'DELETE' }),
-            );
+            await serverDeleteEvent('valid_event_123');
+            expect(mockFn).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'valid_event_123' }));
         });
     });
 });
+

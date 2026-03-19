@@ -37,6 +37,15 @@ function buildConnectionCommand(newEdge: CanvasEdge) {
     };
 }
 
+/**
+ * Canvas edge and selection handlers wired to ReactFlow callbacks.
+ *
+ * @param currentWorkspaceId  Active workspace (used when creating new edges).
+ * @param isCanvasLocked      When true, `onEdgesChange` and `onConnect` are
+ *   no-ops to prevent structural mutations. `onSelectionChange` is intentionally
+ *   NOT guarded by this flag — clicking nodes must still work when locked so
+ *   the F key and context-menu "Focus" action remain accessible.
+ */
 export function useCanvasEdgeHandlers(currentWorkspaceId: string | null, isCanvasLocked: boolean) {
     const onEdgesChange: OnEdgesChange = useCallback(
         (changes: EdgeChange[]) => {
@@ -89,7 +98,9 @@ export function useCanvasEdgeHandlers(currentWorkspaceId: string | null, isCanva
 
     const onSelectionChange: OnSelectionChangeFunc = useCallback(
         ({ nodes: selectedNodes }) => {
-            if (isCanvasLocked) return;
+            // NOTE: selection is intentionally allowed when the canvas is locked.
+            // The user must be able to click a node to select it so that the
+            // F key and context-menu "Focus" action remain accessible.
             const current = useCanvasStore.getState().selectedNodeIds;
             if (selectedNodes.length === 0) {
                 if (current.size === 0) return;
@@ -100,7 +111,7 @@ export function useCanvasEdgeHandlers(currentWorkspaceId: string | null, isCanva
             if (newIds.size === current.size && [...newIds].every((id) => current.has(id))) return;
             useCanvasStore.setState({ selectedNodeIds: newIds });
         },
-        [isCanvasLocked]
+        []
     );
 
     return { onEdgesChange, onConnect, onSelectionChange };

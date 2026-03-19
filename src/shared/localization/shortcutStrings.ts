@@ -13,5 +13,6 @@ export const shortcutStrings = {
     search: 'Open Search',
     zoomIn: 'Zoom In',
     zoomOut: 'Zoom Out',
+    toggleLock: 'Lock / Unlock Canvas',
     focusModeClick: 'Open in Focus Mode',
 } as const;

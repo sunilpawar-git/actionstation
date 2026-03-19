@@ -144,7 +144,9 @@ describe('useCanvasEdgeHandlers', () => {
     });
 
     describe('onSelectionChange', () => {
-        it('does nothing when canvas is locked', () => {
+        it('allows selection update even when canvas is locked', () => {
+            // Lock must NOT block selection — clicking nodes must still work
+            // so the F key and context-menu Focus action remain available.
             useCanvasStore.setState({ selectedNodeIds: new Set(['n1']) });
             const { result } = renderHook(() =>
                 useCanvasEdgeHandlers('ws-1', true)
@@ -155,7 +157,7 @@ describe('useCanvasEdgeHandlers', () => {
                     edges: [],
                 })
             );
-            expect(useCanvasStore.getState().selectedNodeIds.size).toBe(1);
+            expect(useCanvasStore.getState().selectedNodeIds.size).toBe(2);
         });
 
         it('sets selectedNodeIds when nodes selected', () => {

@@ -59,6 +59,15 @@ export const IP_RATE_LIMIT_UPLOAD = 20;
 /** Rate limit: max captcha-verify requests per IP per window (pre-auth, so keep low) */
 export const IP_RATE_LIMIT_CAPTCHA = 10;
 
+/** Rate limit: max Google Calendar auth operations per window per user */
+export const CALENDAR_AUTH_RATE_LIMIT = 10;
+
+/** Rate limit: max Google Calendar event operations per window per user */
+export const CALENDAR_EVENTS_RATE_LIMIT = 30;
+
+/** Rate limit: max calendar requests per IP per window */
+export const IP_RATE_LIMIT_CALENDAR = 20;
+
 /** Maximum request body size for Gemini proxy (100 KB) */
 export const GEMINI_MAX_BODY_BYTES = 102_400;
 

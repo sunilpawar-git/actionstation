@@ -2,7 +2,7 @@
 
 ## Overview
 
-Cross-document intelligence allows Eden.so to connect insights across multiple analyzed documents within a workspace. When a user uploads document #50, the system finds relevant entities from the previous 49 analyzed documents and generates cross-reference insights automatically.
+Cross-document intelligence allows ActionStation to connect insights across multiple analyzed documents within a workspace. When a user uploads document #50, the system finds relevant entities from the previous 49 analyzed documents and generates cross-reference insights automatically.
 
 ---
 

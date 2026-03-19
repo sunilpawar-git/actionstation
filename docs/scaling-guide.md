@@ -1,4 +1,4 @@
-# Scaling Guide — Eden.so / ActionStation
+# Scaling Guide — ActionStation
 
 This document describes how to scale the AI proxy infrastructure as user count grows.
 It is written as a phased plan: each phase has a clear trigger, a concrete action, and an estimated cost.

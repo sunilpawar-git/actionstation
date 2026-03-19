@@ -16,28 +16,19 @@ describe('corsConfig', () => {
         process.env = { ...originalEnv };
     });
 
-    it('includes production Firebase Hosting origins', async () => {
+    it('includes all production origins', async () => {
         delete process.env.FUNCTIONS_EMULATOR;
         delete process.env.CORS_ALLOWED_ORIGINS;
 
         const { ALLOWED_ORIGINS } = await import('../corsConfig.js');
 
-        expect(ALLOWED_ORIGINS).toContain('https://eden-so.web.app');
-        expect(ALLOWED_ORIGINS).toContain('https://eden-so.firebaseapp.com');
+        expect(ALLOWED_ORIGINS).toContain('https://actionstation-244f0.web.app');
+        expect(ALLOWED_ORIGINS).toContain('https://actionstation-244f0.firebaseapp.com');
+        expect(ALLOWED_ORIGINS).toContain('https://www.actionstation.in');
     });
 
-    it('excludes localhost when not in emulator mode', async () => {
+    it('always includes localhost origins (safe for CORS — attackers cannot host on a visitor\'s localhost)', async () => {
         delete process.env.FUNCTIONS_EMULATOR;
-        delete process.env.CORS_ALLOWED_ORIGINS;
-
-        const { ALLOWED_ORIGINS } = await import('../corsConfig.js');
-
-        expect(ALLOWED_ORIGINS).not.toContain('http://localhost:5173');
-        expect(ALLOWED_ORIGINS).not.toContain('http://localhost:4173');
-    });
-
-    it('includes localhost origins in emulator mode', async () => {
-        process.env.FUNCTIONS_EMULATOR = 'true';
         delete process.env.CORS_ALLOWED_ORIGINS;
 
         const { ALLOWED_ORIGINS } = await import('../corsConfig.js');
@@ -62,8 +53,8 @@ describe('corsConfig', () => {
 
         const { ALLOWED_ORIGINS } = await import('../corsConfig.js');
 
-        expect(ALLOWED_ORIGINS).toContain('https://eden-so.web.app');
-        expect(ALLOWED_ORIGINS.length).toBe(2);
+        expect(ALLOWED_ORIGINS).toContain('https://actionstation-244f0.web.app');
+        expect(ALLOWED_ORIGINS.length).toBe(5);
     });
 
     it('does not include wildcard origin', async () => {

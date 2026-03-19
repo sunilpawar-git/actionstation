@@ -31,6 +31,7 @@ const SHORTCUT_ROWS: readonly ShortcutRow[] = [
     { action: strings.shortcuts.openSettings,   keys: formatShortcut(',') },
     { action: strings.shortcuts.zoomIn,         keys: formatShortcut('[') },
     { action: strings.shortcuts.zoomOut,        keys: formatShortcut(']') },
+    { action: strings.shortcuts.toggleLock,     keys: formatShortcut('L') },
     { action: strings.shortcuts.focusModeClick, keys: formatShortcut('Click') },
 ];
 

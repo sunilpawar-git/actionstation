@@ -73,11 +73,11 @@ function useCanvasViewState() {
     const isFocused = useFocusStore((s) => s.focusedNodeId !== null);
     const isInteractionDisabled = isCanvasLocked || isFocused;
     const isNavigateMode = canvasScrollMode === 'navigate';
-    return { nodes, edges, selectedNodeIds, viewport, currentWorkspaceId, isSwitching, canvasGrid, isCanvasLocked, isInteractionDisabled, isNavigateMode };
+    return { nodes, edges, selectedNodeIds, viewport, currentWorkspaceId, isSwitching, canvasGrid, isCanvasLocked, isInteractionDisabled, isFocused, isNavigateMode };
 }
 
 function CanvasViewInner() {
-    const { nodes, edges, selectedNodeIds, viewport, currentWorkspaceId, isSwitching, canvasGrid, isCanvasLocked, isInteractionDisabled, isNavigateMode } = useCanvasViewState();
+    const { nodes, edges, selectedNodeIds, viewport, currentWorkspaceId, isSwitching, canvasGrid, isCanvasLocked, isInteractionDisabled, isFocused, isNavigateMode } = useCanvasViewState();
     const panCtx = usePanToNode();
     const prevRfNodesRef = useRef<PrevRfNodes>({ arr: [], map: new Map() });
     const prevRfEdgesRef = useRef<PrevRfEdges>({ arr: [], map: new Map() });
@@ -127,12 +127,20 @@ function CanvasViewInner() {
                 /* Double-click creates a new node — disable ReactFlow's default zoom.
                    Users zoom via pinch, scroll-wheel, or ZoomControls toolbar. */
                 zoomOnDoubleClick={false}
+                /* Interaction props — two separate lock categories:
+                 * isInteractionDisabled (locked OR focused): blocks drag, pan, connect,
+                 *   rubber-band select, and zoom so the canvas view is fully preserved.
+                 * isFocused only: blocks elementsSelectable so ReactFlow does not emit
+                 *   onSelectionChange events while a node is open in the FocusOverlay.
+                 * When locked-but-not-focused, elementsSelectable stays true so the
+                 * user can still click a node to select it (enables F key + context-
+                 * menu Focus action). */
                 zoomOnScroll={!isInteractionDisabled && !isNavigateMode}
                 panOnScroll={!isInteractionDisabled && isNavigateMode}
                 panOnDrag={isInteractionDisabled ? false : [1, 2]}
                 nodesDraggable={!isInteractionDisabled}
                 noDragClassName={NO_DRAG_CLASS}
-                elementsSelectable={!isInteractionDisabled}
+                elementsSelectable={!isFocused}
                 nodesConnectable={!isInteractionDisabled}
                 {...(isNavigateMode && { panOnScrollMode: PanOnScrollMode.Free })}
                 selectionOnDrag={!isInteractionDisabled}

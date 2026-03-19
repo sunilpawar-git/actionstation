@@ -13,6 +13,7 @@ import type React from 'react';
 import { useEffect, useCallback } from 'react';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import { useHistoryStore } from '@/features/canvas/stores/historyStore';
+import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { isEditableTarget } from '@/shared/utils/domGuards';
 import { useEscapeLayer, getHighestEscapePriority } from '@/shared/hooks/useEscapeLayer';
 import { ESCAPE_PRIORITY } from '@/shared/hooks/escapePriorities';
@@ -110,6 +111,46 @@ function handleUndoRedoShortcuts(e: KeyboardEvent): boolean {
     return false;
 }
 
+/**
+ * Cmd/Ctrl+L: toggle canvas lock. Extracted to keep handleModifierShortcuts
+ * within the cyclomatic-complexity budget. Always fires regardless of lock
+ * state so the user can unlock. Returns true if handled.
+ *
+ * PRECONDITION: caller (`handleModifierShortcuts`) has already verified that
+ * a modifier key (meta or ctrl) is held. This function must NOT be called
+ * for plain keypresses — it does not recheck `hasModifier`.
+ *
+ * Guard: suppressed when the event target is an editable element (INPUT,
+ * TEXTAREA, contentEditable) so that e.g. Cmd+L inside a TipTap node editor
+ * does not accidentally toggle the canvas lock.
+ */
+function handleLockToggle(e: KeyboardEvent): boolean {
+    if (e.key.toLowerCase() !== 'l') return false;
+    if (isEditableTarget(e)) return false;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    useSettingsStore.getState().toggleCanvasLocked();
+    return true;
+}
+
+/**
+ * Cmd/Ctrl+K: focus the search input. Extracted to keep handleModifierShortcuts
+ * within the cyclomatic-complexity budget. Returns true if handled.
+ */
+function handleSearchShortcut(
+    e: KeyboardEvent,
+    searchInputRef?: React.RefObject<{ focus: () => void; select: () => void } | null>,
+): boolean {
+    if (e.key.toLowerCase() !== 'k') return false;
+    // Don't fire when user is already typing in a node editor
+    if (e.target instanceof HTMLElement && e.target.closest('[data-node-editor]')) return false;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    searchInputRef?.current?.focus();
+    searchInputRef?.current?.select();
+    return true;
+}
+
 /** Modifier shortcuts (Cmd/Ctrl+key). Returns true if handled. */
 function handleModifierShortcuts(
     e: KeyboardEvent,
@@ -121,11 +162,18 @@ function handleModifierShortcuts(
 ): boolean {
     if (!hasModifier(e)) return false;
 
+    // ⌘+L / Ctrl+L : Toggle canvas lock — checked first so unlocking always works
+    if (handleLockToggle(e)) return true;
+
+    // Read lock state once; zoom and node-creation shortcuts are blocked when locked.
+    // The event is still consumed (preventDefault) to avoid browser default actions.
+    const isLocked = useSettingsStore.getState().isCanvasLocked;
+
     // ⌘+[ / Ctrl+[ : Zoom in the canvas
     if (e.key === '[') {
         e.preventDefault();
         e.stopImmediatePropagation();
-        onZoomIn?.();
+        if (!isLocked) onZoomIn?.();
         return true;
     }
 
@@ -133,25 +181,18 @@ function handleModifierShortcuts(
     if (e.key === ']') {
         e.preventDefault();
         e.stopImmediatePropagation();
-        onZoomOut?.();
+        if (!isLocked) onZoomOut?.();
         return true;
     }
 
     // ⌘+K / Ctrl+K: Focus search input (Phase 8)
-    if (e.key === 'k' || e.key === 'K') {
-        // Don't fire when user is already typing in a node editor
-        if (e.target instanceof HTMLElement && e.target.closest('[data-node-editor]')) return false;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        searchInputRef?.current?.focus();
-        searchInputRef?.current?.select();
-        return true;
-    }
+    if (handleSearchShortcut(e, searchInputRef)) return true;
 
-    if (e.key === 'n' || e.key === 'N') {
+    // ⌘+N / Ctrl+N : Quick Capture (blocked when locked)
+    if (e.key.toLowerCase() === 'n') {
         e.preventDefault();
         e.stopImmediatePropagation();
-        onQuickCapture?.();
+        if (!isLocked) onQuickCapture?.();
         return true;
     }
 
@@ -175,7 +216,8 @@ function handleModifierShortcuts(
  *    priority > CLEAR_SELECTION is active (settings, modal, context menu, etc.).
  *    Uses getHighestEscapePriority() so every future overlay participates
  *    automatically without changes here.
- * 2. Node-creation lock — suppresses plain n during the ~50 ms window after
+ * 2. Canvas lock guard — suppresses all plain shortcuts while the canvas is locked.
+ * 3. Node-creation lock — suppresses plain n during the ~50 ms window after
  *    ⌘+N while the new node is being created (quick-capture race guard).
  */
 function handlePlainShortcuts(
@@ -188,8 +230,11 @@ function handlePlainShortcuts(
     const topPriority = getHighestEscapePriority();
     if (topPriority !== null && topPriority > ESCAPE_PRIORITY.CLEAR_SELECTION) return;
 
+    // Guard 2: suppress all plain shortcuts while canvas is locked.
+    if (useSettingsStore.getState().isCanvasLocked) return;
+
     if (e.key === 'n' || e.key === 'N') {
-        // Guard 2: suppress n during the quick-capture 50 ms race window.
+        // Guard 3: suppress n during the quick-capture 50 ms race window.
         if (isNodeCreationLocked?.()) return;
         e.preventDefault();
         onAddNode?.();

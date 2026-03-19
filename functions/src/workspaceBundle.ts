@@ -6,11 +6,12 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { WORKSPACE_LIST_CAP } from './constants.js';
+import { ALLOWED_ORIGINS } from './utils/corsConfig.js';
 
 const WORKSPACE_LIST_QUERY = 'workspace-list';
 const BUNDLE_MAX_AGE_S = 300;
 
-export const workspaceBundle = onCall({ minInstances: 0 }, async (request) => {
+export const workspaceBundle = onCall({ minInstances: 0, cors: ALLOWED_ORIGINS }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'Authentication required');
 

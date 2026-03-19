@@ -10,7 +10,7 @@
 | Property | Value |
 |---|---|
 | **GCP Project** | `actionstation-244f0` |
-| **Firebase Hosting** | `eden-so.web.app` / `eden-so.firebaseapp.com` |
+| **Firebase Hosting** | `actionstation-244f0.web.app` / `actionstation-244f0.firebaseapp.com` |
 | **Cloud Functions region** | `us-central1` |
 | **Backup bucket** | `gs://actionstation-244f0-firestore-backups-immutable` |
 | **Tech stack** | React 18 + TypeScript + Vite + Firebase + Zustand + ReactFlow |

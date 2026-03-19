@@ -143,7 +143,12 @@ describe('CanvasView', () => {
             const props = mockCalls[0]?.[0] ?? {};
 
             expect(props.nodesDraggable).toBe(false);
-            expect(props.elementsSelectable).toBe(false);
+            // elementsSelectable stays true when locked so nodes can be clicked
+            // to select them (enabling the F key and context-menu Focus action).
+            // Only focus mode (FocusOverlay) sets it false.
+            expect(props.elementsSelectable).toBe(true);
+            // rubber-band drag-select is still blocked (selectionOnDrag=false)
+            expect(props.selectionOnDrag).toBe(false);
             expect(props.nodesConnectable).toBe(false);
             expect(props.panOnDrag).toBe(false);
             expect(props.zoomOnScroll).toBe(false);

@@ -1,4 +1,4 @@
-# Eden.so (ActionStation)
+# ActionStation
 
 AI-powered infinite whiteboard for creating, connecting, and synthesising ideas.
 

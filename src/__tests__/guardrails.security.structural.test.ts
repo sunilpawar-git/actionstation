@@ -55,7 +55,7 @@ describe('#3 — Cloud Functions must not use cors: true', () => {
     });
 });
 
-// ─── #5: Token validation before storage ──────────────────────────────────
+// ─── #5: Token storage — server-side OAuth requires no token in localStorage ─
 
 describe('#5 — token storage must validate format before localStorage write', () => {
     it('calendarAuthService validates tokens before storing', () => {
@@ -63,13 +63,15 @@ describe('#5 — token storage must validate format before localStorage write', 
         if (!existsSync(p)) return;
         const content = read(p);
 
-        expect(content).toContain('DANGEROUS_TOKEN_CHARS');
-
-        const storeIdx = content.indexOf('localStorage.setItem(STORAGE_KEY');
-        const validateIdx = content.indexOf('DANGEROUS_TOKEN_CHARS.test(token)');
-        expect(storeIdx).toBeGreaterThan(-1);
-        expect(validateIdx).toBeGreaterThan(-1);
-        expect(validateIdx < storeIdx, 'Validation must occur BEFORE localStorage.setItem').toBe(true);
+        // Server-side OAuth: no raw access tokens stored in localStorage.
+        // Only a boolean presence flag (CONNECTED_KEY) is persisted client-side.
+        // The old STORAGE_KEY / EXPIRY_KEY / DANGEROUS_TOKEN_CHARS guards are
+        // no longer needed because tokens live in Firestore (server-side).
+        expect(content).not.toContain('STORAGE_KEY');
+        expect(content).not.toContain('EXPIRY_KEY');
+        expect(content).toContain('CONNECTED_KEY');
+        // The only value written to localStorage is the hardcoded string 'true'
+        expect(content).toContain("localStorage.setItem(CONNECTED_KEY, 'true')");
     });
 });
 

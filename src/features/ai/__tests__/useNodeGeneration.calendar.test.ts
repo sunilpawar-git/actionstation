@@ -108,38 +108,26 @@ describe('useNodeGeneration - calendar intent', () => {
         expect(geminiService.generateContentWithContext).not.toHaveBeenCalled();
     });
 
-    it('triggers connect and creates event when not connected', async () => {
+    it('stores pending event when calendar is not connected (server-side OAuth flow)', async () => {
+        // In the new server-side OAuth flow, connectGoogleCalendar triggers a full-page
+        // redirect and is NOT called inline. The intent is stored as pending; the user
+        // connects their calendar and then retries via the badge.
         mockIsCalendarConnected = false;
         addIdeaNode('n1', 'Remind me to call Mama');
         (looksLikeCalendarIntent as Mock).mockReturnValue(true);
-        (connectGoogleCalendar as Mock).mockResolvedValue(true);
-        (detectCalendarIntent as Mock).mockResolvedValue(calendarResult);
-        (createEvent as Mock).mockResolvedValue(eventMeta);
-
-        const { result } = renderHook(() => useNodeGeneration());
-        await act(async () => { await result.current.generateFromPrompt('n1'); });
-
-        expect(connectGoogleCalendar).toHaveBeenCalledOnce();
-        expect(createEvent).toHaveBeenCalled();
-        const node = useCanvasStore.getState().nodes.find(n => n.id === 'n1');
-        expect(node?.data.calendarEvent).toEqual(eventMeta);
-    });
-
-    it('stores pending event when connect fails', async () => {
-        mockIsCalendarConnected = false;
-        addIdeaNode('n1', 'Remind me to call Mama');
-        (looksLikeCalendarIntent as Mock).mockReturnValue(true);
-        (connectGoogleCalendar as Mock).mockResolvedValue(false);
         (detectCalendarIntent as Mock).mockResolvedValue(calendarResult);
 
         const { result } = renderHook(() => useNodeGeneration());
         await act(async () => { await result.current.generateFromPrompt('n1'); });
 
+        // connectGoogleCalendar must NOT be called inline — it would navigate away
+        expect(connectGoogleCalendar).not.toHaveBeenCalled();
         expect(createEvent).not.toHaveBeenCalled();
-        expect(toast.info).toHaveBeenCalled();
+        // Intent stored as pending so the user can retry after connecting
         const node = useCanvasStore.getState().nodes.find(n => n.id === 'n1');
         expect(node?.data.calendarEvent?.status).toBe('pending');
         expect(node?.data.calendarEvent?.id).toBe('');
+        expect(toast.info).toHaveBeenCalled();
     });
 
     it('shows error toast when createEvent throws', async () => {

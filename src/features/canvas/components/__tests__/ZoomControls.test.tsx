@@ -145,4 +145,38 @@ describe('ZoomControls', () => {
         const dividers = container.querySelectorAll('[class*="divider"]');
         expect(dividers.length).toBeGreaterThanOrEqual(1);
     });
+
+    // ── Locked canvas — zoom buttons disabled ──────────────────────────────
+
+    it('+ button is disabled when canvas is locked', () => {
+        useSettingsStore.setState({ isCanvasLocked: true });
+        renderWithProvider(<ZoomControls />);
+        expect(screen.getByLabelText(zc.zoomIn)).toBeDisabled();
+    });
+
+    it('− button is disabled when canvas is locked', () => {
+        useSettingsStore.setState({ isCanvasLocked: true });
+        renderWithProvider(<ZoomControls />);
+        expect(screen.getByLabelText(zc.zoomOut)).toBeDisabled();
+    });
+
+    it('does not call zoomIn when + button clicked while locked', () => {
+        useSettingsStore.setState({ isCanvasLocked: true });
+        renderWithProvider(<ZoomControls />);
+        fireEvent.click(screen.getByLabelText(zc.zoomIn));
+        expect(mockZoomIn).not.toHaveBeenCalled();
+    });
+
+    it('does not call zoomOut when − button clicked while locked', () => {
+        useSettingsStore.setState({ isCanvasLocked: true });
+        renderWithProvider(<ZoomControls />);
+        fireEvent.click(screen.getByLabelText(zc.zoomOut));
+        expect(mockZoomOut).not.toHaveBeenCalled();
+    });
+
+    it('+ and − buttons are enabled when canvas is unlocked', () => {
+        renderWithProvider(<ZoomControls />);
+        expect(screen.getByLabelText(zc.zoomIn)).not.toBeDisabled();
+        expect(screen.getByLabelText(zc.zoomOut)).not.toBeDisabled();
+    });
 });

@@ -9,20 +9,20 @@ import {
     type CalendarIntentResult,
 } from './calendarIntentService';
 import { createEvent, listEvents } from './calendarService';
-import { connectGoogleCalendar, disconnectGoogleCalendar } from '@/features/auth/services/calendarAuthService';
+import { disconnectGoogleCalendar } from '@/features/auth/services/calendarAuthService';
 import { calendarStrings as cs } from '../localization/calendarStrings';
 import { REAUTH_REQUIRED } from './serverCalendarClient';
 import { formatEventsMarkdown } from './calendarEventFormatter';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 
 /**
- * Ensure Google Calendar is connected via server-side OAuth.
- * Must be called from a synchronous user-gesture context (e.g. Enter press)
- * so the popup is not blocked by the browser.
+ * Check whether the user has Google Calendar connected.
+ * In the new server-side OAuth flow, connecting requires a full-page redirect
+ * (connectGoogleCalendar). We no longer trigger that inline; instead the event
+ * is stored as pending and the user can retry via the calendar badge after connecting.
  */
-async function ensureCalendarToken(): Promise<boolean> {
-    if (useAuthStore.getState().isCalendarConnected) return true;
-    return connectGoogleCalendar();
+function isCalendarReady(): boolean {
+    return useAuthStore.getState().isCalendarConnected;
 }
 
 /**
@@ -95,13 +95,9 @@ async function handleCalendarIntent(
  * The spinner (isGenerating) is managed by the caller (useNodeGeneration).
  */
 export async function processCalendarIntent(nodeId: string, promptText: string): Promise<boolean> {
-    let calendarTokenReady = false;
-    const maybeCalendar = looksLikeCalendarIntent(promptText);
-
-    if (maybeCalendar) {
-        // Pre-acquire OAuth token while heuristic suggests calendar intent
-        calendarTokenReady = await ensureCalendarToken();
-    }
+    const calendarTokenReady = looksLikeCalendarIntent(promptText)
+        ? isCalendarReady()
+        : false;
 
     const calendarIntent = await detectCalendarIntent(promptText);
     if (calendarIntent) {
