@@ -17,10 +17,12 @@ npm run check
 
 # Individual checks
 npm run typecheck                    # tsc --noEmit
-npm run lint                         # eslint, zero warnings allowed
+npm run lint                         # eslint (max 49 warnings)
+npm run lint:strict                  # eslint, zero warnings — enforced pre-merge
 npm run lint:fix                     # Auto-fix lint issues
 npm run test                         # vitest run (all tests, single run)
 npm run test:watch                   # vitest in watch mode
+npm run test:coverage                # vitest with coverage report
 
 # Run a single test file
 npx vitest run src/path/to/file.test.ts
@@ -35,6 +37,7 @@ npm run build:quick                   # tsc -b + vite build (skip lint/test)
 # Cloud Functions (separate package)
 cd functions && npm run check         # lint + test + build
 cd functions && npm test              # vitest run
+firebase emulators:start --only functions  # Local emulator on :5001
 ```
 
 **Dev server**: `npm run dev` starts Vite at `http://localhost:5173`.
@@ -44,6 +47,21 @@ cd functions && npm test              # vitest run
 **Test framework**: Vitest + jsdom + React Testing Library. Setup in `src/test/setup.ts`. Tests co-located in `__tests__/` dirs or as `*.test.ts(x)` files.
 
 **Cloud Functions**: Separate Node 22 package in `functions/` with its own tsconfig, eslint, and vitest config. Exports from `functions/src/index.ts`.
+
+| Function | Purpose |
+|---|---|
+| `geminiProxy` | Proxies all Gemini AI requests — API key never reaches client |
+| `workspaceBundle` | Firestore Bundles for fast workspace metadata load |
+| `onNodeDeleted` | Cleans up Storage files on node delete |
+| `scheduledStorageCleanup` | Daily purge of `tmp/` files older than 7 days |
+| `firestoreBackup` | Daily scheduled Firestore → GCS export |
+| `health` | `GET /health` health check endpoint |
+| `fetchLinkMeta` | Fetches Open Graph metadata for link preview nodes |
+| `proxyImage` | Image proxy (CORS workaround for external images) |
+| `verifyTurnstile` | Cloudflare Turnstile captcha verification |
+| `exchangeCalendarCode` | Google Calendar OAuth code → refresh token |
+| `disconnectCalendar` | Removes calendar integration |
+| `calendarCreateEvent` / `calendarUpdateEvent` / `calendarDeleteEvent` / `calendarListEvents` | Server-side Calendar API proxy |
 
 ## 🧠 Product Context — Building a Second Brain (BASB)
 
@@ -88,6 +106,7 @@ Use these skills proactively during development — invoke via `/skillname`.
 
 ```
 src/
+├── app/                   # App shell: Layout, routing context, global hooks
 ├── features/              # Feature modules (SSOT per domain)
 │   ├── auth/
 │   │   ├── types/         # Model: interfaces
@@ -102,14 +121,23 @@ src/
 │   ├── knowledgeBank/     # KB entries, TF-IDF scoring
 │   ├── clustering/        # Similarity + cluster suggestions
 │   ├── search/            # Full-text search (debounced)
-│   ├── calendar/          # Google Calendar sync
-│   └── documentAgent/     # Image analysis, auto-spawn
+│   ├── calendar/          # Google Calendar server-side OAuth + sync
+│   ├── documentAgent/     # Image analysis, auto-spawn
+│   ├── export/            # Branch/markdown/mind-map export
+│   ├── onboarding/        # First-run onboarding flows
+│   ├── settings/          # User settings UI
+│   ├── subscription/      # Feature gates (free/pro tiers)
+│   ├── synthesis/         # AI-powered node synthesis
+│   └── tags/              # Node tagging
 ├── shared/
-│   ├── components/        # Reusable UI (Button, Toast)
-│   ├── hooks/             # Generic hooks (useDebouncedCallback)
-│   ├── services/          # logger.ts, Sentry, analytics
+│   ├── components/        # Reusable UI (Button, Toast, ErrorBoundary)
+│   ├── contexts/          # React contexts (not Zustand)
+│   ├── hooks/             # Generic hooks (useDebouncedCallback, useEscapeLayer)
+│   ├── services/          # logger.ts, Sentry, PostHog, web-vitals
+│   ├── stores/            # Shared Zustand stores (toast, confirm, settings)
 │   ├── utils/             # Pure functions (firebaseUtils, contentSanitizer)
-│   └── localization/      # String resources
+│   ├── localization/      # String resources
+│   └── validation/        # Zod schemas for all Firestore-bound inputs
 ├── migrations/            # Firestore schema migrations (migrationRunner.ts)
 ├── workers/               # Web Workers (knowledgeWorker.ts — TF-IDF off-thread)
 ├── config/                # Environment, firestoreQueryConfig, constants
@@ -637,6 +665,33 @@ useEffect(() => {
     ...
 }, [userId]);
 ```
+
+## 🎨 CODE STYLE CONVENTIONS
+
+### Imports — ordering
+1. React/framework (`react`, `react-dom`)
+2. External libraries (`@tanstack/react-query`, `reactflow`, etc.)
+3. Internal `@/` imports (stores, services, components)
+4. Relative imports (local files)
+
+Use `import type` for type-only imports:
+```typescript
+import type { User } from '@/features/auth/types';
+```
+
+### TypeScript
+- Use `interface` for object shapes (not `type alias`) — ESLint enforces this
+- `readonly T[]` for immutable arrays
+- Prefer `null` over `undefined` for optional values
+- `as const` for literal values that won't change
+- No `any` in production code
+
+### Naming
+- **Files**: kebab-case for components (`idea-card.tsx`), camelCase for non-components (`settingsStore.ts`)
+- **Components**: PascalCase
+- **Hooks**: camelCase prefixed with `use`
+- **Constants**: `SCREAMING_SNAKE_CASE` for config/limits
+- **Booleans**: prefix with `is`, `has`, `should`, `can`
 
 ## ✅ COMMIT CONVENTIONS
 
