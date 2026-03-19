@@ -5,7 +5,6 @@
  */
 import type { KnowledgeBankEntry, SummaryEntryResult } from '../types/knowledgeBank';
 import { shouldSummarize, summarizeContent } from './summarizationService';
-import { updateKBEntry } from './knowledgeBankService';
 
 /** Lifecycle callbacks for summarization progress tracking */
 export interface SummarizeCallbacks {
@@ -60,6 +59,7 @@ async function summarizeSingleEntry(
         }
 
         // Persist to Firestore FIRST — ensures data consistency on failure
+        const { updateKBEntry } = await import('./knowledgeBankService');
         await updateKBEntry(userId, workspaceId, entry.id, { summary });
 
         // Update store only after successful persistence

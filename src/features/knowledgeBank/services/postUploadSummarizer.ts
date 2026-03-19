@@ -8,7 +8,6 @@ import type { KnowledgeBankEntry } from '../types/knowledgeBank';
 import type { SummarizeCallbacks } from './summarizeEntries';
 import { summarizeEntries } from './summarizeEntries';
 import { summarizeDocument } from './documentSummarizer';
-import { updateKBEntry } from './knowledgeBankService';
 import { logger } from '@/shared/services/logger';
 
 /**
@@ -30,6 +29,7 @@ export async function runPostUploadSummarization(
 
         if (!parent || children.length === 0) return;
 
+        const { updateKBEntry } = await import('./knowledgeBankService');
         const allEntries = [parent, ...children];
         const chunkContents = allEntries.map((e) => e.content);
         const docSummary = await summarizeDocument(chunkContents, parent.title);

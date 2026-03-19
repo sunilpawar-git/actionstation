@@ -8,8 +8,6 @@
  */
 import type { ParseResult } from '../parsers/types';
 import type { KnowledgeBankEntry } from '../types/knowledgeBank';
-import { uploadKBFile } from './storageService';
-import { addKBEntry, getServerDocumentCount } from './knowledgeBankService';
 
 /** Generate a unique KB entry ID */
 function generateEntryId(): string {
@@ -22,6 +20,7 @@ export async function persistParseResult(
     workspaceId: string,
     result: ParseResult,
 ): Promise<KnowledgeBankEntry[]> {
+    const { getServerDocumentCount } = await import('./knowledgeBankService');
     const serverCount = await getServerDocumentCount(userId, workspaceId);
 
     // Chunked documents: persist parent + children
@@ -41,6 +40,7 @@ async function persistSingleResult(
     result: ParseResult,
     currentEntryCount: number
 ): Promise<KnowledgeBankEntry> {
+    const { addKBEntry } = await import('./knowledgeBankService');
     const count = currentEntryCount;
     let storageUrl: string | undefined;
     let entryId: string | undefined;
@@ -48,6 +48,7 @@ async function persistSingleResult(
     if (result.metadata?.requiresUpload === true && result.blob) {
         entryId = generateEntryId();
         const filename = `${result.title}.jpg`;
+        const { uploadKBFile } = await import('./storageService');
         storageUrl = await uploadKBFile(
             userId, workspaceId, entryId, result.blob, filename, 'image/jpeg'
         );
@@ -72,6 +73,7 @@ async function persistChunkedDocument(
     result: ParseResult,
     currentEntryCount: number
 ): Promise<KnowledgeBankEntry[]> {
+    const { addKBEntry } = await import('./knowledgeBankService');
     const chunks = result.chunks ?? [];
     const entries: KnowledgeBankEntry[] = [];
     const [firstChunk, ...remainingChunks] = chunks;

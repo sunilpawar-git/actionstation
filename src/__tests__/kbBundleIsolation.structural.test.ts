@@ -1,14 +1,14 @@
 /**
  * Structural test — KB bundle isolation
  *
- * Asserts that the three KB hooks do NOT contain bare top-level static imports
- * of knowledgeBankService or storageService.
+ * Asserts that KB hooks AND upstream service files do NOT contain bare
+ * top-level static imports of knowledgeBankService or storageService.
  *
- * Static imports in these hooks pull the entire KB service tree into the
- * initial bundle even though KnowledgeBankPanel is lazy-loaded in Layout.tsx,
- * defeating Rollup's code-splitting for the KB feature chunk.
+ * Static imports pull the entire KB service tree into the initial bundle
+ * even though KnowledgeBankPanel is lazy-loaded in Layout.tsx, defeating
+ * Rollup's code-splitting for the KB feature chunk.
  *
- * Each service call must use `await import(...)` inline so Rollup can defer
+ * Each call-site must use `await import(...)` inline so Rollup can defer
  * the KB service tree to a separate lazy chunk.
  *
  * See: mydocs/DEVTOOLS-146-ADOPTION-PLAN.md — Phase 1
@@ -18,11 +18,19 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const HOOKS_DIR = resolve(__dirname, '../features/knowledgeBank/hooks');
+const SERVICES_DIR = resolve(__dirname, '../features/knowledgeBank/services');
 
 const HOOKS = [
     'usePasteTextHandler.ts',
     'useDocumentGroupHandlers.ts',
     'useKnowledgeBankPanelHandlers.ts',
+] as const;
+
+/** Service files that previously had static imports of the KB service tree */
+const SERVICES = [
+    'parseResultPersister.ts',
+    'postUploadSummarizer.ts',
+    'summarizeEntries.ts',
 ] as const;
 
 describe('KB bundle isolation — no top-level static imports of service modules in hooks', () => {
@@ -41,6 +49,18 @@ describe('KB bundle isolation — no top-level static imports of service modules
                 content,
                 `${hook} must not have a top-level "import ... from '../services/storageService'" — use await import() inline instead`,
             ).not.toMatch(/^import .+ from ['"]\.\.\/services\/storageService['"]/m);
+        });
+    }
+});
+
+describe('KB bundle isolation — no top-level static imports of service modules in upstream services', () => {
+    for (const svc of SERVICES) {
+        it(`${svc} does not statically import knowledgeBankService`, () => {
+            const content = readFileSync(resolve(SERVICES_DIR, svc), 'utf-8');
+            expect(
+                content,
+                `${svc} must not have a top-level "import ... from './knowledgeBankService'" — use await import() inline instead`,
+            ).not.toMatch(/^import [^'"]+ from ['"]\.\/(knowledgeBankService|storageService)['"]/m);
         });
     }
 });
