@@ -58,7 +58,10 @@ describe('NodeHoverMenu interaction', () => {
             expect(proximityLostFn).not.toBeNull();
         });
 
-        it('proximityLost closes open transform submenu', () => {
+        it('proximityLost does NOT close transform submenu while it is open (hover-gap fix)', () => {
+            // When the user clicks the transform button and moves toward the portal
+            // dropdown, the card's mouseleave fires. The proximity callback must NOT
+            // close the deliberately-opened submenu so the user can click a menu item.
             let proximityLostFn: (() => void) | null = null;
             render(
                 <NodeHoverMenu
@@ -70,6 +73,26 @@ describe('NodeHoverMenu interaction', () => {
             );
 
             fireEvent.click(screen.getByLabelText(strings.ideaCard.transform));
+
+            // Verify submenu opened
+            const container = screen.getByRole('toolbar').parentElement;
+            expect(container?.getAttribute('data-bar-active')).toBe('true');
+
+            // Proximity lost fires (mouse left the card toward the portal)
+            act(() => { proximityLostFn?.(); });
+
+            // Submenu MUST remain open — user is still navigating to the dropdown
+            expect(container?.getAttribute('data-bar-active')).toBe('true');
+        });
+
+        it('proximityLost is a no-op when submenu is already closed', () => {
+            let proximityLostFn: (() => void) | null = null;
+            render(
+                <NodeHoverMenu
+                    {...defaultProps}
+                    registerProximityLostFn={(fn) => { proximityLostFn = fn; }}
+                />
+            );
 
             act(() => { proximityLostFn?.(); });
 
