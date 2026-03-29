@@ -35,6 +35,10 @@ const FORBIDDEN_PATTERNS = [
     'sk_live_',
     'sk_test_',
     'whsec_',
+    'RAZORPAY_KEY_SECRET',
+    'RAZORPAY_WEBHOOK_SECRET',
+    'rzp_live_',
+    'rzp_test_',
 ];
 
 describe('Stripe key isolation', () => {

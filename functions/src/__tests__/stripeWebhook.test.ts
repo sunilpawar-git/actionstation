@@ -81,6 +81,7 @@ describe('stripeWebhook', () => {
         vi.resetModules();
         mockConstructEvent.mockReturnValue(makeStripeEvent('checkout.session.completed'));
         mockCheckIdempotency.mockResolvedValue(false);
+        mockRecordEvent.mockReset();
         mockRecordEvent.mockResolvedValue(undefined);
         mockHandleCheckoutCompleted.mockResolvedValue({ userId: 'user-1' });
         mockHandleSubscriptionUpdated.mockResolvedValue({ userId: 'user-1' });

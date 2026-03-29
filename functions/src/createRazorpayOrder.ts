@@ -1,0 +1,186 @@
+/**
+ * createRazorpayOrder Cloud Function — creates a Razorpay Order for one-time payments
+ * Used for annual subscriptions (Razorpay subscriptions handle monthly via subscription API).
+ *
+ * Security layers (same pattern as Stripe checkout):
+ *  1. Bot detection
+ *  2. IP rate limit
+ *  3. Auth verification
+ *  4. User rate limit
+ *  5. Input validation (plan ID whitelist)
+ *  6. Security logging
+ */
+import { onRequest } from 'firebase-functions/v2/https';
+import { verifyAuthToken } from './utils/authVerifier.js';
+import { checkRateLimit } from './utils/rateLimiter.js';
+import { checkIpRateLimit } from './utils/ipRateLimiter.js';
+import { detectBot, extractClientIp } from './utils/botDetector.js';
+import { logSecurityEvent, SecurityEventType } from './utils/securityLogger.js';
+import { recordThreatEvent } from './utils/threatMonitor.js';
+import {
+    getRazorpayClient,
+    razorpayKeyId,
+    razorpayKeySecret,
+} from './utils/razorpayClient.js';
+import { ALLOWED_ORIGINS } from './utils/corsConfig.js';
+import {
+    CHECKOUT_RATE_LIMIT,
+    IP_RATE_LIMIT_CHECKOUT,
+    RAZORPAY_PLAN_IDS,
+    errorMessages,
+} from './utils/securityConstants.js';
+
+/** Request body shape */
+interface OrderRequestBody {
+    planId?: string;
+    currency?: 'INR' | 'USD';
+    receipt?: string;
+}
+
+export const createRazorpayOrder = onRequest(
+    {
+        cors: ALLOWED_ORIGINS,
+        secrets: [razorpayKeyId, razorpayKeySecret],
+        maxInstances: 10,
+    },
+    async (req, res) => {
+        if (req.method !== 'POST') {
+            res.status(405).json({ error: errorMessages.methodNotAllowed });
+            return;
+        }
+
+        const ip = extractClientIp(req);
+
+        // Layer 1: Bot detection
+        const bot = detectBot(req);
+        if (bot.isBot && bot.confidence !== 'low') {
+            logSecurityEvent({
+                type: SecurityEventType.BOT_DETECTED,
+                ip,
+                endpoint: 'createRazorpayOrder',
+                message: bot.reason ?? 'Bot detected',
+            });
+            recordThreatEvent('bot_spike', { ip, endpoint: 'createRazorpayOrder' });
+            res.status(403).json({ error: 'Forbidden' });
+            return;
+        }
+
+        // Layer 2: IP rate limit
+        if (!await checkIpRateLimit(ip, 'razorpayOrder', IP_RATE_LIMIT_CHECKOUT)) {
+            logSecurityEvent({
+                type: SecurityEventType.IP_BLOCKED,
+                ip,
+                endpoint: 'createRazorpayOrder',
+                message: 'IP rate limit exceeded',
+            });
+            recordThreatEvent('429_spike', { ip, endpoint: 'createRazorpayOrder' });
+            res.status(429).json({ error: errorMessages.rateLimited });
+            return;
+        }
+
+        // Layer 3: Auth verification
+        const uid = await verifyAuthToken(req.headers.authorization);
+        if (!uid) {
+            logSecurityEvent({
+                type: SecurityEventType.AUTH_FAILURE,
+                ip,
+                endpoint: 'createRazorpayOrder',
+                message: 'Missing or invalid auth token',
+            });
+            recordThreatEvent('auth_failure_spike', { ip, endpoint: 'createRazorpayOrder' });
+            res.status(401).json({ error: errorMessages.authRequired });
+            return;
+        }
+
+        // Layer 4: User rate limit
+        if (!await checkRateLimit(uid, 'razorpayOrder', CHECKOUT_RATE_LIMIT)) {
+            logSecurityEvent({
+                type: SecurityEventType.RATE_LIMIT_VIOLATION,
+                uid,
+                endpoint: 'createRazorpayOrder',
+                message: 'User rate limit exceeded',
+            });
+            recordThreatEvent('429_spike', { uid, endpoint: 'createRazorpayOrder' });
+            res.status(429).json({ error: errorMessages.rateLimited });
+            return;
+        }
+
+        // Layer 5: Input validation
+        const body = req.body as OrderRequestBody;
+        const planId = body.planId;
+
+        if (!planId || !Object.values(RAZORPAY_PLAN_IDS).includes(planId as string)) {
+            res.status(400).json({ error: errorMessages.invalidPriceId });
+            return;
+        }
+
+        // Map plan ID to amount (in paise for INR, cents for USD)
+        const amount = getAmountForPlan(planId, body.currency ?? 'INR');
+        if (!amount) {
+            res.status(400).json({ error: errorMessages.invalidPriceId });
+            return;
+        }
+
+        // Create Razorpay Order
+        try {
+            const razorpay = getRazorpayClient();
+            const order = await razorpay.orders.create({
+                amount,
+                currency: body.currency ?? 'INR',
+                receipt: body.receipt ?? `order_${uid}_${Date.now()}`,
+                notes: {
+                    userId: uid,
+                    planId,
+                    source: 'actionstation',
+                },
+            });
+
+            logSecurityEvent({
+                type: SecurityEventType.CHECKOUT_CREATED,
+                uid,
+                endpoint: 'createRazorpayOrder',
+                message: 'Razorpay order created',
+                metadata: { planId, orderId: order.id },
+            });
+
+            res.status(200).json({
+                orderId: order.id,
+                amount: order.amount,
+                currency: order.currency,
+                keyId: razorpayKeyId.value(),
+            });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            logSecurityEvent({
+                type: SecurityEventType.WEBHOOK_PROCESSING_ERROR,
+                uid,
+                endpoint: 'createRazorpayOrder',
+                message: `Order creation failed: ${message}`,
+            });
+            res.status(500).json({ error: errorMessages.checkoutFailed });
+        }
+    },
+);
+
+/**
+ * Map a plan ID to its amount.
+ * Amounts are in smallest currency unit (paise for INR, cents for USD).
+ */
+function getAmountForPlan(
+    planId: string,
+    currency: string,
+): number | null {
+    const INR_PLANS: Record<string, number> = {
+        [RAZORPAY_PLAN_IDS.pro_monthly_inr]: 10000, // ₹100 (test plan — update to 49900 for ₹499 production plan)
+        [RAZORPAY_PLAN_IDS.pro_annual_inr]: 499900, // ₹4999
+    };
+
+    const USD_PLANS: Record<string, number> = {
+        [RAZORPAY_PLAN_IDS.pro_monthly_usd]: 700,   // $7.00
+        [RAZORPAY_PLAN_IDS.pro_annual_usd]: 5900,   // $59.00
+    };
+
+    if (currency === 'INR') return INR_PLANS[planId] ?? null;
+    if (currency === 'USD') return USD_PLANS[planId] ?? null;
+    return null;
+}

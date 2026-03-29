@@ -35,7 +35,7 @@ jobs:
           for VAR in VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID \
                      VITE_FIREBASE_STORAGE_BUCKET VITE_FIREBASE_MESSAGING_SENDER_ID VITE_FIREBASE_APP_ID \
                      VITE_CLOUD_FUNCTIONS_URL VITE_GOOGLE_CLIENT_ID VITE_SENTRY_DSN VITE_POSTHOG_KEY \
-                     VITE_STRIPE_PUBLISHABLE_KEY; do
+                     VITE_STRIPE_PUBLISHABLE_KEY VITE_TURNSTILE_SITE_KEY; do
             VALUE="${!VAR}"
             if [ -z "$VALUE" ]; then
               MISSING="$MISSING $VAR"
@@ -58,6 +58,7 @@ jobs:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
 
       - name: Build
         run: npm run build:quick
@@ -73,6 +74,7 @@ jobs:
           VITE_CLOUD_FUNCTIONS_URL: ${{ secrets.VITE_CLOUD_FUNCTIONS_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
           VITE_APP_ENV: production
 
       - name: Install Cloud Functions dependencies

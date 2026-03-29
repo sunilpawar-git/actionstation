@@ -27,4 +27,5 @@ export const subscriptionStrings = {
     checkoutError: 'Failed to start checkout. Please try again.',
     billingPortalError: 'Failed to open billing portal.',
     subscriptionGroup: 'Subscription',
+    upgradeLoading: 'Opening checkout...',
 } as const;

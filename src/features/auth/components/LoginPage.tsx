@@ -1,9 +1,12 @@
 /**
  * Login Page - Google OAuth sign-in
+ * Integrates Cloudflare Turnstile CAPTCHA before sign-in (Phase 2, D16).
+ * If VITE_TURNSTILE_SITE_KEY is not configured, CAPTCHA is skipped.
  */
 import { strings } from '@/shared/localization/strings';
 import { signInWithGoogle } from '../services/authService';
 import { useAuthStore } from '../stores/authStore';
+import { useTurnstile } from '../hooks/useTurnstile';
 
 /** Google "G" logo SVG used inside the sign-in button. */
 function GoogleIcon() {
@@ -70,14 +73,21 @@ function LoginButton({ isLoading, onClick }: { isLoading: boolean; onClick: () =
 export function LoginPage() {
     const isLoading = useAuthStore((s) => s.isLoading);
     const error = useAuthStore((s) => s.error);
+    const turnstile = useTurnstile();
 
     const handleSignIn = async () => {
+        // Run Turnstile challenge before sign-in (skipped if no site key configured)
+        const verified = await turnstile.execute();
+        if (!verified) return;
+
         try {
             await signInWithGoogle();
         } catch {
             // Error is handled in authService
         }
     };
+
+    const displayError = turnstile.error ?? error;
 
     return (
         <main
@@ -96,8 +106,8 @@ export function LoginPage() {
                     <p className="text-[var(--color-text-secondary)] text-center" style={{ fontSize: 'var(--font-size-base)', marginBottom: 40, lineHeight: 1.6 }}>
                         {strings.app.tagline}
                     </p>
-                    {error && <LoginError message={error} />}
-                    <LoginButton isLoading={isLoading} onClick={handleSignIn} />
+                    {displayError && <LoginError message={displayError} />}
+                    <LoginButton isLoading={isLoading || turnstile.isLoading} onClick={handleSignIn} />
                     <p className="text-[var(--color-text-muted)] text-center" style={{ fontSize: 'var(--font-size-xs)', marginTop: 32, lineHeight: 1.6 }}>
                         {strings.auth.termsNote}
                     </p>

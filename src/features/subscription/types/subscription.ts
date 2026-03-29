@@ -37,6 +37,8 @@ export interface SubscriptionInfo {
     currentPeriodEnd?: number | null;
     cancelAtPeriodEnd?: boolean;
     currency?: string;
+    /** Payment provider: 'stripe' | 'razorpay' — determines which billing portal to open */
+    provider?: 'stripe' | 'razorpay';
 }
 
 /** Pricing plan for display in PricingCard */

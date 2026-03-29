@@ -3,11 +3,14 @@
  * Gated behind subscription: free users see upgrade prompt.
  * All text from strings.pinning.* -- no hardcoded strings.
  */
-import React from 'react';
+import React, { useCallback } from 'react';
 import { usePinWorkspaceButton } from '../hooks/usePinWorkspaceButton';
 import { UpgradePrompt } from '@/shared/components/UpgradePrompt';
-import { toast } from '@/shared/stores/toastStore';
+import { useRazorpayCheckout } from '@/features/subscription/hooks/useRazorpayCheckout';
+import { logger } from '@/shared/services/logger';
 import { strings } from '@/shared/localization/strings';
+
+const PRO_MONTHLY_PLAN_ID = 'plan_SWtIj1spzXCZbR';
 
 interface PinWorkspaceButtonProps {
     workspaceId: string;
@@ -16,6 +19,14 @@ interface PinWorkspaceButtonProps {
 /** Toggle button to pin a workspace for offline availability; shows upgrade prompt for free users. */
 export const PinWorkspaceButton = React.memo(function PinWorkspaceButton({ workspaceId }: PinWorkspaceButtonProps) {
     const { isPinned, showUpgrade, setShowUpgrade, storageLabel, handleToggle } = usePinWorkspaceButton(workspaceId);
+    const { startCheckout } = useRazorpayCheckout();
+
+    const handleUpgrade = useCallback(() => {
+        setShowUpgrade(false);
+        void startCheckout(PRO_MONTHLY_PLAN_ID, 'INR').catch(
+            (e: unknown) => logger.error('Razorpay checkout failed', e as Error),
+        );
+    }, [setShowUpgrade, startCheckout]);
 
     const label = isPinned ? strings.pinning.unpin : strings.pinning.pin;
     const storageInfo = isPinned && storageLabel
@@ -53,10 +64,7 @@ export const PinWorkspaceButton = React.memo(function PinWorkspaceButton({ works
                 <UpgradePrompt
                     featureName={strings.pinning.pin}
                     onDismiss={() => setShowUpgrade(false)}
-                    onUpgrade={() => {
-                        setShowUpgrade(false);
-                        toast.info(strings.common.comingSoon);
-                    }}
+                    onUpgrade={handleUpgrade}
                 />
             )}
         </>

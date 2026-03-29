@@ -10,7 +10,9 @@ import { useConfirm } from '@/shared/stores/confirmStore';
 import { useDataExport } from '@/features/workspace/hooks/useDataExport';
 import { useSubscriptionStore } from '@/features/subscription/stores/subscriptionStore';
 import { useBillingPortal } from '@/features/subscription/hooks/useBillingPortal';
+import { useRazorpayCheckout } from '@/features/subscription/hooks/useRazorpayCheckout';
 import { toast } from '@/shared/stores/toastStore';
+import { logger } from '@/shared/services/logger';
 import { SettingsGroup } from './SettingsGroup';
 import {
     SP_SECTION, SP_SECTION_STYLE,
@@ -65,12 +67,22 @@ function DangerZone() {
     );
 }
 
+/** Plan ID for the active test/production monthly plan */
+const PRO_MONTHLY_PLAN_ID = 'plan_SWtIj1spzXCZbR';
+
 function SubscriptionStatus() {
     const tier = useSubscriptionStore((s) => s.tier);
     const isActive = useSubscriptionStore((s) => s.isActive);
     const { openBillingPortal, isLoading: portalLoading } = useBillingPortal();
+    const { startCheckout, isLoading: checkoutLoading } = useRazorpayCheckout();
     const s = strings.subscription;
     const isPro = tier === 'pro';
+
+    const handleUpgrade = useCallback(() => {
+        void startCheckout(PRO_MONTHLY_PLAN_ID, 'INR').catch(
+            (e: unknown) => logger.error('Razorpay checkout failed', e as Error),
+        );
+    }, [startCheckout]);
 
     return (
         <SettingsGroup title={s.subscriptionGroup}>
@@ -106,9 +118,14 @@ function SubscriptionStatus() {
                     {portalLoading ? strings.common.loading : s.manageBilling}
                 </button>
             ) : (
-                <span className={SP_SETTING_DESC} style={SP_SETTING_DESC_STYLE}>
-                    {s.upgradeMessage}
-                </span>
+                <button
+                    className={SP_BTN_SECONDARY}
+                    style={SP_BTN_SECONDARY_STYLE}
+                    onClick={handleUpgrade}
+                    disabled={checkoutLoading}
+                >
+                    {checkoutLoading ? s.upgradeLoading : s.upgradeCta}
+                </button>
             )}
         </SettingsGroup>
     );
