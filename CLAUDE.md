@@ -756,7 +756,33 @@ useEffect(() => {
 ```
 
 ---
+## 💳 RAZORPAY INTEGRATION — Gotchas
 
+**Critical rules learned the hard way:**
+
+1. **Receipt string ≤ 40 chars** — Razorpay rejects orders with a receipt longer than 40 characters. The SDK throws a plain object (`{statusCode:400, error:{description:"..."}}`) — not an `Error` instance — so `error instanceof Error` is `false` and the message is lost. Use a short format:
+```typescript
+// ✅ Correct — 29 chars
+receipt: `r_${uid.slice(0, 10)}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`
+
+// ❌ Wrong — 71 chars, Razorpay rejects with BAD_REQUEST
+receipt: `order_${uid}_${crypto.randomUUID()}`
+```
+
+2. **Razorpay SDK v2 throws plain objects, not Errors** — always handle both cases in catch blocks:
+```typescript
+const rzrErr = error as Record<string, unknown>;
+const inner = rzrErr['error'] as Record<string, unknown> | undefined;
+const message = inner?.['description']
+    ? `${String(inner['code'])}: ${String(inner['description'])}`
+    : JSON.stringify(error);
+```
+
+3. **Secrets are bound at deploy time** — updating a GCP secret version does NOT take effect until you redeploy the function. Always `firebase deploy --only functions:<name>` after adding a new secret version.
+
+4. **App Check header required on all onRequest functions** — include `'X-Firebase-AppCheck': token` in all Cloud Function calls from the client, or they return 401 silently. Use the shared `getAppCheckToken()` utility in `src/features/subscription/utils/appCheckToken.ts`.
+
+---
 ## �🚫 TECH DEBT PREVENTION
 
 Before ANY commit:

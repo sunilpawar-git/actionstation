@@ -21,6 +21,10 @@ vi.mock('@/features/auth/services/authTokenService', () => ({
     getAuthToken: mockGetAuthToken,
 }));
 
+vi.mock('@/features/subscription/utils/appCheckToken', () => ({
+    getAppCheckToken: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock('@/shared/services/logger', () => ({
     logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));

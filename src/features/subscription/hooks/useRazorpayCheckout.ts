@@ -7,6 +7,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { useSubscriptionStore } from '@/features/subscription/stores/subscriptionStore';
 import { getAuthToken } from '@/features/auth/services/authTokenService';
+import { getAppCheckToken } from '@/features/subscription/utils/appCheckToken';
 import { logger } from '@/shared/services/logger';
 import { loadRazorpayScript } from '../utils/razorpayScriptLoader';
 
@@ -30,12 +31,18 @@ async function fetchOrder(
     planId: string,
     currency: string,
 ): Promise<OrderResponse | { error: string }> {
-    const token = await getAuthToken();
+    const [token, appCheckToken] = await Promise.all([getAuthToken(), getAppCheckToken()]);
     if (!token) return { error: 'Authentication required' };
+
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+    };
+    if (appCheckToken) headers['X-Firebase-AppCheck'] = appCheckToken;
 
     const response = await fetch(`${CLOUD_FUNCTIONS_URL}/createRazorpayOrder`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers,
         body: JSON.stringify({ planId, currency }),
         signal: AbortSignal.timeout(10_000),
     });

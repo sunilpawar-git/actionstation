@@ -77,6 +77,8 @@ describe('CSP Completeness (firebase.json)', () => {
             { domain: 'https://oauth2.googleapis.com', reason: 'OAuth2 token exchange' },
             { domain: 'https://firebasestorage.googleapis.com', reason: 'Firebase Storage upload API' },
             { domain: 'https://*.firebasestorage.app', reason: 'Firebase Storage download URLs' },
+            { domain: 'https://api.razorpay.com', reason: 'Razorpay payment API' },
+            { domain: 'https://checkout.razorpay.com', reason: 'Razorpay checkout script / API' },
         ];
 
         it.each(requiredDomains)(

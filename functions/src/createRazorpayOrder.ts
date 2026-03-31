@@ -127,6 +127,22 @@ export const createRazorpayOrder = onRequest(
             return;
         }
 
+        // Validate API credentials are present before attempting the API call.
+        // Empty keys mean secrets are not configured in this environment.
+        const keyId = razorpayKeyId.value();
+        const keySecret = razorpayKeySecret.value();
+        if (!keyId || !keySecret ||
+            keyId.startsWith('REPLACE_WITH') || keySecret.startsWith('REPLACE_WITH')) {
+            logSecurityEvent({
+                type: SecurityEventType.WEBHOOK_PROCESSING_ERROR,
+                uid,
+                endpoint: 'createRazorpayOrder',
+                message: 'Razorpay credentials not configured',
+            });
+            res.status(503).json({ error: 'Payment service not yet configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET secrets then redeploy.' });
+            return;
+        }
+
         // Map plan ID to amount (in paise for INR, cents for USD)
         const amount = getAmountForPlan(planId, body.currency ?? 'INR');
         if (!amount) {
@@ -140,7 +156,8 @@ export const createRazorpayOrder = onRequest(
             const order = await razorpay.orders.create({
                 amount,
                 currency: body.currency ?? 'INR',
-                receipt: body.receipt ?? `order_${uid}_${crypto.randomUUID()}`,
+                // Razorpay receipt limit is 40 chars — use short UID prefix + UUID fragment
+                receipt: body.receipt ?? `r_${uid.slice(0, 10)}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`,
                 notes: {
                     userId: uid,
                     planId,
@@ -163,7 +180,19 @@ export const createRazorpayOrder = onRequest(
                 keyId: razorpayKeyId.value(),
             });
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
+            // Razorpay SDK v2 throws plain objects: { statusCode, error: { code, description } }
+            let message: string;
+            if (error instanceof Error) {
+                message = error.message;
+            } else if (typeof error === 'object' && error !== null) {
+                const rzrErr = error as Record<string, unknown>;
+                const inner = rzrErr['error'] as Record<string, unknown> | undefined;
+                message = inner?.['description']
+                    ? `${String(inner['code'] ?? 'API_ERROR')}: ${String(inner['description'])}`
+                    : JSON.stringify(error);
+            } else {
+                message = String(error);
+            }
             logSecurityEvent({
                 type: SecurityEventType.WEBHOOK_PROCESSING_ERROR,
                 uid,

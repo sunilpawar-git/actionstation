@@ -2,7 +2,7 @@
  * Account Section - User info, data export, sign out, and account deletion.
  * Organized into SettingsGroup cards with standardized button variants.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { strings } from '@/shared/localization/strings';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { signOut, deleteAccount } from '@/features/auth/services/authService';
@@ -73,10 +73,19 @@ const PRO_MONTHLY_PLAN_ID = 'plan_SWtIj1spzXCZbR';
 function SubscriptionStatus() {
     const tier = useSubscriptionStore((s) => s.tier);
     const isActive = useSubscriptionStore((s) => s.isActive);
-    const { openBillingPortal, isLoading: portalLoading } = useBillingPortal();
-    const { startCheckout, isLoading: checkoutLoading } = useRazorpayCheckout();
+    const { openBillingPortal, isLoading: portalLoading, error: portalError } = useBillingPortal();
+    const { startCheckout, isLoading: checkoutLoading, error: checkoutError } = useRazorpayCheckout();
     const s = strings.subscription;
     const isPro = tier === 'pro';
+
+    // Surface checkout / portal errors as toasts so the user sees what went wrong.
+    useEffect(() => {
+        if (checkoutError) toast.error(checkoutError);
+    }, [checkoutError]);
+
+    useEffect(() => {
+        if (portalError) toast.error(portalError);
+    }, [portalError]);
 
     const handleUpgrade = useCallback(() => {
         void startCheckout(PRO_MONTHLY_PLAN_ID, 'INR').catch(

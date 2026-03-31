@@ -41,7 +41,7 @@ if (import.meta.env.DEV) {
     // @ts-expect-error — Firebase App Check debug flag (not in standard types)
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN ?? true;
 }
-initializeAppCheck(app, {
+export const appCheck = initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
     isTokenAutoRefreshEnabled: true,
 });

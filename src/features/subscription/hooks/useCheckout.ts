@@ -6,6 +6,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { getAuthToken } from '@/features/auth/services/authTokenService';
+import { getAppCheckToken } from '@/features/subscription/utils/appCheckToken';
 import { logger } from '@/shared/services/logger';
 
 const CLOUD_FUNCTIONS_URL = import.meta.env.VITE_CLOUD_FUNCTIONS_URL;
@@ -35,20 +36,23 @@ export function useCheckout(): UseCheckoutReturn {
         setError(null);
 
         try {
-            const token = await getAuthToken();
+            const [token, appCheckToken] = await Promise.all([getAuthToken(), getAppCheckToken()]);
             if (!token) {
                 setError('Authentication required');
                 return;
             }
 
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            };
+            if (appCheckToken) headers['X-Firebase-AppCheck'] = appCheckToken;
+
             const response = await fetch(
                 `${CLOUD_FUNCTIONS_URL}/createCheckoutSession`,
                 {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers,
                     body: JSON.stringify({ priceId }),
                     signal: AbortSignal.timeout(10_000),
                 },
