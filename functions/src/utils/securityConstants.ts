@@ -80,6 +80,9 @@ export const BILLING_PORTAL_RATE_LIMIT = 10;
 /** Rate limit: max billing portal creates per IP per window */
 export const IP_RATE_LIMIT_BILLING_PORTAL = 20;
 
+/** Daily AI generation limit for free tier users */
+export const AI_DAILY_FREE_LIMIT = 60;
+
 /**
  * Razorpay plan IDs.
  * pro_monthly_inr: test plan at ₹100/month (test mode) — replace with ₹499 plan for production.
@@ -128,6 +131,7 @@ export const errorMessages = {
     geminiInvalidBody: 'Invalid request body: contents array is required',
     geminiBodyTooLarge: 'Request body exceeds maximum size',
     geminiUpstreamError: 'Gemini API returned an error',
+    aiDailyLimitExceeded: 'Daily AI generation limit reached. Upgrade to Pro for unlimited.',
     invalidPriceId: 'Invalid or missing price ID',
     checkoutFailed: 'Failed to create checkout session',
     missingSignature: 'Missing stripe-signature header',

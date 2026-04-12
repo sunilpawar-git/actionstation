@@ -6,9 +6,11 @@ import { resolve } from 'path';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import React from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { IdeaCard } from '../IdeaCard';
 import { useCanvasStore } from '../../../stores/canvasStore';
+import { TierLimitsProvider } from '@/features/subscription/contexts/TierLimitsContext';
 import type { NodeProps } from '@xyflow/react';
 
 // Mock TipTap hooks and extensions
@@ -99,9 +101,15 @@ const renderWithProvider = (props: Partial<NodeProps>) => {
     };
 
     return render(
-        <ReactFlowProvider>
-            <IdeaCard {...defaultProps} {...props} />
-        </ReactFlowProvider>
+        React.createElement(
+            TierLimitsProvider,
+            null,
+            React.createElement(
+                ReactFlowProvider,
+                null,
+                React.createElement(IdeaCard, { ...defaultProps, ...props })
+            )
+        )
     );
 };
 

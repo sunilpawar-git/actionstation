@@ -4,6 +4,9 @@
  */
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import React from 'react';
+import { TierLimitsProvider } from '@/features/subscription/contexts/TierLimitsContext';
 
 vi.mock('../services/geminiService', () => ({
     generateContentWithContext: vi.fn(),
@@ -28,9 +31,11 @@ vi.mock('@/features/auth/services/calendarAuthService', () => ({
 
 let mockIsCalendarConnected = true;
 vi.mock('@/features/auth/stores/authStore', () => ({
-    useAuthStore: {
-        getState: () => ({ isCalendarConnected: mockIsCalendarConnected }),
-    },
+    useAuthStore: Object.assign(
+        (selector: (s: Record<string, unknown>) => unknown) =>
+            selector({ isCalendarConnected: mockIsCalendarConnected, user: { id: 'user-1' } }),
+        { getState: () => ({ isCalendarConnected: mockIsCalendarConnected, user: { id: 'user-1' } }) },
+    ),
 }));
 
 vi.mock('@/shared/stores/toastStore', () => ({
@@ -48,6 +53,11 @@ vi.mock('../hooks/useNodePoolContext', () => ({
 vi.mock('@/features/subscription/hooks/useNodeCreationGuard', () => ({
     useNodeCreationGuard: () => ({ guardNodeCreation: () => true }),
 }));
+
+// Wrapper for TierLimitsProvider
+function wrapper({ children }: { children: ReactNode }) {
+    return React.createElement(TierLimitsProvider, null, children);
+}
 
 // eslint-disable-next-line import-x/first
 import { useNodeGeneration } from '../hooks/useNodeGeneration';
@@ -101,7 +111,7 @@ describe('useNodeGeneration - calendar intent', () => {
         (detectCalendarIntent as Mock).mockResolvedValue(calendarResult);
         (createEvent as Mock).mockResolvedValue(eventMeta);
 
-        const { result } = renderHook(() => useNodeGeneration());
+        const { result } = renderHook(() => useNodeGeneration(), { wrapper });
         await act(async () => { await result.current.generateFromPrompt('n1'); });
 
         expect(createEvent).toHaveBeenCalledWith('reminder', 'Call Mama', '2026-02-19T21:00:00.000Z', undefined, undefined);
@@ -121,7 +131,7 @@ describe('useNodeGeneration - calendar intent', () => {
         (looksLikeCalendarIntent as Mock).mockReturnValue(true);
         (detectCalendarIntent as Mock).mockResolvedValue(calendarResult);
 
-        const { result } = renderHook(() => useNodeGeneration());
+        const { result } = renderHook(() => useNodeGeneration(), { wrapper });
         await act(async () => { await result.current.generateFromPrompt('n1'); });
 
         // connectGoogleCalendar must NOT be called inline — it would navigate away
@@ -140,7 +150,7 @@ describe('useNodeGeneration - calendar intent', () => {
         (detectCalendarIntent as Mock).mockResolvedValue(calendarResult);
         (createEvent as Mock).mockRejectedValue(new Error('API down'));
 
-        const { result } = renderHook(() => useNodeGeneration());
+        const { result } = renderHook(() => useNodeGeneration(), { wrapper });
         await act(async () => { await result.current.generateFromPrompt('n1'); });
 
         expect(toast.error).toHaveBeenCalled();
@@ -153,7 +163,7 @@ describe('useNodeGeneration - calendar intent', () => {
         (detectCalendarIntent as Mock).mockResolvedValue(null);
         vi.mocked(geminiService.generateContentWithContext).mockResolvedValue('A poem...');
 
-        const { result } = renderHook(() => useNodeGeneration());
+        const { result } = renderHook(() => useNodeGeneration(), { wrapper });
         await act(async () => { await result.current.generateFromPrompt('n1'); });
 
         expect(connectGoogleCalendar).not.toHaveBeenCalled();
@@ -167,7 +177,7 @@ describe('useNodeGeneration - calendar intent', () => {
         (detectCalendarIntent as Mock).mockResolvedValue(null);
         vi.mocked(geminiService.generateContentWithContext).mockResolvedValue('Lyrics...');
 
-        const { result } = renderHook(() => useNodeGeneration());
+        const { result } = renderHook(() => useNodeGeneration(), { wrapper });
         await act(async () => { await result.current.generateFromPrompt('n1'); });
 
         const node = useCanvasStore.getState().nodes.find(n => n.id === 'n1');

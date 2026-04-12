@@ -14,6 +14,18 @@ vi.mock('firebase-admin/auth', () => ({
     }),
 }));
 
+// Mock firebase-admin/firestore for daily AI limit check
+vi.mock('firebase-admin/firestore', () => ({
+    getFirestore: () => ({
+        doc: (_path: string) => ({
+            get: vi.fn().mockResolvedValue({
+                exists: true,
+                data: () => ({ tier: 'pro' }), // Default to pro so daily limit check passes
+            }),
+        }),
+    }),
+}));
+
 const VALID_BODY: GeminiProxyRequest = {
     contents: [{ parts: [{ text: 'Summarize this text' }] }],
     generationConfig: { temperature: 0.3, maxOutputTokens: 256 },

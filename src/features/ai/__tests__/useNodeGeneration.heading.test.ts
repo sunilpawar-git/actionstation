@@ -4,10 +4,13 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import React from 'react';
 import { useNodeGeneration } from '../hooks/useNodeGeneration';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import * as geminiService from '../services/geminiService';
 import type { IdeaNodeData } from '@/features/canvas/types/node';
+import { TierLimitsProvider } from '@/features/subscription/contexts/TierLimitsContext';
 
 vi.mock('../services/geminiService', () => ({
     generateContent: vi.fn(),
@@ -29,6 +32,11 @@ vi.mock('../hooks/useNodePoolContext', () => ({
 vi.mock('@/features/subscription/hooks/useNodeCreationGuard', () => ({
     useNodeCreationGuard: () => ({ guardNodeCreation: () => true }),
 }));
+
+// Wrapper for TierLimitsProvider
+function wrapper({ children }: { children: ReactNode }) {
+    return React.createElement(TierLimitsProvider, null, children);
+}
 
 const createTestIdeaNode = (id: string, prompt: string, output?: string, heading?: string) => ({
     id,
@@ -55,7 +63,7 @@ function addEdge(sourceId: string, targetId: string, edgeId = 'edge-1') {
 
 async function generateAndGetCall(nodeId: string) {
     vi.mocked(geminiService.generateContentWithContext).mockResolvedValue('Response');
-    const { result } = renderHook(() => useNodeGeneration());
+    const { result } = renderHook(() => useNodeGeneration(), { wrapper });
     await act(async () => { await result.current.generateFromPrompt(nodeId); });
     return vi.mocked(geminiService.generateContentWithContext).mock.calls[0];
 }

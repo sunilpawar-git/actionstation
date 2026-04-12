@@ -16,6 +16,7 @@
  */
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
+import { getFirestore } from 'firebase-admin/firestore';
 import { verifyAppCheckToken } from './utils/appCheckVerifier.js';
 import { verifyAuthToken } from './utils/authVerifier.js';
 import { checkRateLimit } from './utils/rateLimiter.js';
@@ -25,6 +26,7 @@ import { filterPromptInput, filterPromptOutput } from './utils/promptFilter.js';
 import { logSecurityEvent, SecurityEventType } from './utils/securityLogger.js';
 import { recordThreatEvent } from './utils/threatMonitor.js';
 import { ALLOWED_ORIGINS } from './utils/corsConfig.js';
+import { checkAndIncrementDailyAi } from './utils/dailyAiLimiter.js';
 import {
     errorMessages,
     GEMINI_RATE_LIMIT,
@@ -34,6 +36,7 @@ import {
     GEMINI_MODEL,
     GEMINI_FETCH_TIMEOUT_MS,
     IP_RATE_LIMIT_GEMINI,
+    AI_DAILY_FREE_LIMIT,
 } from './utils/securityConstants.js';
 
 /** Secret managed via Google Cloud Secret Manager */
@@ -78,6 +81,23 @@ export async function handleGeminiProxy(
             message: `User rate limit exceeded`,
         });
         return { status: 429, data: { error: errorMessages.rateLimited } };
+    }
+
+    // Check daily AI limit for free tier users
+    const tierSnap = await getFirestore().doc(`users/${uid}/subscriptions/current`).get();
+    const tier = (tierSnap.data() as Record<string, unknown> | undefined)?.tier as string | undefined;
+    if (tier !== 'pro') {
+        const allowed = await checkAndIncrementDailyAi(uid, AI_DAILY_FREE_LIMIT);
+        if (!allowed) {
+            logSecurityEvent({
+                type: SecurityEventType.RATE_LIMIT_VIOLATION,
+                uid,
+                endpoint: 'geminiProxy',
+                message: 'Daily AI generation limit exceeded',
+                metadata: { reason: 'daily_ai_limit' },
+            });
+            return { status: 429, data: { error: errorMessages.aiDailyLimitExceeded } };
+        }
     }
 
     // Validate request body

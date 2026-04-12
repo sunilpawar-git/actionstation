@@ -3,10 +3,13 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { useNodeGeneration } from '../hooks/useNodeGeneration';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import * as geminiService from '../services/geminiService';
 import type { IdeaNodeData } from '@/features/canvas/types/node';
+import { TierLimitsProvider } from '@/features/subscription/contexts/TierLimitsContext';
+import React from 'react';
 
 // Mock gemini service
 vi.mock('../services/geminiService', () => ({
@@ -33,6 +36,11 @@ vi.mock('../hooks/useNodePoolContext', () => ({
 vi.mock('@/features/subscription/hooks/useNodeCreationGuard', () => ({
     useNodeCreationGuard: () => ({ guardNodeCreation: () => true }),
 }));
+
+// Wrapper for TierLimitsProvider
+function wrapper({ children }: { children: ReactNode }) {
+    return React.createElement(TierLimitsProvider, null, children);
+}
 
 // Helper to create IdeaCard node
 const createTestIdeaNode = (id: string, prompt: string, output?: string, heading?: string) => ({
@@ -62,7 +70,7 @@ function addEdge(sourceId: string, targetId: string, edgeId = 'edge-1') {
 /** Helper: generate and return the call args */
 async function generateAndGetCall(nodeId: string) {
     vi.mocked(geminiService.generateContentWithContext).mockResolvedValue('Response');
-    const { result } = renderHook(() => useNodeGeneration());
+    const { result } = renderHook(() => useNodeGeneration(), { wrapper });
     await act(async () => { await result.current.generateFromPrompt(nodeId); });
     return vi.mocked(geminiService.generateContentWithContext).mock.calls[0];
 }
@@ -79,7 +87,7 @@ describe('useNodeGeneration', () => {
 
             vi.mocked(geminiService.generateContentWithContext).mockResolvedValue('Generated output');
 
-            const { result } = renderHook(() => useNodeGeneration());
+            const { result } = renderHook(() => useNodeGeneration(), { wrapper });
 
             await act(async () => {
                 await result.current.generateFromPrompt('idea-1');
@@ -97,7 +105,7 @@ describe('useNodeGeneration', () => {
 
             vi.mocked(geminiService.generateContentWithContext).mockResolvedValue('AI Response');
 
-            const { result } = renderHook(() => useNodeGeneration());
+            const { result } = renderHook(() => useNodeGeneration(), { wrapper });
 
             // Update prompt AFTER hook is initialized
             act(() => {
@@ -125,7 +133,7 @@ describe('useNodeGeneration', () => {
 
             vi.mocked(geminiService.generateContentWithContext).mockResolvedValue('AI Response');
 
-            const { result } = renderHook(() => useNodeGeneration());
+            const { result } = renderHook(() => useNodeGeneration(), { wrapper });
 
             await act(async () => {
                 await result.current.generateFromPrompt('idea-1');
@@ -148,7 +156,7 @@ describe('useNodeGeneration', () => {
 
             vi.mocked(geminiService.generateContentWithContext).mockResolvedValue('AI Response');
 
-            const { result } = renderHook(() => useNodeGeneration());
+            const { result } = renderHook(() => useNodeGeneration(), { wrapper });
 
             await act(async () => {
                 await result.current.generateFromPrompt('idea-1');
@@ -166,7 +174,7 @@ describe('useNodeGeneration', () => {
         it('should not create node if prompt is empty', async () => {
             useCanvasStore.getState().addNode(createTestIdeaNode('idea-1', ''));
 
-            const { result } = renderHook(() => useNodeGeneration());
+            const { result } = renderHook(() => useNodeGeneration(), { wrapper });
 
             await act(async () => {
                 await result.current.generateFromPrompt('idea-1');
@@ -184,7 +192,7 @@ describe('useNodeGeneration', () => {
                 return 'Response';
             });
 
-            const { result } = renderHook(() => useNodeGeneration());
+            const { result } = renderHook(() => useNodeGeneration(), { wrapper });
 
             await act(async () => {
                 await result.current.generateFromPrompt('idea-1');
