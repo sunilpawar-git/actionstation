@@ -17,6 +17,8 @@ import {
 } from '../types/document';
 import { attachmentTextCache } from '@/features/ai/services/attachmentTextCache';
 import { storagePathFromDownloadUrl } from './storagePathUtils';
+import { addStorageUsage } from '@/features/subscription/services/storageUsageService';
+import { logger } from '@/shared/services/logger';
 
 /** URLs returned after a successful document upload */
 export interface DocumentUploadResult {
@@ -99,6 +101,12 @@ export async function uploadDocumentArtifacts(
         await uploadBytes(thumbRef, thumbnailBlob);
         result.thumbnailUrl = await getDownloadURL(thumbRef);
     }
+
+    // Track total storage used (fire-and-forget)
+    const textBytes = new TextEncoder().encode(parsedText).length;
+    const thumbBytes = thumbnailBlob?.size ?? 0;
+    addStorageUsage(userId, file.size + textBytes + thumbBytes)
+        .catch((err: unknown) => logger.warn('[docUpload] storage track failed', err));
 
     return result;
 }

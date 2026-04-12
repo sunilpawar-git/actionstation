@@ -8,6 +8,8 @@ import { sanitizeFilename } from '@/shared/utils/sanitize';
 import { compressImage } from '@/features/knowledgeBank/utils/imageCompressor';
 import { IMAGE_ACCEPTED_MIME_TYPES, IMAGE_MAX_FILE_SIZE } from '../types/image';
 import { strings } from '@/shared/localization/strings';
+import { addStorageUsage } from '@/features/subscription/services/storageUsageService';
+import { logger } from '@/shared/services/logger';
 
 /** Check whether a MIME type is in the allowed list */
 export function isAcceptedImageType(mimeType: string): boolean {
@@ -57,5 +59,10 @@ export async function uploadNodeImage(
     const path = buildNodeImagePath(userId, workspaceId, nodeId, file.name);
     const storageRef = ref(storage, path);
     await uploadBytes(storageRef, compressed);
-    return getDownloadURL(storageRef);
+    const url = await getDownloadURL(storageRef);
+
+    addStorageUsage(userId, compressed.size)
+        .catch((err: unknown) => logger.warn('[imgUpload] storage track failed', err));
+
+    return url;
 }

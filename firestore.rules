@@ -73,10 +73,13 @@ service cloud.firestore {
 
       // Usage tracking — tier limit counters
       // aiDaily: server-write only (Cloud Function increments) — client can read for optimistic UI
-      // storage: client read/write allowed for tracking (fire-and-forget safe)
-      match /usage/{docId} {
+      // storage: client read+write allowed for tracking (fire-and-forget safe, no sensitive data)
+      match /usage/aiDaily {
         allow read: if request.auth != null && request.auth.uid == userId;
-        allow write: if false; // Server-only writes for now (future: allow storage writes)
+        allow write: if false; // Cloud Functions only (admin SDK bypasses rules)
+      }
+      match /usage/storage {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
       }
   }
 }

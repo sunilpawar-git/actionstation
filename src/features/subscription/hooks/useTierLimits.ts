@@ -16,6 +16,7 @@ import { useAuthStore } from '@/features/auth/stores/authStore';
 import { useTierLimitsState, useTierLimitsDispatch } from '../contexts/TierLimitsContext';
 import { checkLimit } from '../utils/limitChecker';
 import { loadAiDailyCount } from '../services/usageCountService';
+import { getStorageUsageMb } from '../services/storageUsageService';
 import { logger } from '@/shared/services/logger';
 import type { LimitKind, LimitCheckResult } from '../types/tierLimits';
 
@@ -41,7 +42,7 @@ export function useTierLimits() {
         dispatch({ type: 'NODE_COUNT_CHANGED', count: nodeCount });
     }, [nodeCount, dispatch]);
 
-    // Load AI daily count once on mount / userId change
+    // Load AI daily count + storage usage once on mount / userId change
     const hasLoadedRef = useRef(false);
     const prevUserIdRef = useRef(userId);
 
@@ -55,10 +56,12 @@ export function useTierLimits() {
         hasLoadedRef.current = true;
 
         loadAiDailyCount(userId)
-            .then((usage) => {
-                dispatch({ type: 'AI_DAILY_LOADED', count: usage.count, date: usage.date });
-            })
+            .then((usage) => dispatch({ type: 'AI_DAILY_LOADED', count: usage.count, date: usage.date }))
             .catch((err: unknown) => logger.warn('[useTierLimits] AI daily load failed', err));
+
+        getStorageUsageMb(userId)
+            .then((storageMb) => dispatch({ type: 'STORAGE_UPDATED', storageMb }))
+            .catch((err: unknown) => logger.warn('[useTierLimits] Storage load failed', err));
     }, [userId, dispatch]);
 
     const check = useCallback(
