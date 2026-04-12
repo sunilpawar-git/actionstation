@@ -33,7 +33,7 @@ export function PricingCard({ plan, isCurrent, isPopular, isLoading, onSelect }:
             {isPopular && (
                 <span
                     className="absolute top-0 right-0 text-[var(--header-text)] text-xs font-medium rounded-bl-[var(--radius-md)] rounded-tr-[var(--radius-xl)]"
-                    style={{ background: 'var(--color-primary)', padding: '2px 10px' }}
+                    style={{ background: 'var(--color-primary)', padding: 'var(--space-xxs) var(--space-sm)' }}
                 >
                     {s.mostPopular}
                 </span>
@@ -41,12 +41,12 @@ export function PricingCard({ plan, isCurrent, isPopular, isLoading, onSelect }:
 
             <h4
                 className="font-semibold text-[var(--color-text-primary)]"
-                style={{ fontSize: 'var(--font-size-lg)', marginBottom: 4 }}
+                style={{ fontSize: 'var(--font-size-lg)', marginBottom: 'var(--space-xs)' }}
             >
                 {plan.name}
             </h4>
 
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ marginBottom: 'var(--space-md)' }}>
                 <span className="font-bold text-[var(--color-text-primary)]" style={{ fontSize: 'var(--font-size-xl)' }}>
                     {plan.displayPrice}
                 </span>
@@ -57,7 +57,7 @@ export function PricingCard({ plan, isCurrent, isPopular, isLoading, onSelect }:
 
             <p
                 className="text-[var(--color-text-secondary)] leading-[var(--line-height-relaxed)]"
-                style={{ fontSize: 'var(--font-size-sm)', marginBottom: 16 }}
+                style={{ fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-md)' }}
             >
                 {plan.interval === 'month' ? s.proFeatures : s.proFeaturesAnnual}
             </p>
@@ -65,14 +65,14 @@ export function PricingCard({ plan, isCurrent, isPopular, isLoading, onSelect }:
             {isCurrent ? (
                 <span
                     className="inline-block text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-md font-medium text-center"
-                    style={{ fontSize: 'var(--font-size-sm)', padding: '8px 24px', width: '100%' }}
+                    style={{ fontSize: 'var(--font-size-sm)', padding: 'var(--space-sm) var(--space-lg)', width: '100%' }}
                 >
                     {s.currentPlanBadge}
                 </span>
             ) : (
                 <button
                     className="text-[var(--header-text)] border-none rounded-md font-medium cursor-pointer transition-colors duration-150 w-full"
-                    style={{ background: 'var(--color-primary)', fontSize: 'var(--font-size-sm)', padding: '8px 24px' }}
+                    style={{ background: 'var(--color-primary)', fontSize: 'var(--font-size-sm)', padding: 'var(--space-sm) var(--space-lg)' }}
                     onClick={() => onSelect(plan.priceId)}
                     disabled={isLoading}
                 >

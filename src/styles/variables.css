@@ -262,6 +262,7 @@
 
   /* Focus Mode */
   --focus-backdrop-bg: hsla(0, 0%, 0%, 0.5);
+  --color-overlay: hsla(0, 0%, 0%, 0.4);
   --focus-panel-shadow: 0 24px 48px hsla(220, 13%, 13%, 0.2);
   --focus-panel-max-width: 900px;
   --focus-panel-radius: var(--radius-xl);

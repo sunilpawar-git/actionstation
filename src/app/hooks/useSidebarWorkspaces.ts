@@ -20,7 +20,7 @@ export function useSidebarWorkspaces() {
     const {
         isCreating, isCreatingDivider, handleNewWorkspace, handleNewDivider,
         workspaces, currentWorkspaceId, updateWorkspace, reorderWorkspaces,
-        removeWorkspace, switchWorkspace, user
+        removeWorkspace, switchWorkspace, user, upgradeWall, dismissWall,
     } = useWorkspaceOperations();
 
     const confirm = useConfirm();
@@ -83,5 +83,7 @@ export function useSidebarWorkspaces() {
         handleSelectWorkspace,
         handleRenameWorkspace,
         handleReorderWorkspace,
+        upgradeWall,
+        dismissWall,
     };
 }

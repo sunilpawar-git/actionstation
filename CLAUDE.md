@@ -383,6 +383,47 @@ users/{userId}/workspaces/{workspaceId}/
 - New string resources go in `workspaceStrings.ts` (prefixed with `tile`)
 - Tile state transitions go through `tileReducer` actions — never mutate directly
 
+---
+
+## 🚀 PRODUCTION LAUNCH PHASES
+
+See [`PRODUCTION-LAUNCH-PLAN.md`](./plans/PRODUCTION-LAUNCH-PLAN.md) for the complete roadmap. Summary:
+
+### Phase 1: Launch Blockers — Critical Infrastructure
+
+**Status:** ✅ COMPLETE.
+
+| Item | Status | Details |
+|------|--------|---------|
+| Production Domain Configuration | ✅ Complete | `functions/src/utils/domainConfig.ts` — SSOT for `actionstation-244f0.web.app`, `actionstation-244f0.firebaseapp.com`, `www.actionstation.in`. Structural tests verify domain-CORS-CSP alignment. |
+| CORS and CSP Alignment | ✅ Complete | `functions/src/utils/corsConfig.ts` reads from `domainConfig.ts`. Firebase CSP headers enforce all production domains (11 structural tests). |
+| Health Endpoint Hardening | ✅ Complete | `functions/src/health.ts` — `/health` GET endpoint for uptime monitoring, returns 200 + JSON status. |
+| Immutable Backup Bucket | ✅ Complete | `functions/src/firestoreBackup.ts` — Daily scheduled Firestore → GCS export with immutable retention policy. |
+| Uptime Monitoring Integration | ✅ Complete | Health endpoint ready; integrate with external monitor (BetterUptime, Checkly, UptimeRobot) in production. |
+
+**Phase 1 Test Coverage:** 21 tests (domainConfig, infrastructure tests)
+
+### Phase 2: Payment System and Monetization
+
+**Status:** ✅ COMPLETE.
+
+| Item | Status | Details |
+|------|--------|---------|
+| Stripe + Razorpay Integration | ✅ Complete | Stripe prioritized (`functions/src/utils/stripeClient.ts`). Razorpay also available (`functions/src/utils/razorpayClient.ts`). Both test-mode functional. |
+| Stripe Checkout | ✅ Complete | `functions/src/createCheckoutSession.ts` — Creates Stripe Checkout Session. PCI DSS SAQ A compliant (card data never touches ActionStation). (12 tests) |
+| Stripe Webhooks | ✅ Complete | `functions/src/stripeWebhook.ts` + `stripeWebhookHandlers.ts` — Handles `checkout.session.completed`, `subscription.updated`, `subscription.deleted`, `invoice.paid`, `invoice.payment_failed`. HMAC-SHA256 signature verified. (23 tests) |
+| Razorpay Order + Webhooks | ✅ Complete | `functions/src/createRazorpayOrder.ts` + `razorpayWebhook.ts` — Full Razorpay integration with same security pattern as Stripe. |
+| Billing Portal | ✅ Complete | `functions/src/createBillingPortalSession.ts` — Redirects to Stripe Customer Portal for self-service. (12 tests) |
+| Subscription UI | ✅ Complete | `src/features/subscription/components/PricingCard.tsx` — Pricing comparison. `src/features/subscription/hooks/useCheckout.ts` + `useRazorpayCheckout.ts` — Client integration. |
+| Webhook Idempotency | ✅ Complete | `functions/src/utils/webhookIdempotency.ts` — Prevents double-charging on webhook retries. (8 tests) |
+| Security + Logging | ✅ Complete | All payment endpoints follow 7-layer security architecture: bot detection, rate limiting, auth, validation, logging, signature verification. |
+
+**Phase 2 Test Coverage:** 59 tests (stripeClient, checkout, webhooks, billing portal, idempotency)**
+
+### Phase 3: Free Tier Limits and User Hooks
+
+**Status:** ✅ COMPLETE. Implemented on `feature/free-tier-limits`, merged to `main`.
+
 ## 💰 Free Tier Limits
 
 | Resource | Free | Pro |

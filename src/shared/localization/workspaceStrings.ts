@@ -21,6 +21,7 @@ export const workspaceStrings = {
     reorderedSuccess: 'Workspaces reordered',
     dragCancel: 'Drag cancelled',
     addDivider: 'Divider created',
+    newDivider: 'Add Divider',
     nodeCount: (count: number) => `(${count})`,
     tileComputing: 'Computing spatial tiles...',
     tileLoadFailed: 'Failed to load tile data',

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { strings } from '@/shared/localization/strings';
 import { useSidebarStore } from '@/shared/stores/sidebarStore';
 import { useOutsideClick } from '@/shared/hooks/useOutsideClick';
@@ -7,6 +7,10 @@ import { PlusIcon, ChevronDownIcon } from '@/shared/components/icons';
 import { WorkspaceList } from '@/app/components/WorkspaceList';
 import { SidebarHeader } from './SidebarHeader';
 import { SidebarFooter } from '@/app/components/SidebarFooter';
+import { UpgradeWall } from '@/features/subscription/components/UpgradeWall';
+import { useRazorpayCheckout } from '@/features/subscription/hooks/useRazorpayCheckout';
+import { PRO_MONTHLY_PLAN_ID } from '@/features/subscription/types/subscription';
+import { logger } from '@/shared/services/logger';
 import './Sidebar.css';
 import {
     SB_SIDEBAR, SB_WORKSPACES, SB_WORKSPACES_STYLE,
@@ -23,90 +27,94 @@ interface SidebarProps {
     onSettingsClick?: () => void;
 }
 
-export function Sidebar({ onSettingsClick }: SidebarProps) {
-    const {
-        workspaces,
-        currentWorkspaceId,
-        isCreating,
-        isCreatingDivider,
-        handleNewWorkspace,
-        handleNewDivider,
-        handleDeleteDivider,
-        handleSelectWorkspace,
-        handleRenameWorkspace,
-        handleReorderWorkspace,
-    } = useSidebarWorkspaces();
+interface WorkspaceCreateButtonProps {
+    isCreating: boolean;
+    isCreatingDivider: boolean;
+    onNewWorkspace: () => Promise<void>;
+    onNewDivider: () => Promise<void>;
+}
 
-    const isPinned = useSidebarStore((s) => s.isPinned);
-    const isHoverOpen = useSidebarStore((s) => s.isHoverOpen);
-
+function WorkspaceCreateButton({ isCreating, isCreatingDivider, onNewWorkspace, onNewDivider }: WorkspaceCreateButtonProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     useOutsideClick(dropdownRef, isDropdownOpen, () => setIsDropdownOpen(false));
 
-    const onAddDivider = () => {
-        setIsDropdownOpen(false);
-        void handleNewDivider();
-    };
+    const onAddDivider = () => { setIsDropdownOpen(false); void onNewDivider(); };
 
     return (
-        <aside
-            className={SB_SIDEBAR}
-            data-pinned={String(isPinned)}
-            data-open={String(isHoverOpen)}
+        <div className={SB_NEW_WS_WRAPPER} style={SB_NEW_WS_WRAPPER_STYLE} ref={dropdownRef}>
+            <div className={SB_SPLIT_BTN_CONTAINER}>
+                <button className={SB_NEW_WS_MAIN} style={SB_NEW_WS_MAIN_STYLE}
+                    onClick={onNewWorkspace} disabled={isCreating || isCreatingDivider}
+                >
+                    <PlusIcon size={18} />
+                    <span>{isCreating ? strings.common.loading : strings.workspace.newWorkspace}</span>
+                </button>
+                <div className={SB_SPLIT_DIVIDER} />
+                <button className={SB_NEW_WS_DROPDOWN_BTN} style={SB_NEW_WS_DROPDOWN_BTN_STYLE}
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    disabled={isCreating || isCreatingDivider}
+                    aria-label="New Workspace Options"
+                    aria-expanded={isDropdownOpen}
+                >
+                    <ChevronDownIcon size={18} />
+                </button>
+            </div>
+            {isDropdownOpen && (
+                <div className={SB_DROPDOWN_MENU} style={SB_DROPDOWN_MENU_STYLE}>
+                    <button className={SB_DROPDOWN_ITEM} style={SB_DROPDOWN_ITEM_STYLE}
+                        onClick={onAddDivider} disabled={isCreating || isCreatingDivider}
+                    >
+                        {isCreatingDivider ? strings.common.loading : strings.workspace.newDivider}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export function Sidebar({ onSettingsClick }: SidebarProps) {
+    const {
+        workspaces, currentWorkspaceId, isCreating, isCreatingDivider,
+        handleNewWorkspace, handleNewDivider, handleDeleteDivider,
+        handleSelectWorkspace, handleRenameWorkspace, handleReorderWorkspace,
+        upgradeWall, dismissWall,
+    } = useSidebarWorkspaces();
+
+    const { startCheckout } = useRazorpayCheckout();
+    const isPinned = useSidebarStore((s) => s.isPinned);
+    const isHoverOpen = useSidebarStore((s) => s.isHoverOpen);
+
+    const handleUpgrade = useCallback(() => {
+        dismissWall();
+        void startCheckout(PRO_MONTHLY_PLAN_ID, 'INR').catch(
+            (e: unknown) => logger.error('[Sidebar] Upgrade checkout failed', e as Error),
+        );
+    }, [dismissWall, startCheckout]);
+
+    return (
+        <aside className={SB_SIDEBAR} data-pinned={String(isPinned)} data-open={String(isHoverOpen)}
             aria-label={strings.sidebar.ariaLabel}
         >
             <SidebarHeader isPinned={isPinned} isHoverOpen={isHoverOpen} onTogglePin={() => useSidebarStore.getState().togglePin()} />
-
             <div className={SB_WORKSPACES} style={SB_WORKSPACES_STYLE}>
-                <div className={SB_NEW_WS_WRAPPER} style={SB_NEW_WS_WRAPPER_STYLE} ref={dropdownRef}>
-                    <div className={SB_SPLIT_BTN_CONTAINER}>
-                        <button
-                            className={SB_NEW_WS_MAIN}
-                            style={SB_NEW_WS_MAIN_STYLE}
-                            onClick={handleNewWorkspace}
-                            disabled={isCreating || isCreatingDivider}
-                        >
-                            <PlusIcon size={18} />
-                            <span>{isCreating ? strings.common.loading : strings.workspace.newWorkspace}</span>
-                        </button>
-                        <div className={SB_SPLIT_DIVIDER} />
-                        <button
-                            className={SB_NEW_WS_DROPDOWN_BTN}
-                            style={SB_NEW_WS_DROPDOWN_BTN_STYLE}
-                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            disabled={isCreating || isCreatingDivider}
-                            aria-label="New Workspace Options"
-                            aria-expanded={isDropdownOpen}
-                        >
-                            <ChevronDownIcon size={18} />
-                        </button>
-                    </div>
-                    {isDropdownOpen && (
-                        <div className={SB_DROPDOWN_MENU} style={SB_DROPDOWN_MENU_STYLE}>
-                            <button
-                                className={SB_DROPDOWN_ITEM}
-                                style={SB_DROPDOWN_ITEM_STYLE}
-                                onClick={onAddDivider}
-                                disabled={isCreating || isCreatingDivider}
-                            >
-                                {isCreatingDivider ? strings.common.loading : 'Add Divider'}
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <WorkspaceList
-                    workspaces={workspaces}
-                    currentWorkspaceId={currentWorkspaceId}
-                    onSelectWorkspace={handleSelectWorkspace}
-                    onRenameWorkspace={handleRenameWorkspace}
-                    onReorderWorkspace={handleReorderWorkspace}
-                    onDeleteWorkspace={handleDeleteDivider}
+                <WorkspaceCreateButton
+                    isCreating={isCreating}
+                    isCreatingDivider={isCreatingDivider}
+                    onNewWorkspace={handleNewWorkspace}
+                    onNewDivider={handleNewDivider}
+                />
+                <WorkspaceList workspaces={workspaces} currentWorkspaceId={currentWorkspaceId}
+                    onSelectWorkspace={handleSelectWorkspace} onRenameWorkspace={handleRenameWorkspace}
+                    onReorderWorkspace={handleReorderWorkspace} onDeleteWorkspace={handleDeleteDivider}
                 />
             </div>
-
             <SidebarFooter onSettingsClick={onSettingsClick} />
+            {upgradeWall && (
+                <UpgradeWall limitKind={upgradeWall.kind} current={upgradeWall.current}
+                    max={upgradeWall.max} onDismiss={dismissWall} onUpgrade={handleUpgrade}
+                />
+            )}
         </aside>
     );
 }

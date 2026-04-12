@@ -7,10 +7,9 @@ import React, { useCallback } from 'react';
 import { usePinWorkspaceButton } from '../hooks/usePinWorkspaceButton';
 import { UpgradePrompt } from '@/shared/components/UpgradePrompt';
 import { useRazorpayCheckout } from '@/features/subscription/hooks/useRazorpayCheckout';
+import { PRO_MONTHLY_PLAN_ID } from '@/features/subscription/types/subscription';
 import { logger } from '@/shared/services/logger';
 import { strings } from '@/shared/localization/strings';
-
-const PRO_MONTHLY_PLAN_ID = 'plan_SWtIj1spzXCZbR';
 
 interface PinWorkspaceButtonProps {
     workspaceId: string;

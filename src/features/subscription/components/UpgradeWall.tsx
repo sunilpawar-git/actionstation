@@ -27,7 +27,7 @@ export function UpgradeWall({ limitKind, current, max, onDismiss, onUpgrade }: U
 
     return (
         <div
-            className="fixed inset-0 flex items-center justify-center bg-[hsla(0,0%,0%,0.4)] z-[var(--z-modal)]"
+            className="fixed inset-0 flex items-center justify-center bg-[var(--color-overlay)] z-[var(--z-modal)]"
             role="dialog"
             aria-modal="true"
             aria-label={strings.subscription.upgradeTitle}
@@ -38,33 +38,33 @@ export function UpgradeWall({ limitKind, current, max, onDismiss, onUpgrade }: U
             >
                 <h3
                     className="font-semibold text-[var(--color-text-primary)]"
-                    style={{ fontSize: 'var(--font-size-lg)', marginBottom: 8 }}
+                    style={{ fontSize: 'var(--font-size-lg)', marginBottom: 'var(--space-sm)' }}
                 >
                     {strings.subscription.upgradeTitle}
                 </h3>
                 <p
                     className="text-[var(--color-text-secondary)] leading-[var(--line-height-relaxed)]"
-                    style={{ fontSize: 'var(--font-size-sm)', marginBottom: 8 }}
+                    style={{ fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-sm)' }}
                 >
                     {message}
                 </p>
                 <p
                     className="text-[var(--color-text-muted)] font-medium"
-                    style={{ fontSize: 'var(--font-size-xs)', marginBottom: 24 }}
+                    style={{ fontSize: 'var(--font-size-xs)', marginBottom: 'var(--space-lg)' }}
                 >
                     {current}/{displayMax} &middot; {strings.subscription.limits.upgradeForMore}
                 </p>
-                <div className="flex flex-col" style={{ gap: 8 }}>
+                <div className="flex flex-col" style={{ gap: 'var(--space-sm)' }}>
                     <button
                         className="text-[var(--header-text)] border-none rounded-md font-medium cursor-pointer transition-colors duration-150 ease-in-out"
-                        style={{ background: 'var(--color-primary)', fontSize: 'var(--font-size-sm)', padding: '8px 24px' }}
+                        style={{ background: 'var(--color-primary)', fontSize: 'var(--font-size-sm)', padding: 'var(--space-sm) var(--space-lg)' }}
                         onClick={onUpgrade}
                     >
                         {strings.subscription.upgradeCta}
                     </button>
                     <button
                         className="border-none text-[var(--color-text-secondary)] cursor-pointer hover:text-[var(--color-text-primary)]"
-                        style={{ background: 'transparent', fontSize: 'var(--font-size-sm)', padding: 4 }}
+                        style={{ background: 'transparent', fontSize: 'var(--font-size-sm)', padding: 'var(--space-xs)' }}
                         onClick={onDismiss}
                     >
                         {strings.subscription.dismissUpgrade}

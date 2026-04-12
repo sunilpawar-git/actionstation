@@ -40,6 +40,13 @@ vi.mock('@/shared/services/logger', () => ({
 vi.mock('@/features/subscription/services/usageCountService', () => ({
     loadAiDailyCount: vi.fn().mockResolvedValue({ count: 0, date: '' }),
 }));
+vi.mock('@/features/subscription/hooks/useRazorpayCheckout', () => ({
+    useRazorpayCheckout: () => ({
+        startCheckout: vi.fn().mockResolvedValue(undefined),
+        isLoading: false,
+        error: null,
+    }),
+}));
 
 function wrapper({ children }: { children: ReactNode }) {
     return <TierLimitsProvider>{children}</TierLimitsProvider>;

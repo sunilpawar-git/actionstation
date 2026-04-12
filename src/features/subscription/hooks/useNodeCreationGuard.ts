@@ -7,11 +7,15 @@
  */
 import { useCallback } from 'react';
 import { useTierLimits } from './useTierLimits';
+import { useRazorpayCheckout } from './useRazorpayCheckout';
 import { toastWithAction } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
+import { logger } from '@/shared/services/logger';
+import { PRO_MONTHLY_PLAN_ID } from '../types/subscription';
 
 export function useNodeCreationGuard() {
     const { check } = useTierLimits();
+    const { startCheckout } = useRazorpayCheckout();
 
     const guardNodeCreation = useCallback((): boolean => {
         const result = check('node');
@@ -19,12 +23,20 @@ export function useNodeCreationGuard() {
             toastWithAction(
                 strings.subscription.limits.nodeLimit,
                 'warning',
-                { label: strings.subscription.upgradeCta, onClick: () => { /* navigate to upgrade */ } },
+                {
+                    label: strings.subscription.upgradeCta,
+                    onClick: () => {
+                        void startCheckout(PRO_MONTHLY_PLAN_ID, 'INR').catch(
+                            (e: unknown) => logger.error('[useNodeCreationGuard] Checkout failed', e as Error),
+                        );
+                    },
+                },
             );
             return false;
         }
         return true;
-    }, [check]);
+    }, [check, startCheckout]);
 
     return { guardNodeCreation };
 }
+

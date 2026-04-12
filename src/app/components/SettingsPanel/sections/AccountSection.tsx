@@ -11,6 +11,7 @@ import { useDataExport } from '@/features/workspace/hooks/useDataExport';
 import { useSubscriptionStore } from '@/features/subscription/stores/subscriptionStore';
 import { useBillingPortal } from '@/features/subscription/hooks/useBillingPortal';
 import { useRazorpayCheckout } from '@/features/subscription/hooks/useRazorpayCheckout';
+import { PRO_MONTHLY_PLAN_ID } from '@/features/subscription/types/subscription';
 import { toast } from '@/shared/stores/toastStore';
 import { logger } from '@/shared/services/logger';
 import { SettingsGroup } from './SettingsGroup';
@@ -66,9 +67,6 @@ function DangerZone() {
         </SettingsGroup>
     );
 }
-
-/** Plan ID for the active test/production monthly plan */
-const PRO_MONTHLY_PLAN_ID = 'plan_SWtIj1spzXCZbR';
 
 function SubscriptionStatus() {
     const tier = useSubscriptionStore((s) => s.tier);
