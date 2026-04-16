@@ -2,6 +2,7 @@
  * PricingCard — Single pricing plan card.
  * Displays plan name, price, feature list, CTA, and optional badge.
  */
+import { useId } from 'react';
 
 interface PricingCardProps {
     readonly planName: string;
@@ -23,6 +24,7 @@ export function PricingCard({
     badge,
     highlighted = false,
 }: PricingCardProps) {
+    const badgeId = useId();
     const borderColor = highlighted ? 'var(--color-primary)' : 'var(--color-border)';
 
     return (
@@ -36,6 +38,7 @@ export function PricingCard({
         >
             {badge && (
                 <span
+                    id={badgeId}
                     className="absolute top-0 right-0 text-[var(--color-text-on-primary)] font-medium rounded-bl-lg rounded-tr-xl"
                     style={{
                         padding: 'var(--space-xs) var(--space-md)',
@@ -49,6 +52,7 @@ export function PricingCard({
             <h3
                 className="font-bold text-[var(--color-text-primary)]"
                 style={{ fontSize: 'var(--font-size-lg)', marginBottom: 'var(--space-xs)' }}
+                aria-describedby={badge ? badgeId : undefined}
             >
                 {planName}
             </h3>

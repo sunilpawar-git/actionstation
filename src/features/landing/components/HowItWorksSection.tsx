@@ -21,12 +21,12 @@ export function HowItWorksSection() {
             >
                 {strings.landing.howItWorks.sectionTitle}
             </h2>
-            <div
+            <ol
                 className="grid grid-cols-1 md:grid-cols-3"
-                style={{ gap: 'var(--space-xl)' }}
+                style={{ gap: 'var(--space-xl)', listStyle: 'none', padding: 0, margin: 0 }}
             >
                 {strings.landing.howItWorks.steps.map((step, index) => (
-                    <div
+                    <li
                         key={step.title}
                         className="flex flex-col items-center text-center"
                         style={{ gap: 'var(--space-sm)' }}
@@ -57,9 +57,9 @@ export function HowItWorksSection() {
                         >
                             {step.description}
                         </p>
-                    </div>
+                    </li>
                 ))}
-            </div>
+            </ol>
         </section>
     );
 }
