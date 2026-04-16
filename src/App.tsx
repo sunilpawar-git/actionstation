@@ -164,8 +164,15 @@ function AppContent() {
         return <CalendarCallback />;
     }
 
-    // Root: authenticated users go to workspace; unauthenticated see landing page
+    // Root: wait for auth to resolve before deciding — prevents landing page flash for returning users
     if (window.location.pathname === '/') {
+        if (authLoading) {
+            return (
+                <div className="loading-screen">
+                    <div className="loading-spinner" />
+                </div>
+            );
+        }
         if (isAuthenticated) return <AuthenticatedApp />;
         return (
             <Suspense fallback={<LoadingFallback fullScreen />}>

@@ -140,6 +140,20 @@ describe('Routing', () => {
         expect(await screen.findByTestId('landing-page')).toBeInTheDocument();
     });
 
+    it('renders spinner at / while auth is loading (prevents flash for returning users)', async () => {
+        mockAuthStore.mockImplementation(
+            (selector: (s: Record<string, unknown>) => unknown) =>
+                selector({ isAuthenticated: false, isLoading: true, user: null, error: null }),
+        );
+        setPathname('/');
+        const { App } = await import('@/App');
+        render(<App />);
+        // Should show the loading screen, not the landing page
+        const loadingScreen = document.querySelector('.loading-screen');
+        expect(loadingScreen).toBeInTheDocument();
+        expect(screen.queryByTestId('landing-page')).not.toBeInTheDocument();
+    });
+
     it('renders workspace app at / for authenticated users', async () => {
         mockAuthStore.mockImplementation(
             (selector: (s: Record<string, unknown>) => unknown) =>
