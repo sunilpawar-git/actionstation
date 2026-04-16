@@ -4,5 +4,5 @@
 User-agent: *
 Allow: /
 
-# Sitemap (if available in the future)
-# Sitemap: https://actionstation.app/sitemap.xml
+# Sitemap
+Sitemap: https://actionstation.app/sitemap.xml

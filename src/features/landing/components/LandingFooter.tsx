@@ -1,0 +1,57 @@
+/**
+ * LandingFooter — Footer for the public landing page.
+ * Contains copyright, legal links, and tagline.
+ */
+import { strings } from '@/shared/localization/strings';
+
+/** Landing page footer with legal links and copyright. */
+export function LandingFooter() {
+    const copyright = strings.landing.footer.copyright(new Date().getFullYear());
+
+    return (
+        <footer
+            role="contentinfo"
+            className="w-full border-t border-[var(--color-border)]"
+            style={{ padding: 'var(--space-2xl) var(--space-xl)' }}
+        >
+            <div
+                className="flex flex-col md:flex-row items-center justify-between max-w-5xl mx-auto"
+                style={{ gap: 'var(--space-lg)' }}
+            >
+                {/* Tagline */}
+                <p
+                    className="text-[var(--color-text-muted)]"
+                    style={{ fontSize: 'var(--font-size-sm)' }}
+                >
+                    {strings.landing.footer.tagline}
+                </p>
+
+                {/* Legal links */}
+                <div className="flex items-center" style={{ gap: 'var(--space-lg)' }}>
+                    <a
+                        href="/terms"
+                        className="text-[var(--color-text-muted)] no-underline hover:text-[var(--color-text-primary)] transition-colors duration-150"
+                        style={{ fontSize: 'var(--font-size-sm)' }}
+                    >
+                        {strings.landing.footer.terms}
+                    </a>
+                    <a
+                        href="/privacy"
+                        className="text-[var(--color-text-muted)] no-underline hover:text-[var(--color-text-primary)] transition-colors duration-150"
+                        style={{ fontSize: 'var(--font-size-sm)' }}
+                    >
+                        {strings.landing.footer.privacy}
+                    </a>
+                </div>
+
+                {/* Copyright */}
+                <p
+                    className="text-[var(--color-text-muted)]"
+                    style={{ fontSize: 'var(--font-size-xs)' }}
+                >
+                    {copyright}
+                </p>
+            </div>
+        </footer>
+    );
+}

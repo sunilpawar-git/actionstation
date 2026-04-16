@@ -16,6 +16,7 @@ import { searchStrings } from '@/features/search/strings/searchStrings';
 import { onboardingStrings } from '@/features/onboarding/strings/onboardingStrings';
 import { subscriptionStrings } from '@/features/subscription/strings/subscriptionStrings';
 import { shortcutStrings } from './shortcutStrings';
+import { landingStrings } from '@/features/landing/strings/landingStrings';
 
 export const strings = {
     app: {
@@ -277,6 +278,7 @@ export const strings = {
     export: exportStrings,
     contextMenu: contextMenuStrings,
     onboarding: onboardingStrings,
+    landing: landingStrings,
 } as const;
 
 export type StringKeys = typeof strings;

@@ -36,6 +36,9 @@ import { TierLimitsProvider } from '@/features/subscription/contexts/TierLimitsC
 import '@/styles/global.css';
 
 // Lazy load non-critical components for better initial load performance
+const LandingPage = lazy(() =>
+    import('@/features/landing/components/LandingPage').then(m => ({ default: m.LandingPage }))
+);
 const LoginPage = lazy(() =>
     import('@/features/auth/components/LoginPage').then(m => ({ default: m.LoginPage }))
 );
@@ -95,13 +98,13 @@ function AuthenticatedApp() {
                     <SearchInputRefProvider>
                         <KeyboardShortcutsProvider onOpenSettings={openSettings} />
                         <Layout onSettingsClick={openSettings}>
-                        <CanvasView />
-                        {initialLoading && (
-                            <div className="canvas-loading-overlay">
-                                <div className="loading-spinner" />
-                                <p>{strings.common.loading}</p>
-                            </div>
-                        )}
+                            <CanvasView />
+                            {initialLoading && (
+                                <div className="canvas-loading-overlay">
+                                    <div className="loading-spinner" />
+                                    <p>{strings.common.loading}</p>
+                                </div>
+                            )}
                         </Layout>
                     </SearchInputRefProvider>
                     <Suspense fallback={null}>
@@ -111,6 +114,28 @@ function AuthenticatedApp() {
                 </ReactFlowProvider>
             </WorkspaceContext.Provider>
         </TierLimitsProvider>
+    );
+}
+
+/**
+ * LoginRoute — handles /login with a safe useEffect redirect for authenticated users.
+ * Avoids triggering window.location.href during the render phase (Strict Mode safe).
+ */
+function LoginRoute() {
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            window.location.href = '/';
+        }
+    }, [isAuthenticated]);
+
+    if (isAuthenticated) return null;
+
+    return (
+        <Suspense fallback={<LoadingFallback fullScreen />}>
+            <LoginPage />
+        </Suspense>
     );
 }
 
@@ -139,6 +164,16 @@ function AppContent() {
         return <CalendarCallback />;
     }
 
+    // Root: authenticated users go to workspace; unauthenticated see landing page
+    if (window.location.pathname === '/') {
+        if (isAuthenticated) return <AuthenticatedApp />;
+        return (
+            <Suspense fallback={<LoadingFallback fullScreen />}>
+                <LandingPage />
+            </Suspense>
+        );
+    }
+
     // Auth loading state
     if (authLoading) {
         return (
@@ -149,7 +184,12 @@ function AppContent() {
         );
     }
 
-    // Not authenticated - lazy load login page
+    // Login page — explicit route; authenticated users safely redirected via useEffect
+    if (window.location.pathname === '/login') {
+        return <LoginRoute />;
+    }
+
+    // Not authenticated — redirect to login
     if (!isAuthenticated) {
         return (
             <Suspense fallback={<LoadingFallback fullScreen />}>
