@@ -1,4 +1,5 @@
 import { authStrings } from './authStrings';
+import { legalStrings } from './legalStrings';
 import { workspaceStrings } from './workspaceStrings';
 import { canvasStrings } from './canvasStrings';
 import { knowledgeBankStrings } from './knowledgeBankStrings';
@@ -24,6 +25,7 @@ export const strings = {
         keywords: 'AI whiteboard, visual thinking, idea canvas, brainstorming, mind mapping, productivity',
     },
     auth: authStrings,
+    legal: legalStrings,
     workspace: workspaceStrings,
     canvas: canvasStrings,
     ideaCard: {

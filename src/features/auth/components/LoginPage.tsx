@@ -109,7 +109,14 @@ export function LoginPage() {
                     {displayError && <LoginError message={displayError} />}
                     <LoginButton isLoading={isLoading || turnstile.isLoading} onClick={handleSignIn} />
                     <p className="text-[var(--color-text-muted)] text-center" style={{ fontSize: 'var(--font-size-xs)', marginTop: 32, lineHeight: 1.6 }}>
-                        {strings.auth.termsNote}
+                        {strings.auth.termsNotePrefix}{' '}
+                        <a href="/terms" className="underline hover:text-[var(--color-primary)]">
+                            {strings.auth.termsOfServiceLabel}
+                        </a>
+                        {' '}{strings.auth.termsNoteConjunction}{' '}
+                        <a href="/privacy" className="underline hover:text-[var(--color-primary)]">
+                            {strings.auth.privacyPolicyLabel}
+                        </a>.
                     </p>
                 </div>
             </div>
