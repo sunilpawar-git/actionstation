@@ -14,7 +14,7 @@ import { LandingFooter } from './LandingFooter';
 export function LandingPage() {
     return (
         <main
-            className="flex flex-col min-h-screen"
+            className="flex flex-col min-h-screen w-full"
             style={{ background: 'var(--color-background)' }}
         >
             <LandingNav />
