@@ -12,7 +12,7 @@ export function HeroSection() {
 
     return (
         <section
-            className="flex flex-col md:flex-row items-center justify-center w-full"
+            className="flex flex-col md:flex-row items-center w-full max-w-6xl mx-auto"
             style={{
                 padding: 'var(--space-2xl) var(--space-xl)',
                 gap: 'var(--space-2xl)',
@@ -21,7 +21,7 @@ export function HeroSection() {
         >
             {/* Copy */}
             <div
-                className="flex flex-col items-start max-w-lg"
+                className="flex flex-col items-start flex-1"
                 style={{ gap: 'var(--space-lg)' }}
             >
                 <h1
@@ -66,7 +66,7 @@ export function HeroSection() {
             </div>
 
             {/* Animated canvas demo */}
-            <div className="w-full max-w-lg">
+            <div className="flex-1 flex justify-center">
                 <HeroAnimation phase={phase} reducedMotion={reducedMotion} />
             </div>
         </section>

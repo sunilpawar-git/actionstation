@@ -14,12 +14,13 @@ const NAV_LINKS = [
 export function LandingNav() {
     return (
         <nav
-            className="sticky top-0 z-50 flex items-center justify-between w-full backdrop-blur-md border-b border-[var(--color-border)]"
-            style={{
-                padding: 'var(--space-md) var(--space-xl)',
-                backgroundColor: 'var(--color-background)',
-            }}
+            className="sticky top-0 z-50 w-full backdrop-blur-md border-b border-[var(--color-border)]"
+            style={{ backgroundColor: 'var(--color-background)' }}
         >
+            <div
+                className="flex items-center justify-between max-w-6xl mx-auto"
+                style={{ padding: 'var(--space-md) var(--space-xl)' }}
+            >
             {/* Logo */}
             <a
                 href="/"
@@ -66,6 +67,7 @@ export function LandingNav() {
                 >
                     {strings.landing.nav.getStarted}
                 </a>
+            </div>
             </div>
         </nav>
     );
