@@ -10,6 +10,8 @@
  * in geminiProxy.ts — we reason about *text content*, not raw JSON bytes.
  */
 
+import { normalizeForPatternMatch } from './textNormalizer.js';
+
 // ─── Types ────────────────────────────────────────────────────────────────
 
 export interface PromptFilterResult {
@@ -102,9 +104,14 @@ export function filterPromptInput(contents: unknown[]): PromptFilterResult {
                 };
             }
 
+            // Pattern matching on normalized text (closes homoglyph bypass attacks).
+            // Length is counted on original text above — normalizing before length
+            // check would allow confusable-padding to bypass limits.
+            const normalized = normalizeForPatternMatch(text);
+
             // Injection pattern scan
             for (const pattern of INJECTION_PATTERNS) {
-                if (pattern.test(text)) {
+                if (pattern.test(normalized)) {
                     return {
                         allowed: false,
                         reason: 'Prompt injection pattern detected',
@@ -114,7 +121,7 @@ export function filterPromptInput(contents: unknown[]): PromptFilterResult {
 
             // Exfiltration pattern scan
             for (const pattern of EXFILTRATION_PATTERNS) {
-                if (pattern.test(text)) {
+                if (pattern.test(normalized)) {
                     return {
                         allowed: false,
                         reason: 'Credential exfiltration pattern detected',

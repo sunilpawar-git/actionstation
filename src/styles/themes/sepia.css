@@ -59,6 +59,8 @@
   --color-success-bg: hsl(145, 50%, 40%);
   --color-success-text: hsl(0, 0%, 100%);
   --color-error-bg: hsl(0, 60%, 48%);
+  --color-error-bg-light: hsl(0, 60%, 97%);
+  --color-background-accent: hsl(40, 80%, 97%);
   --color-error-text: hsl(0, 0%, 100%);
   --color-warning-bg: hsl(38, 80%, 48%);
   --color-warning-text: hsl(38, 80%, 10%);
@@ -68,6 +70,9 @@
   --color-hover: hsla(28, 20%, 20%, 0.05);
   --color-text: var(--color-text-primary);
   --shadow-dropdown: 0 4px 12px hsla(28, 20%, 20%, 0.12);
+  --shadow-primary-glow: 0 4px 16px hsla(28, 65%, 50%, 0.35);
+  --shadow-subtle: 0 1px 3px hsla(28, 20%, 20%, 0.07);
+  --shadow-card: 0 8px 40px hsla(28, 20%, 20%, 0.1);
 
   --offline-banner-bg: hsl(38, 50%, 90%);
   --offline-banner-text: hsl(38, 40%, 22%);

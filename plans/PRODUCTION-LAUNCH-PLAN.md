@@ -12,7 +12,7 @@
 |------|--------|----------|
 | Core App | ✅ Functional | Canvas, nodes, edges, AI, search, clustering, KB all working |
 | Auth | ✅ Working | Google OAuth, session management, account deletion |
-| Security | ⚠️ 80% done | WAF scripts ready but not deployed; Turnstile client integration pending |
+| Security | ⚠️ Code complete, deploy pending | WAF script ready (run once); Turnstile integrated (needs env vars); Monitoring script ready (run once) |
 | Subscription | ⚠️ Skeleton only | Types + store exist; no payment provider, no billing UI, no enforcement |
 | Free Tier Limits | ✅ Complete | 5 workspaces, 12 nodes, 60 AI/day, 50 MB storage enforced |
 | Payment System | ❌ Missing | No Stripe/Razorpay integration; no checkout, no webhooks |
@@ -298,13 +298,13 @@ flowchart TD
 
 ### 6.2 Deploy Turnstile CAPTCHA on Login
 
-**Current state:** [`verifyTurnstile.ts`](../functions/src/verifyTurnstile.ts) Cloud Function exists. Client integration is not built.
+**Current state:** ✅ Code complete — `verifyTurnstile.ts` Cloud Function + `useTurnstile.ts` hook + `LoginPage.tsx` fully integrated. Awaiting env var deployment (store `TURNSTILE_SECRET` in Secret Manager, set `VITE_TURNSTILE_SITE_KEY` in CI).
 
 **Action items:**
-- Add Cloudflare Turnstile widget to [`LoginPage.tsx`](../src/features/auth/components/LoginPage.tsx)
-- Flow: render widget → user completes challenge → POST token to `verifyTurnstile` → on 200, proceed with `signInWithGoogle()`
-- Add Turnstile to any public-facing forms — contact, feedback
+- Create Cloudflare Turnstile site at dash.cloudflare.com → Zero Trust → Turnstile
 - Store `TURNSTILE_SECRET` in Google Cloud Secret Manager
+- Add `VITE_TURNSTILE_SITE_KEY` to GitHub Secrets and deploy frontend
+- Smoke test: open production login page, observe Turnstile loading and sign-in succeeds
 
 ### 6.3 Deploy Monitoring Alerts
 
@@ -321,12 +321,9 @@ flowchart TD
 
 ### 6.4 Unicode Homoglyph Prompt Injection Hardening
 
-**Current state:** Cyrillic patterns removed from prompt filter — deferred to security sprint per [Decision 19](../MEMORY.md).
+**Current state:** ✅ Code complete — `functions/src/utils/textNormalizer.ts` implements a 3-step pipeline: NFKD decomposition → `\p{Mn}` combining-mark strip → Cyrillic/Greek confusables map. Applied in `promptFilter.ts` before all pattern matching. 56 tests pass (49 normalizer + 7 new homoglyph bypass tests in `promptFilter.test.ts`). See [Decision 31](../MEMORY.md).
 
-**Action items:**
-- Implement NFKD normalization in prompt filter — `text.normalize('NFKD')` before pattern matching
-- Add homoglyph detection for common bypass characters
-- Test with known Cyrillic/Greek substitution attacks
+**No further action required** — this is a functions-side code change, not a deployment step.
 
 ---
 

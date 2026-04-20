@@ -47,11 +47,22 @@ SERVICES=(
   "proxyimage"
   "geminiproxy"
   "onnodedeleted"
-  "scheduledstoragebleanup"
+  "scheduledstoragecleanup"
   "workspacebundle"
   "health"
   "firestorebackup"
   "verifyturnstile"
+  "exchangecalendarcode"
+  "disconnectcalendar"
+  "calendarcreateevent"
+  "calendarupdateevent"
+  "calendardeleteevent"
+  "calendarlistevents"
+  "createcheckoutsession"
+  "stripewebhook"
+  "createbillingportalsession"
+  "createrazorpayorder"
+  "razorpaywebhook"
 )
 
 echo "► Project: $PROJECT_ID  Region: $REGION"
@@ -100,6 +111,26 @@ for PRIORITY in "${!WAF_RULES[@]}"; do
     --project="$PROJECT_ID" 2>/dev/null \
     || echo "  Rule $PRIORITY already exists, skipping."
 done
+
+# --- Webhook burst protection rule (priority 850) ------------------------
+# Priority 850 evaluates BEFORE the general 100 req/min limit (priority 900).
+# Stripe/Razorpay send bursts of webhooks on payment events; the general limit
+# would silently drop legitimate webhook events. This rule allows 500 req/min
+# for webhook endpoints specifically, banning IPs that exceed even that.
+echo "  Adding webhook rate-limit rule (priority=850)"
+gcloud compute security-policies rules create 850 \
+  --security-policy="$POLICY_NAME" \
+  --expression="request.path.matches('/stripeWebhook') || request.path.matches('/razorpayWebhook')" \
+  --action=rate-based-ban \
+  --rate-limit-threshold-count=500 \
+  --rate-limit-threshold-interval-sec=60 \
+  --ban-duration-sec=60 \
+  --conform-action=allow \
+  --exceed-action=deny-429 \
+  --enforce-on-key=IP \
+  --description="Webhook endpoints: 500 req/min burst tolerance (Stripe/Razorpay)" \
+  --project="$PROJECT_ID" 2>/dev/null \
+  || echo "  Webhook rate-limit rule already exists, skipping."
 
 # --- IP-based rate limiting rule (priority 900) ---------------------------
 # Throttle each source IP to 100 requests/minute across all endpoints.
@@ -190,6 +221,8 @@ gcloud compute url-maps create "$URL_MAP_NAME" \
   || echo "URL map already exists, skipping."
 
 # Add path-matcher rules for each function endpoint
+# NOTE: Every service in SERVICES=() must have a corresponding pathRules entry here.
+# Missing entries cause traffic to fall through to backend-health (silently misrouted).
 gcloud compute url-maps import "$URL_MAP_NAME" \
   --global \
   --source=- \
@@ -209,12 +242,40 @@ pathMatchers:
         service: global/backendServices/backend-proxyimage
       - paths: ["/geminiProxy", "/geminiProxy/*"]
         service: global/backendServices/backend-geminiproxy
+      - paths: ["/onNodeDeleted", "/onNodeDeleted/*"]
+        service: global/backendServices/backend-onnodedeleted
+      - paths: ["/scheduledStorageCleanup", "/scheduledStorageCleanup/*"]
+        service: global/backendServices/backend-scheduledstoragecleanup
       - paths: ["/workspaceBundle", "/workspaceBundle/*"]
         service: global/backendServices/backend-workspacebundle
-      - paths: ["/verifyTurnstile", "/verifyTurnstile/*"]
-        service: global/backendServices/backend-verifyturnstile
       - paths: ["/health"]
         service: global/backendServices/backend-health
+      - paths: ["/firestoreBackup", "/firestoreBackup/*"]
+        service: global/backendServices/backend-firestorebackup
+      - paths: ["/verifyTurnstile", "/verifyTurnstile/*"]
+        service: global/backendServices/backend-verifyturnstile
+      - paths: ["/exchangeCalendarCode", "/exchangeCalendarCode/*"]
+        service: global/backendServices/backend-exchangecalendarcode
+      - paths: ["/disconnectCalendar", "/disconnectCalendar/*"]
+        service: global/backendServices/backend-disconnectcalendar
+      - paths: ["/calendarCreateEvent", "/calendarCreateEvent/*"]
+        service: global/backendServices/backend-calendarcreateevent
+      - paths: ["/calendarUpdateEvent", "/calendarUpdateEvent/*"]
+        service: global/backendServices/backend-calendarupdateevent
+      - paths: ["/calendarDeleteEvent", "/calendarDeleteEvent/*"]
+        service: global/backendServices/backend-calendardeleteevent
+      - paths: ["/calendarListEvents", "/calendarListEvents/*"]
+        service: global/backendServices/backend-calendarlistevents
+      - paths: ["/createCheckoutSession", "/createCheckoutSession/*"]
+        service: global/backendServices/backend-createcheckoutsession
+      - paths: ["/stripeWebhook", "/stripeWebhook/*"]
+        service: global/backendServices/backend-stripewebhook
+      - paths: ["/createBillingPortalSession", "/createBillingPortalSession/*"]
+        service: global/backendServices/backend-createbillingportalsession
+      - paths: ["/createRazorpayOrder", "/createRazorpayOrder/*"]
+        service: global/backendServices/backend-createrazorpayorder
+      - paths: ["/razorpayWebhook", "/razorpayWebhook/*"]
+        service: global/backendServices/backend-razorpaywebhook
 URLMAP
 
 # Google-managed SSL certificate (auto-renews; domain must already point here)
@@ -245,7 +306,7 @@ LB_IP=$(gcloud compute addresses describe "${LB_NAME}-ip" \
   --format="get(address)" \
   --project="$PROJECT_ID")
 
-# Forwarding rule
+# Forwarding rule (HTTPS on port 443)
 gcloud compute forwarding-rules create "$FORWARDING_RULE" \
   --load-balancing-scheme=EXTERNAL_MANAGED \
   --network-tier=PREMIUM \
@@ -256,6 +317,32 @@ gcloud compute forwarding-rules create "$FORWARDING_RULE" \
   --project="$PROJECT_ID" 2>/dev/null \
   || echo "Forwarding rule already exists, skipping."
 
+# HTTP → HTTPS redirect (port 80 → 443)
+# Without this, users hitting http://... get connection refused instead of a redirect.
+gcloud compute url-maps create "${URL_MAP_NAME}-http-redirect" \
+  --default-redirect-uri="https://\$host\$request_uri" \
+  --redirect-response-code=MOVED_PERMANENTLY_DEFAULT \
+  --https-redirect \
+  --global \
+  --project="$PROJECT_ID" 2>/dev/null \
+  || echo "HTTP redirect map already exists, skipping."
+
+gcloud compute target-http-proxies create "${TARGET_HTTPS_PROXY}-http" \
+  --url-map="${URL_MAP_NAME}-http-redirect" \
+  --global \
+  --project="$PROJECT_ID" 2>/dev/null \
+  || echo "HTTP target proxy already exists, skipping."
+
+gcloud compute forwarding-rules create "${FORWARDING_RULE}-http" \
+  --load-balancing-scheme=EXTERNAL_MANAGED \
+  --network-tier=PREMIUM \
+  --address="${LB_NAME}-ip" \
+  --target-http-proxy="${TARGET_HTTPS_PROXY}-http" \
+  --global \
+  --ports=80 \
+  --project="$PROJECT_ID" 2>/dev/null \
+  || echo "HTTP forwarding rule already exists, skipping."
+
 echo ""
 echo "═══════════════════════════════════════════════════════════════════════"
 echo "  ✓ Cloud Armor WAF setup complete!"
@@ -263,6 +350,7 @@ echo ""
 echo "  Load balancer IP: $LB_IP"
 echo "  → Point your DNS A record for $DOMAIN to: $LB_IP"
 echo "  → SSL cert will provision automatically once DNS propagates."
+echo "  → HTTP (port 80) → HTTPS redirect is active on the same IP."
 echo ""
 echo "  ⚠  IMPORTANT: Until DNS is updated, traffic still reaches Cloud Run"
 echo "     directly at *.cloudfunctions.net — Cloud Armor only protects"
@@ -271,4 +359,7 @@ echo ""
 echo "  To verify WAF rules are blocking correctly:"
 echo "    curl -I 'https://$DOMAIN/health?q=1+OR+1=1--'"
 echo "    # should return HTTP 403"
+echo "  To verify HTTP redirect:"
+echo "    curl -I 'http://$DOMAIN/health'"
+echo "    # should return HTTP 301 → https://"
 echo "═══════════════════════════════════════════════════════════════════════"
