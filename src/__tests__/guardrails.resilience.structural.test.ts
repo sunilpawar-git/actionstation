@@ -276,10 +276,11 @@ function fmtMsg(issue: string, fix: string, violations: string[]): string {
 // ─── Keyboard: approved keydown listener allowlist ────────────────────────────
 
 describe('Keyboard: raw addEventListener("keydown") allowlist', () => {
-    // Only these three files are permitted to attach global keydown listeners:
+    // Only these files are permitted to attach keydown listeners via addEventListener:
     //   useKeyboardShortcuts — capture-phase, all plain + modifier shortcuts
     //   useEscapeLayer       — single global Escape listener (priority-ordered)
     //   useNodeShortcuts     — per-node capture listener guarded by GLOBAL_SHORTCUT_KEYS
+    //   useFocusTrap         — container-scoped Tab-trap for accessibility (WCAG 2.1 §2.1.2)
     //
     // All other Escape handling → useEscapeLayer
     // All other shortcut handling → useKeyboardShortcuts
@@ -289,6 +290,7 @@ describe('Keyboard: raw addEventListener("keydown") allowlist', () => {
         'app/hooks/useKeyboardShortcuts.ts',
         'shared/hooks/useEscapeLayer.ts',
         'features/canvas/hooks/useNodeShortcuts.ts',
+        'shared/hooks/useFocusTrap.ts',
     ]);
 
     it('no file outside the allowlist attaches a raw document keydown listener', () => {

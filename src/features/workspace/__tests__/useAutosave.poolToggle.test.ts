@@ -10,6 +10,7 @@ import { saveWorkspace } from '@/features/workspace/services/workspaceService';
 import type { Workspace } from '@/features/workspace/types/workspace';
 import { useSaveStatusStore } from '@/shared/stores/saveStatusStore';
 import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
+import { useTabRoleStore } from '@/shared/stores/tabRoleStore';
 
 const canvasState = { current: { nodes: [] as unknown[], edges: [] as unknown[] } };
 const workspaceState = { current: [] as Workspace[] };
@@ -77,6 +78,8 @@ describe('useAutosave — workspace pool toggle persistence', () => {
         workspaceState.current = [];
         useSaveStatusStore.setState({ status: 'idle', lastSavedAt: null, lastError: null });
         useNetworkStatusStore.setState({ isOnline: true });
+        // Simulate being the leader tab; default is false to prevent write-window race (R2 fix)
+        useTabRoleStore.setState({ isLeader: true });
     });
 
     afterEach(() => { vi.useRealTimers(); });

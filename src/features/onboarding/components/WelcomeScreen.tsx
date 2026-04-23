@@ -2,10 +2,11 @@
  * WelcomeScreen — full-screen first-visit overlay.
  * Portal-rendered; dismissed by CTA or Escape.
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useEscapeLayer } from '@/shared/hooks/useEscapeLayer';
 import { ESCAPE_PRIORITY } from '@/shared/hooks/escapePriorities';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { strings } from '@/shared/localization/strings';
 
 interface WelcomeScreenProps {
@@ -29,9 +30,12 @@ function WelcomeBullets() {
 /** Full-screen first-visit welcome overlay; portal-rendered and dismissed by CTA or Escape. */
 export const WelcomeScreen = React.memo(function WelcomeScreen({ onDismiss }: WelcomeScreenProps) {
     useEscapeLayer(ESCAPE_PRIORITY.MODAL, true, onDismiss);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useFocusTrap(dialogRef, true);
 
     return createPortal(
         <div
+            ref={dialogRef}
             className="fixed inset-0 bg-[var(--color-background)] z-[calc(var(--z-modal)+10)] flex items-center justify-center"
             role="dialog" aria-modal="true"
             aria-labelledby="onboarding-welcome-title"

@@ -10,6 +10,7 @@ import { createIdeaNode, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT } from '../type
 import { useCanvasStore } from '../stores/canvasStore';
 import { findNearestOpenSlot } from '../services/spiralPlacement';
 import { useUndoableActions } from './useUndoableActions';
+import { generateUUID } from '@/shared/utils/uuid';
 
 // Custom event for focusing a newly created node
 export const FOCUS_NODE_EVENT = 'actionstation:focusNode';
@@ -81,7 +82,7 @@ export function useQuickCapture() {
             rawPosition.x, rawPosition.y, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT, nodes,
         );
 
-        const nodeId = `idea-${crypto.randomUUID()}`;
+        const nodeId = `idea-${generateUUID()}`;
         const newNode = createIdeaNode(
             nodeId,
             currentWorkspaceId ?? DEFAULT_WORKSPACE_ID,

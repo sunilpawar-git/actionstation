@@ -8,6 +8,7 @@ import { callGemini } from '@/features/knowledgeBank/services/geminiClient';
 import { captureError } from '@/shared/services/sentryService';
 import { toast } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
+import { generateUUID } from '@/shared/utils/uuid';
 import { trackAggregationGenerated } from '@/shared/services/analyticsService';
 import { getStorageItem, setStorageItem } from '@/shared/utils/storage';
 import { createIdeaNode } from '@/features/canvas/types/node';
@@ -90,7 +91,7 @@ export async function runAggregation(workspaceId: string): Promise<void> {
     if (existingAgg) {
         useCanvasStore.getState().updateNodeOutput(existingAgg.id, markdown);
     } else {
-        const nodeId = `${AGGREGATION_NODE_PREFIX}${crypto.randomUUID()}`;
+        const nodeId = `${AGGREGATION_NODE_PREFIX}${generateUUID()}`;
         const node = createIdeaNode(nodeId, workspaceId, { x: 50, y: 50 });
         node.data = {
             ...node.data,

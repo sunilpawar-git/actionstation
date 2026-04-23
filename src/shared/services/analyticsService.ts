@@ -158,6 +158,16 @@ export function trackOnboardingStepViewed(step: string, index: number): void {
     track('onboarding_step_viewed', { step, index });
 }
 
+// ── Tile / spatial chunking events ────────────────────────────────────────────
+
+export function trackTileLoadFailed(tileId: string): void {
+    track('tile_load_failed', { tile_id: tileId });
+}
+
+export function trackTileLoadRetried(tileCount: number): void {
+    track('tile_load_retried', { tile_count: tileCount });
+}
+
 export function trackOnboardingCompleted(stepsViewed: number): void {
     track('onboarding_completed', { steps_viewed: stepsViewed });
 }

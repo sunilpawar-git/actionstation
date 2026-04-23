@@ -8,6 +8,7 @@ import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { callGemini } from '@/features/knowledgeBank/services/geminiClient';
 import { captureError } from '@/shared/services/sentryService';
 import { toast } from '@/shared/stores/toastStore';
+import { generateUUID } from '@/shared/utils/uuid';
 import { strings } from '@/shared/localization/strings';
 import { trackCrossReferenceGenerated } from '@/shared/services/analyticsService';
 import { createIdeaNode, type NodeColorKey } from '@/features/canvas/types/node';
@@ -70,7 +71,7 @@ export async function attemptCrossReference(
     const isFreeFlow = useSettingsStore.getState().canvasFreeFlow;
     const freshNodes = useCanvasStore.getState().nodes;
     const position = calculateInsightPosition(parentNode, freshNodes, isFreeFlow);
-    const crossRefNodeId = `crossref-${crypto.randomUUID()}`;
+    const crossRefNodeId = `crossref-${generateUUID()}`;
 
     const node = createIdeaNode(crossRefNodeId, workspaceId, {
         x: position.x + 280,
@@ -85,7 +86,7 @@ export async function attemptCrossReference(
     };
 
     const edge = createEdge(
-        `edge-${crypto.randomUUID()}`,
+        `edge-${generateUUID()}`,
         workspaceId,
         nodeId,
         crossRefNodeId,

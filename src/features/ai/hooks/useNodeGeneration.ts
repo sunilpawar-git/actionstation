@@ -9,6 +9,7 @@ import { useAIStore } from '../stores/aiStore';
 import { generateContentWithContext } from '../services/geminiService';
 import { createIdeaNode } from '@/features/canvas/types/node';
 import { createEdge } from '@/features/canvas/types/edge';
+import { generateUUID } from '@/shared/utils/uuid';
 import { calculateBranchPlacement } from '@/features/canvas/services/freeFlowPlacementService';
 import { usePanToNodeContext } from '@/features/canvas/contexts/PanToNodeContext';
 import { buildContextChain } from '../services/contextChainBuilder';
@@ -102,14 +103,14 @@ export function useNodeGeneration() {
 
             const position = calculateBranchPlacement(sourceNode, freshNodes);
             const newNode = createIdeaNode(
-                `idea-${crypto.randomUUID()}`,
+                `idea-${generateUUID()}`,
                 sourceNode.workspaceId,
                 position,
                 ''
             );
 
             const edge = createEdge(
-                `edge-${crypto.randomUUID()}`,
+                `edge-${generateUUID()}`,
                 sourceNode.workspaceId,
                 sourceNodeId,
                 newNode.id,

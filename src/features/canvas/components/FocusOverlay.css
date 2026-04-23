@@ -1,0 +1,49 @@
+/**
+ * FocusOverlay non-module CSS — animations, custom scrollbar, :global selector.
+ * Cannot be expressed as Tailwind utilities; kept here instead of CSS module.
+ */
+
+@keyframes backdropFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes panelScaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes mindmapPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.focus-overlay-backdrop {
+    animation: backdropFadeIn var(--transition-normal) ease forwards;
+}
+
+.focus-overlay-panel {
+    animation: panelScaleIn var(--transition-normal) ease forwards;
+}
+
+/* Hover state — button has a bare global reset so backgroundColor must be !important */
+.focus-overlay-close:hover {
+    background-color: var(--color-surface-hover) !important;
+    color: var(--color-text-primary);
+}
+
+.focus-overlay-content {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+    /* Images inside the focus panel use the larger focus max-height */
+    --node-image-applied-max-height: var(--node-image-focus-max-height, min(60vh, 600px));
+}
+
+/* Images in focus panel get extra vertical breathing room */
+.focus-overlay-content .node-image {
+    margin: var(--space-md) auto;
+}
+
+.focus-overlay-loading {
+    animation: mindmapPulse 1.5s ease-in-out infinite;
+}

@@ -85,7 +85,8 @@ describe('Phase 3: Node simplification structural tests', () => {
 
     describe('SettingsPanel has 6 tabs (including toolbar)', () => {
         it('contains toolbar tab', () => {
-            const content = readSrc('app/components/SettingsPanel/SettingsPanel.tsx');
+            // Tab config extracted to SettingsPanelContent.tsx to keep SettingsPanel ≤100 lines
+            const content = readSrc('app/components/SettingsPanel/SettingsPanelContent.tsx');
             expect(content).toContain("'toolbar'");
         });
     });

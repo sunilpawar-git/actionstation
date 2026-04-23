@@ -7,6 +7,7 @@ import { createEdge } from '@/features/canvas/types/edge';
 import { calculateBranchPlacement } from '@/features/canvas/services/freeFlowPlacementService';
 import { calculateMasonryPosition } from '@/features/canvas/services/gridLayoutService';
 import { resolveGridColumnsFromStore } from '@/features/canvas/services/gridColumnsResolver';
+import { generateUUID } from '@/shared/utils/uuid';
 import { strings } from '@/shared/localization/strings';
 import type { CanvasNode, NodePosition, NodeColorKey } from '@/features/canvas/types/node';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
@@ -27,7 +28,7 @@ export function buildInsightSpawn(
     filename: string,
     parentColorKey?: NodeColorKey,
 ): InsightSpawnResult {
-    const nodeId = `insight-${crypto.randomUUID()}`;
+    const nodeId = `insight-${generateUUID()}`;
     const node = createIdeaNode(nodeId, workspaceId, position);
 
     node.data = {
@@ -39,7 +40,7 @@ export function buildInsightSpawn(
     };
 
     const edge = createEdge(
-        `edge-${crypto.randomUUID()}`,
+        `edge-${generateUUID()}`,
         workspaceId,
         parentNodeId,
         nodeId,

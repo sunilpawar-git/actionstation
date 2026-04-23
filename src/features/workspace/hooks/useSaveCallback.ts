@@ -2,6 +2,9 @@
  * useSaveCallback - Stable save function with latest-value refs.
  * Refs ensure save() always persists the latest state, avoiding
  * stale closure capture in debounced callbacks.
+ *
+ * @internal timeoutRef and lastPersistedWorkspaceRef are owned by this hook;
+ * only useAutosave may read/write them. No other consumer should touch them.
  */
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
@@ -13,12 +16,30 @@ import { useWorkspaceStore } from '@/features/workspace/stores/workspaceStore';
 import type { Workspace } from '@/features/workspace/types/workspace';
 import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
 import { useOfflineQueueStore } from '../stores/offlineQueueStore';
+import { useTabRoleStore } from '@/shared/stores/tabRoleStore';
 import { toast } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
 
 export function serializeWorkspacePoolFields(workspace: Workspace | null): string {
     if (!workspace) return '';
     return JSON.stringify({ includeAllNodesInPool: workspace.includeAllNodesInPool ?? false });
+}
+
+/** Saves workspace metadata if nodeCount or pool-fields changed. No-op when already up-to-date. */
+async function persistWorkspaceIfNeeded(
+    userId: string,
+    workspaceId: string,
+    workspace: Workspace | null,
+    newNodeCount: number,
+    lastPersistedRef: React.MutableRefObject<string>,
+): Promise<void> {
+    if (!workspace) return;
+    const nodeCountChanged = workspace.nodeCount !== newNodeCount;
+    const wsJson = serializeWorkspacePoolFields(workspace);
+    if (!nodeCountChanged && lastPersistedRef.current === wsJson) return;
+    await saveWorkspace(userId, { ...workspace, nodeCount: newNodeCount });
+    if (nodeCountChanged) useWorkspaceStore.getState().setNodeCount(workspaceId, newNodeCount);
+    lastPersistedRef.current = wsJson;
 }
 
 export function useSaveCallback(workspaceId: string) {
@@ -29,7 +50,8 @@ export function useSaveCallback(workspaceId: string) {
         () => workspaces.find((w) => w.id === workspaceId) ?? null,
         [workspaces, workspaceId],
     );
-    const user = useAuthStore((s) => s.user);
+    // Scalar selector — safe to list in useCallback deps without causing cascade re-renders.
+    const userId = useAuthStore((s) => s.user?.id);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastPersistedWorkspaceRef = useRef('');
 
@@ -41,14 +63,16 @@ export function useSaveCallback(workspaceId: string) {
     latestWorkspaceRef.current = currentWorkspace;
 
     const save = useCallback(async () => {
-        if (!user || !workspaceId) return;
+        if (!userId || !workspaceId) return;
         const currentNodes = latestNodesRef.current;
         const currentEdges = latestEdgesRef.current;
-        const workspace = latestWorkspaceRef.current;
 
-        const isOnline = useNetworkStatusStore.getState().isOnline;
-        if (!isOnline) {
-            useOfflineQueueStore.getState().queueSave(user.id, workspaceId, currentNodes, currentEdges);
+        if (!useTabRoleStore.getState().isLeader) {
+            workspaceCache.update(workspaceId, currentNodes, currentEdges);
+            return;
+        }
+        if (!useNetworkStatusStore.getState().isOnline) {
+            useOfflineQueueStore.getState().queueSave(userId, workspaceId, currentNodes, currentEdges);
             useSaveStatusStore.getState().setQueued();
             workspaceCache.update(workspaceId, currentNodes, currentEdges);
             return;
@@ -58,37 +82,25 @@ export function useSaveCallback(workspaceId: string) {
         setSaving();
         try {
             await Promise.all([
-                saveNodes(user.id, workspaceId, currentNodes),
-                saveEdges(user.id, workspaceId, currentEdges),
+                saveNodes(userId, workspaceId, currentNodes),
+                saveEdges(userId, workspaceId, currentEdges),
             ]);
             workspaceCache.update(workspaceId, currentNodes, currentEdges);
-
-            const newNodeCount = currentNodes.length;
-            const nodeCountChanged = workspace && workspace.nodeCount !== newNodeCount;
-            const wsJson = serializeWorkspacePoolFields(workspace);
-            const wsFieldsChanged = lastPersistedWorkspaceRef.current !== wsJson;
-
-            if (workspace && (nodeCountChanged || wsFieldsChanged)) {
-                await saveWorkspace(user.id, { ...workspace, nodeCount: newNodeCount });
-                if (nodeCountChanged) {
-                    useWorkspaceStore.getState().setNodeCount(workspaceId, newNodeCount);
-                }
-                lastPersistedWorkspaceRef.current = wsJson;
-            }
+            await persistWorkspaceIfNeeded(userId, workspaceId, latestWorkspaceRef.current, currentNodes.length, lastPersistedWorkspaceRef);
             setSaved();
         } catch (error) {
             const message = error instanceof Error ? error.message : strings.offline.saveError;
             setError(message);
             toast.error(strings.offline.saveFailed);
         }
-    }, [user, workspaceId]);
+    }, [userId, workspaceId]);
+
     useEffect(() => {
         const flush = () => {
-            if (document.hidden && timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-                timeoutRef.current = null;
-                void save();
-            }
+            if (!document.hidden || !timeoutRef.current) return;
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+            void save();
         };
         document.addEventListener('visibilitychange', flush);
         return () => document.removeEventListener('visibilitychange', flush);
@@ -96,3 +108,4 @@ export function useSaveCallback(workspaceId: string) {
 
     return { save, nodes, edges, currentWorkspace, timeoutRef, lastPersistedWorkspaceRef };
 }
+

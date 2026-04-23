@@ -13,6 +13,7 @@ import { saveNodes, saveEdges } from '@/features/workspace/services/workspaceSer
 import { workspaceCache } from '@/features/workspace/services/workspaceCache';
 import { useSaveStatusStore } from '@/shared/stores/saveStatusStore';
 import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
+import { useTabRoleStore } from '@/shared/stores/tabRoleStore';
 import { toast } from '@/shared/stores/toastStore';
 
 vi.mock('@/features/canvas/stores/canvasStore', () => ({
@@ -75,6 +76,8 @@ describe('useAutosave', () => {
         setCanvasState({ nodes: [], edges: [] });
         useSaveStatusStore.setState({ status: 'idle', lastSavedAt: null, lastError: null });
         useNetworkStatusStore.setState({ isOnline: true });
+        // Simulate being the leader tab; default is false to prevent write-window race (R2 fix)
+        useTabRoleStore.setState({ isLeader: true });
     });
 
     afterEach(() => {

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { BranchNode } from '../services/branchTraversal';
 import { useExportDialog } from '../hooks/useExportDialog';
@@ -7,6 +7,7 @@ import { exportStrings } from '../strings/exportStrings';
 import { strings } from '@/shared/localization/strings';
 import { useEscapeLayer } from '@/shared/hooks/useEscapeLayer';
 import { ESCAPE_PRIORITY } from '@/shared/hooks/escapePriorities';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import styles from './ExportDialog.module.css';
 
 interface ExportDialogProps {
@@ -16,6 +17,8 @@ interface ExportDialogProps {
 
 export const ExportDialog = React.memo(function ExportDialog({ roots, onClose }: ExportDialogProps) {
     const { markdown, isPolishing, togglePolish, copyToClipboard, download } = useExportDialog(roots);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useFocusTrap(dialogRef, true);
 
     // Escape closes the dialog at MODAL priority (80), the highest level.
     // This integrates ExportDialog into the centralized escape-layer system so
@@ -33,6 +36,7 @@ export const ExportDialog = React.memo(function ExportDialog({ roots, onClose }:
     return createPortal(
         <div className={styles.backdrop} onClick={handleBackdropClick}>
             <div
+                ref={dialogRef}
                 className={styles.dialog}
                 role="dialog"
                 aria-modal="true"

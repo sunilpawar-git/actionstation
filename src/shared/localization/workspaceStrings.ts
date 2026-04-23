@@ -25,6 +25,7 @@ export const workspaceStrings = {
     nodeCount: (count: number) => `(${count})`,
     tileComputing: 'Computing spatial tiles...',
     tileLoadFailed: 'Failed to load tile data',
+    tileLoadRetry: 'Retry loading',
     tileMigrationProgress: (done: number, total: number) => `Migrating nodes: ${done}/${total}`,
     tileMigrationComplete: 'Spatial chunking migration complete',
     tileMigrationFailed: 'Spatial chunking migration failed',

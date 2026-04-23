@@ -81,11 +81,21 @@ describe('offlineQueueStore drainQueue', () => {
     });
 
     it('does not stack overflow with 50 operations', async () => {
-        for (let i = 0; i < 50; i++) {
-            offlineQueueService.enqueue(makeOp(`op-${i}`, `ws-${i}`));
-        }
+        // Use fake timers so DRAIN_RATE_LIMIT_MS delays (500ms × 50 = 25s) don't
+        // block the test runner. We advance the clock in one step to flush all ops.
+        vi.useFakeTimers();
+        try {
+            for (let i = 0; i < 50; i++) {
+                offlineQueueService.enqueue(makeOp(`op-${i}`, `ws-${i}`));
+            }
 
-        await useOfflineQueueStore.getState().drainQueue();
+            const drainPromise = useOfflineQueueStore.getState().drainQueue();
+            // 50 ops × 500ms rate-limit = 25 000ms; advance past that
+            await vi.advanceTimersByTimeAsync(30_000);
+            await drainPromise;
+        } finally {
+            vi.useRealTimers();
+        }
 
         expect(offlineQueueService.size()).toBe(0);
     });

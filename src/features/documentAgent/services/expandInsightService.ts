@@ -7,6 +7,7 @@ import { createEdge } from '@/features/canvas/types/edge';
 import { strings } from '@/shared/localization/strings';
 import { formatBulletList } from '../utils/llmResponseUtils';
 import { findNearestOpenSlot } from '@/features/canvas/services/spiralPlacement';
+import { generateUUID } from '@/shared/utils/uuid';
 import type { CanvasNode, NodeColorKey } from '@/features/canvas/types/node';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
 import type { ExtractionResult } from '../types/documentAgent';
@@ -90,7 +91,7 @@ export function expandInsightToNodes(
     const allNodes = [insightNode, ...existingNodes.filter((n) => n.id !== insightNode.id)];
 
     for (const [i, section] of sections.entries()) {
-        const nodeId = `expand-${crypto.randomUUID()}`;
+        const nodeId = `expand-${generateUUID()}`;
 
         const idealPosition = {
             x: insightNode.position.x + FAN_OFFSET_X,
@@ -113,7 +114,7 @@ export function expandInsightToNodes(
         };
 
         const edge = createEdge(
-            `edge-${crypto.randomUUID()}`,
+            `edge-${generateUUID()}`,
             insightNode.workspaceId,
             parentDocNodeId,
             nodeId,

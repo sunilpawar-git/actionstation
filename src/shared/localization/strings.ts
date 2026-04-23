@@ -7,6 +7,8 @@ import { calendarStrings } from './calendarStrings';
 import { nodePoolStrings } from './nodePoolStrings';
 import { securityStrings } from './securityStrings';
 import { settingsStrings } from './settingsStrings';
+import { multiTabStrings } from './multiTabStrings';
+import { a11yStrings } from './a11yStrings';
 import { documentAgentStrings } from '@/features/documentAgent/strings/documentAgentStrings';
 import { synthesisStrings } from '@/features/synthesis/strings/synthesisStrings';
 import { exportStrings } from '@/features/export/strings/exportStrings';
@@ -81,6 +83,8 @@ export const strings = {
     settings: settingsStrings,
     shortcuts: shortcutStrings,
     search: searchStrings,
+    multiTab: multiTabStrings,
+    a11y: a11yStrings,
     tags: {
         addTag: 'Add tag',
         placeholder: 'Add tag...',
