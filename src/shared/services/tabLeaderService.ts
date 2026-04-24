@@ -57,6 +57,7 @@ export function createTabLeaderService(): TabLeaderService {
     const listeners = new Set<(role: TabRole) => void>();
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let channel: BroadcastChannel | null = null;
+    let bcMessageHandler: ((e: MessageEvent<BcMessage>) => void) | null = null;
 
     function notify(next: TabRole): void {
         role = next;
@@ -64,12 +65,9 @@ export function createTabLeaderService(): TabLeaderService {
     }
 
     function stopHeartbeat(): void {
-        if (heartbeatTimer !== null) {
-            clearInterval(heartbeatTimer);
-            heartbeatTimer = null;
-        }
+        if (heartbeatTimer !== null) clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
     }
-
     function claimLeadership(): void {
         localStorage.setItem(LS_LEADER_ID, tabId);
         localStorage.setItem(LS_HEARTBEAT_TS, String(Date.now()));
@@ -82,7 +80,6 @@ export function createTabLeaderService(): TabLeaderService {
     }
 
     function tryClaimOrFollow(): void { if (isHeartbeatFresh()) notify('follower'); else claimLeadership(); }
-
     function handleBcMessage(msg: BcMessage): void {
         if (msg.tabId === tabId) return; // ignore self
         const msgType = msg.type;
@@ -106,8 +103,6 @@ export function createTabLeaderService(): TabLeaderService {
             tryClaimOrFollow();
         }
     }
-
-    let bcMessageHandler: ((e: MessageEvent<BcMessage>) => void) | null = null;
 
     function startChannel(): void {
         if (typeof BroadcastChannel !== 'undefined') {
