@@ -107,13 +107,13 @@ export function createTabLeaderService(): TabLeaderService {
         }
     }
 
+    let bcMessageHandler: ((e: MessageEvent<BcMessage>) => void) | null = null;
+
     function startChannel(): void {
         if (typeof BroadcastChannel !== 'undefined') {
             channel = new BroadcastChannel(BC_CHANNEL);
-            channel.addEventListener(
-                'message',
-                (e: MessageEvent<BcMessage>) => handleBcMessage(e.data),
-            );
+            bcMessageHandler = (e: MessageEvent<BcMessage>) => handleBcMessage(e.data);
+            channel.addEventListener('message', bcMessageHandler);
         } else {
             window.addEventListener('storage', handleStorageEvent);
         }
@@ -124,6 +124,10 @@ export function createTabLeaderService(): TabLeaderService {
             localStorage.removeItem(LS_LEADER_ID);
             localStorage.removeItem(LS_HEARTBEAT_TS);
             safePost(channel, { type: 'RESIGN', tabId });
+        }
+        if (channel && bcMessageHandler) {
+            channel.removeEventListener('message', bcMessageHandler);
+            bcMessageHandler = null;
         }
         channel?.close();
         channel = null;

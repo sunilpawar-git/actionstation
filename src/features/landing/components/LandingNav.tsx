@@ -77,7 +77,7 @@ export function LandingNav() {
                     aria-label={isMenuOpen ? strings.landing.nav.closeMenu : strings.landing.nav.openMenu}
                     onClick={() => setIsMenuOpen((prev) => !prev)}
                 >
-                    {isMenuOpen ? '\u2715' : '\u2630'}
+                    {isMenuOpen ? strings.landing.nav.menuCloseIcon : strings.landing.nav.menuOpenIcon}
                 </button>
             </div>
 

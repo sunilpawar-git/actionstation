@@ -35,7 +35,7 @@ cd functions && npm run check  # lint + test + build
 firebase emulators:start --only functions  # Local emulator on :5001
 ```
 
-**Aliases & Setup**: `@/` maps to `src/` (tsconfig.json, vite.config.ts). Tests use Vitest + jsdom + React Testing Library, setup in `src/test/setup.ts`. Structural tests (`src/__tests__/`) enforce build rules — never update them, fix the code.
+**Aliases & Setup**: `@/` maps to `src/` (tsconfig.json, vite.config.ts). First-time setup: `cp .env.example .env.local` then fill in all `VITE_*` variables. Tests use Vitest + jsdom + React Testing Library, setup in `src/test/setup.ts`. Structural tests (`src/__tests__/`) enforce build rules — never update them, fix the code.
 
 ## 🧠 Product Context — Building a Second Brain (BASB)
 
@@ -84,7 +84,8 @@ src/
 │   ├── documentAgent/        # Image analysis
 │   ├── export/               # Branch/markdown export
 │   ├── settings/             # User settings
-│   └── onboarding/           # First-run flows
+│   ├── onboarding/           # First-run flows
+│   └── landing/              # Public marketing page (unauthenticated)
 ├── shared/
 │   ├── components/           # Reusable UI (Button, Toast, ErrorBoundary)
 │   ├── contexts/             # React contexts
@@ -110,6 +111,47 @@ users/{userId}/
   usage/aiDaily              # Server writes only
   usage/storage              # Client read+write
 ```
+
+**Cloud Functions** (`functions/src/`):
+
+| Function | Trigger | Purpose |
+|----------|---------|---------|
+| `geminiProxy` | HTTPS callable | Proxies all Gemini requests — key never reaches client |
+| `workspaceBundle` | HTTPS callable | Firestore Bundles for fast workspace load |
+| `onNodeDeleted` | Firestore trigger | Cleans up Storage files when a node is deleted |
+| `scheduledStorageCleanup` | Scheduler (daily) | Purges orphan `tmp/` files older than 7 days |
+| `verifyTurnstile` | HTTPS | Validates Cloudflare Turnstile CAPTCHA tokens |
+| `stripeWebhook` / `razorpayWebhook` | HTTPS | Payment webhook handlers |
+| `calendarAuth` / `calendarEvents` | HTTPS callable | Google Calendar OAuth + event sync |
+
+Every new Cloud Function export must be added to: `functions/src/index.ts` (with `cors: ALLOWED_ORIGINS`), `scripts/setup-cloud-armor.sh` SERVICES array, and verified by the `cloudArmorCoverage` + `monitoringCoverage` structural tests.
+
+**Multi-Tab Write Protection**:
+
+A BroadcastChannel-based leader election (`src/shared/services/tabLeaderService.ts`) ensures only one tab writes to Firestore at a time:
+- `TabLeaderProvider` (in `App.tsx`) runs the election and updates both `TabLeaderCtx` and `tabRoleStore`
+- `useTabRoleStore` is a minimal Zustand store for **imperative reads** (e.g. in `useSaveCallback.save()` before Firestore writes)
+- `useTabLeaderRole()` is the React hook for **reactive reads** in components
+- Default role is `'pending'` → `isLeader: false`, so no writes occur during the election window
+- `MultiTabBanner` renders for follower tabs; followers still update the local cache
+
+**Structural Tests Catalog** (`src/__tests__/`):
+
+These tests act as compile-time guardrails — they fail the build if rules are violated. When adding a new feature, check which tests it might affect:
+
+| Test | What it enforces |
+|------|-----------------|
+| `zustandSelectors.structural.test.ts` | All store hooks must use selectors, no bare destructuring |
+| `firestoreQueryCap.structural.test.ts` | Every `getDocs` must use `.limit()` |
+| `noBase64InFirestore.structural.test.ts` | `stripBase64Images()` called in all node write paths |
+| `overflowClip.structural.test.ts` | `overflow-clip` not `overflow-hidden` on fixed containers |
+| `noConsoleLog.structural.test.ts` | No `console.*` in `src/` — use `logger.ts` |
+| `envValidation.structural.test.ts` | New env vars registered in `envValidation.ts` |
+| `cloudArmorCoverage.structural.test.ts` | New Cloud Functions in WAF `SERVICES` array |
+| `monitoringCoverage.structural.test.ts` | New Cloud Functions covered by monitoring alerts |
+| `cspCompleteness.structural.test.ts` | CSP in `firebase.json` only, never `<meta>` tags |
+| `guardrails.security.structural.test.ts` | Stripe key not in client bundle, base64 invariants |
+| `landingPage.structural.test.ts` | Landing routes accessible without auth |
 
 ## 🔴 HARDCODING RULES (Zero Tolerance)
 - **Strings**: Use `strings` from `@/shared/localization/*` — no inline text

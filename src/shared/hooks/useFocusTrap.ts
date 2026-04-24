@@ -40,9 +40,8 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>, isOpen: boolean
 
         function handleKeyDown(e: KeyboardEvent): void {
             if (e.key !== 'Tab') return;
+            // Re-query on each Tab to handle dynamically added/removed elements.
             const elements = getFocusableElements(container);
-            if (elements.length === 0) { e.preventDefault(); return; }
-
             const first = elements[0];
             const last = elements[elements.length - 1];
             if (!first || !last) { e.preventDefault(); return; }

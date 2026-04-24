@@ -14,6 +14,8 @@ export const landingStrings = {
         mobileAriaLabel: 'Mobile navigation',
         openMenu: 'Open navigation menu',
         closeMenu: 'Close navigation menu',
+        menuOpenIcon: '☰',
+        menuCloseIcon: '✕',
     },
     hero: {
         title: 'Your best ideas don\u2019t live in a list.',
