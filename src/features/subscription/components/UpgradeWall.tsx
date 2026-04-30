@@ -3,9 +3,7 @@
  * Displays limit-specific message with current/max counts and upgrade CTA.
  * All text from strings.subscription.limits.* — no hardcoded strings.
  */
-import { useRef } from 'react';
 import { strings } from '@/shared/localization/strings';
-import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import type { LimitKind } from '../types/tierLimits';
 
 interface UpgradeWallProps {
@@ -26,12 +24,9 @@ const LIMIT_MESSAGES: Record<LimitKind, string> = {
 export function UpgradeWall({ limitKind, current, max, onDismiss, onUpgrade }: UpgradeWallProps) {
     const message = LIMIT_MESSAGES[limitKind];
     const displayMax = Number.isFinite(max) ? max : '∞';
-    const dialogRef = useRef<HTMLDivElement>(null);
-    useFocusTrap(dialogRef, true);
 
     return (
         <div
-            ref={dialogRef}
             className="fixed inset-0 flex items-center justify-center bg-[var(--color-overlay)] z-[var(--z-modal)]"
             role="dialog"
             aria-modal="true"
