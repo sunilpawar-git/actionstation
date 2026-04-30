@@ -42,8 +42,10 @@ function getCachedBundle(): CachedBundle | null {
  * Load workspace metadata using Firestore Bundles.
  * Returns the named query snapshot if bundle is available and valid.
  * Returns null if bundle is unavailable (caller should fall back to normal queries).
+ * Times out after 3 s so a cold Cloud Function never blocks the workspace list.
  */
 export async function loadWorkspaceBundle(): Promise<ReturnType<typeof getDocs> | null> {
+    const TIMEOUT_MS = 3000;
     try {
         const cached = getCachedBundle();
         let bundleData: string;
@@ -52,7 +54,12 @@ export async function loadWorkspaceBundle(): Promise<ReturnType<typeof getDocs> 
             bundleData = cached.data;
         } else {
             const callable = httpsCallable<undefined, BundleResponse>(functions, 'workspaceBundle');
-            const result = await callable();
+            const result = await Promise.race([
+                callable(),
+                new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error('bundle timeout')), TIMEOUT_MS)
+                ),
+            ]);
             bundleData = result.data.bundle;
             sessionStorage.setItem(BUNDLE_CACHE_KEY, JSON.stringify({
                 data: bundleData,

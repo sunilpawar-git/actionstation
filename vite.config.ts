@@ -76,6 +76,10 @@ export default defineConfig({
                     if (id.includes('posthog')) {
                         return 'vendor-analytics';
                     }
+                    // Sentry — deferred init, keep out of main chunk
+                    if (id.includes('@sentry')) {
+                        return 'vendor-sentry';
+                    }
                     // State management libraries
                     if (id.includes('zustand') || id.includes('@tanstack')) {
                         return 'vendor-state';

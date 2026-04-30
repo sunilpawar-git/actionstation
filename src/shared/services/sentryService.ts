@@ -2,23 +2,34 @@
  * Sentry Error Tracking Service
  * Initializes Sentry SDK and exports capture helpers.
  * DSN is loaded from VITE_SENTRY_DSN env var — never hardcoded.
+ *
+ * The SDK is dynamically imported to keep it out of the main bundle —
+ * it lives in the separate vendor-sentry chunk and is only fetched
+ * after the app has rendered (requestIdleCallback in main.tsx).
  */
-import * as Sentry from '@sentry/react';
+
+type SentryModule = typeof import('@sentry/react');
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
 const ENV = import.meta.env.VITE_APP_ENV ?? import.meta.env.MODE;
 
+/** Lazily resolved after initSentry() completes */
+let _sentry: SentryModule | null = null;
+
 /**
- * Initialize Sentry. Call once at app startup before rendering.
+ * Initialize Sentry. Call once at app startup (deferred via requestIdleCallback).
  * No-ops gracefully if DSN is absent (e.g. local dev without config).
  */
-export function initSentry(): void {
+export async function initSentry(): Promise<void> {
     if (!DSN) {
         if (import.meta.env.DEV) {
             console.info('[Sentry] VITE_SENTRY_DSN not set — skipping initialization.');
         }
         return;
     }
+
+    const Sentry = await import('@sentry/react');
+    _sentry = Sentry;
 
     Sentry.init({
         dsn: DSN,
@@ -55,24 +66,24 @@ export function initSentry(): void {
  * Call after successful sign-in.
  */
 export function setSentryUser(userId: string): void {
-    Sentry.setUser({ id: userId });
+    _sentry?.setUser({ id: userId });
 }
 
 /**
  * Clear user context on sign-out.
  */
 export function clearSentryUser(): void {
-    Sentry.setUser(null);
+    _sentry?.setUser(null);
 }
 
 /**
  * Capture a handled exception with optional context.
  */
 export function captureError(error: unknown, context?: Record<string, unknown>): void {
-    Sentry.withScope((scope) => {
+    _sentry?.withScope((scope) => {
         if (context) {
             scope.setExtras(context);
         }
-        Sentry.captureException(error);
+        _sentry?.captureException(error);
     });
 }
