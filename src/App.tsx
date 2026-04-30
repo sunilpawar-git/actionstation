@@ -36,6 +36,8 @@ import { TierLimitsProvider } from '@/features/subscription/contexts/TierLimitsC
 import { TabLeaderProvider } from '@/shared/contexts/TabLeaderContext';
 import { MultiTabBanner } from '@/shared/components/MultiTabBanner';
 import { SkipLink } from '@/shared/components/SkipLink';
+import { ChangelogModal } from '@/features/changelog/components/ChangelogModal';
+import { hasNewChangelog } from '@/features/changelog/services/changelogService';
 import '@/styles/global.css';
 
 // Lazy load non-critical components for better initial load performance
@@ -57,6 +59,9 @@ const PrivacyPolicy = lazy(() =>
 const CookieConsentBanner = lazy(() =>
     import('@/features/legal/components/CookieConsentBanner').then(m => ({ default: m.CookieConsentBanner }))
 );
+const CanvasViewer = lazy(() =>
+    import('@/features/canvas/components/CanvasViewer').then(m => ({ default: m.CanvasViewer }))
+);
 
 function AuthenticatedApp() {
     const userId = useAuthStore((s) => s.user?.id);
@@ -69,6 +74,7 @@ function AuthenticatedApp() {
         hasOfflineData,
     } = useWorkspaceLoader(currentWorkspaceId ?? '');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isChangelogOpen, setIsChangelogOpen] = useState(() => hasNewChangelog());
 
     useThemeApplicator();
     useCompactMode();
@@ -84,6 +90,7 @@ function AuthenticatedApp() {
 
     const openSettings = useCallback(() => setIsSettingsOpen(true), []);
     const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
+    const closeChangelog = useCallback(() => setIsChangelogOpen(false), []);
     const wsCtx = useMemo(() => ({ currentWorkspaceId, isSwitching }), [currentWorkspaceId, isSwitching]);
 
     if (!isOnline && loadError && !hasOfflineData) {
@@ -116,6 +123,7 @@ function AuthenticatedApp() {
                             <SettingsPanel isOpen={isSettingsOpen} onClose={closeSettings} />
                         </Suspense>
                         <OnboardingWalkthrough />
+                        <ChangelogModal isOpen={isChangelogOpen} onClose={closeChangelog} />
                     </ReactFlowProvider>
                 </WorkspaceContext.Provider>
             </TierLimitsProvider>
@@ -148,6 +156,17 @@ function LoginRoute() {
 function AppContent() {
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const authLoading = useAuthStore((s) => s.isLoading);
+
+    // Shareable canvas view — public, no auth required
+    const viewMatch = /^\/view\/([\w-]+)$/.exec(window.location.pathname);
+    const viewSnapshotId = viewMatch?.[1];
+    if (viewSnapshotId) {
+        return (
+            <Suspense fallback={<LoadingFallback fullScreen />}>
+                <CanvasViewer snapshotId={viewSnapshotId} />
+            </Suspense>
+        );
+    }
 
     // Legal pages — public, require no auth, checked first
     if (window.location.pathname === '/terms') {

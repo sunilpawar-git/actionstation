@@ -15,7 +15,41 @@ import {
 } from '@/features/workspace/services/workspaceService';
 import { useOfflineQueueStore } from '@/features/workspace/stores/offlineQueueStore';
 import { logger } from '@/shared/services/logger';
+import { instantiateTemplate } from '@/features/templates/services/templateInstantiator';
+import { trackTemplateUsed } from '@/shared/services/analyticsService';
 import type { LimitCheckResult } from '@/features/subscription/types/tierLimits';
+import type { WorkspaceTemplate } from '@/features/templates/types/template';
+
+function flushCurrentWorkspace(userId: string, curId: string): void {
+    const { nodes, edges } = useCanvasStore.getState();
+    if (nodes.length > 0 || edges.length > 0) {
+        useOfflineQueueStore.getState().queueSave(userId, curId, nodes, edges);
+        useWorkspaceStore.getState().setNodeCount(curId, nodes.length);
+    }
+}
+
+function applyTemplateToCanvas(userId: string, workspaceId: string, template: WorkspaceTemplate): void {
+    const { nodes: tNodes, edges: tEdges } = instantiateTemplate(template, workspaceId);
+    useCanvasStore.getState().setNodes(tNodes);
+    useCanvasStore.getState().setEdges(tEdges);
+    useOfflineQueueStore.getState().queueSave(userId, workspaceId, tNodes, tEdges);
+    trackTemplateUsed(template.id, template.isCustom);
+}
+
+async function insertDividerWithOrder(userId: string, divider: Parameters<typeof saveWorkspace>[1], curId: string): Promise<void> {
+    useWorkspaceStore.getState().insertWorkspaceAfter(divider, curId);
+    const updatedList = useWorkspaceStore.getState().workspaces;
+    const insertedIndex = updatedList.findIndex(ws => ws.id === divider.id);
+    if (insertedIndex === -1) {
+        logger.warn('[useWorkspaceOperations] Divider not found after insert');
+    }
+    const orderIndex = insertedIndex >= 0 ? insertedIndex : updatedList.length - 1;
+    const updates = updatedList.map((ws, i) => ({ id: ws.id, orderIndex: i }));
+    await Promise.all([
+        saveWorkspace(userId, { ...divider, orderIndex }),
+        updateWorkspaceOrder(userId, updates),
+    ]);
+}
 
 export function useWorkspaceOperations() {
     const user = useAuthStore((s) => s.user);
@@ -34,7 +68,7 @@ export function useWorkspaceOperations() {
 
     const dismissWall = useCallback(() => setUpgradeWall(null), []);
 
-    const handleNewWorkspace = useCallback(async () => {
+    const handleNewWorkspace = useCallback(async (template: WorkspaceTemplate | null = null) => {
         const currentUser = userRef.current;
         if (!currentUser || isCreating) return;
 
@@ -45,15 +79,14 @@ export function useWorkspaceOperations() {
         setIsCreating(true);
         try {
             const curId = currentIdRef.current;
-            const { nodes, edges } = useCanvasStore.getState();
-            if (curId && (nodes.length > 0 || edges.length > 0)) {
-                useOfflineQueueStore.getState().queueSave(currentUser.id, curId, nodes, edges);
-                useWorkspaceStore.getState().setNodeCount(curId, nodes.length);
-            }
+            if (curId) { flushCurrentWorkspace(currentUser.id, curId); }
             const workspace = await createNewWorkspace(currentUser.id);
             useWorkspaceStore.getState().addWorkspace({ ...workspace, nodeCount: 0 });
             useWorkspaceStore.getState().setCurrentWorkspaceId(workspace.id);
             useCanvasStore.getState().clearCanvas();
+            if (template) {
+                applyTemplateToCanvas(currentUser.id, workspace.id, template);
+            }
             toast.success(`${strings.workspace.created}: ${workspace.name}`);
         } catch (error) {
             logger.error('[Sidebar] Failed to create workspace:', error);
@@ -69,18 +102,7 @@ export function useWorkspaceOperations() {
             const curId = currentIdRef.current;
             const newDivider = await createNewDividerWorkspace(currentUser.id);
             if (curId) {
-                useWorkspaceStore.getState().insertWorkspaceAfter(newDivider, curId);
-                const updatedList = useWorkspaceStore.getState().workspaces;
-                const insertedIndex = updatedList.findIndex(ws => ws.id === newDivider.id);
-                if (insertedIndex === -1) {
-                    logger.warn('[useWorkspaceOperations] Divider not found after insert');
-                }
-                const orderIndex = insertedIndex >= 0 ? insertedIndex : updatedList.length - 1;
-                const updates = updatedList.map((ws, i) => ({ id: ws.id, orderIndex: i }));
-                await Promise.all([
-                    saveWorkspace(currentUser.id, { ...newDivider, orderIndex }),
-                    updateWorkspaceOrder(currentUser.id, updates),
-                ]);
+                await insertDividerWithOrder(currentUser.id, newDivider, curId);
             } else { useWorkspaceStore.getState().addWorkspace(newDivider); }
             toast.success(strings.workspace.addDivider);
         } catch (error) {

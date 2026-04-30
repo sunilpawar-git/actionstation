@@ -95,6 +95,10 @@ export function trackAiGenerated(nodeType: string): void {
 export function trackWorkspaceCreated(): void { track('workspace_created'); }
 export function trackWorkspaceDeleted(): void { track('workspace_deleted'); }
 
+export function trackTemplateUsed(templateId: string, isCustom: boolean): void {
+    track('template_used', { template_id: templateId, is_custom: isCustom });
+}
+
 export function trackKbEntryAdded(method: 'paste' | 'file'): void {
     track('kb_entry_added', { method });
 }

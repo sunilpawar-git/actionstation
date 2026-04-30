@@ -42,6 +42,8 @@ export const settingsStrings = {
     version: 'Version',
     reportBug: 'Report a bug',
     changelog: 'Changelog',
+    sendFeedback: 'Send Feedback',
+    whatsNew: "What's New",
     exportData: 'Export Data',
     exportDataDescription: 'Download all your notes and connections as JSON',
     dangerZone: 'Danger Zone',
