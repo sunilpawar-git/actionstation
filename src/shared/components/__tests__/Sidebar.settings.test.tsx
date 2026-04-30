@@ -182,7 +182,7 @@ describe('Sidebar', () => {
             render(<Sidebar />);
 
             await waitFor(() => {
-                expect(mockPreload).toHaveBeenCalledWith('user-1', ['ws-1', 'ws-2']);
+                expect(mockPreload).toHaveBeenCalledWith('user-1', ['ws-1']);
             });
         });
 

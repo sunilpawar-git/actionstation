@@ -8,6 +8,7 @@
  * after the app has rendered (requestIdleCallback in main.tsx).
  */
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 type SentryModule = typeof import('@sentry/react');
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;

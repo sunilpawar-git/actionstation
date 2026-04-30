@@ -47,7 +47,7 @@ describe('Sentry must not be statically imported (boot perf)', () => {
         // A synchronous call would block render.
         const lines = content.split('\n');
         const idleIdx = lines.findIndex(l => /scheduleIdle|requestIdleCallback/.test(l));
-        const syncCallIdx = lines.findIndex(l => /initSentry\s*\(\s*\)/.test(l) && !/scheduleIdle|void\s+initSentry/.test(l));
+        // syncCallIdx intentionally omitted — bareSyncCallBeforeRender logic covers this check
 
         // There must be no bare synchronous initSentry() call before createRoot
         const createRootIdx = lines.findIndex(l => /createRoot\s*\(/.test(l));

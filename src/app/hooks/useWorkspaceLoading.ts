@@ -56,7 +56,14 @@ export function useWorkspaceLoading() {
                     // on-demand when the user switches to them. Preloading all workspaces
                     // fires N×2 Firestore reads that compete with the current workspace load.
                     const activeId = useWorkspaceStore.getState().currentWorkspaceId;
-                    const toPreload = activeId ? [activeId] : (firstReal ? [firstReal.id] : []);
+                    let toPreload: string[];
+                    if (activeId) {
+                        toPreload = [activeId];
+                    } else if (firstReal) {
+                        toPreload = [firstReal.id];
+                    } else {
+                        toPreload = [];
+                    }
                     if (toPreload.length > 0) {
                         workspaceCache.preload(uid, toPreload).catch((err: unknown) => {
                             logger.warn('[useWorkspaceLoading] Cache preload failed:', err);
