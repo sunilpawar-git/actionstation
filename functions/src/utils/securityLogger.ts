@@ -42,6 +42,8 @@ export const SecurityEventType = {
     CHECKOUT_CREATED: 'checkout_created',
     /** Webhook processing error (handler threw) */
     WEBHOOK_PROCESSING_ERROR: 'webhook_processing_error',
+    /** Firebase Auth user deletion triggered cleanup */
+    ACCOUNT_DELETED: 'account_deleted',
 } as const;
 
 export type SecurityEventType = (typeof SecurityEventType)[keyof typeof SecurityEventType];

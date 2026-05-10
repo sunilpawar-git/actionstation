@@ -47,6 +47,7 @@ SERVICES=(
   "proxyimage"
   "geminiproxy"
   "onnodedeleted"
+  "onuserdeleted"
   "scheduledstoragecleanup"
   "workspacebundle"
   "health"
@@ -244,6 +245,8 @@ pathMatchers:
         service: global/backendServices/backend-geminiproxy
       - paths: ["/onNodeDeleted", "/onNodeDeleted/*"]
         service: global/backendServices/backend-onnodedeleted
+      - paths: ["/onUserDeleted", "/onUserDeleted/*"]
+        service: global/backendServices/backend-onuserdeleted
       - paths: ["/scheduledStorageCleanup", "/scheduledStorageCleanup/*"]
         service: global/backendServices/backend-scheduledstoragecleanup
       - paths: ["/workspaceBundle", "/workspaceBundle/*"]

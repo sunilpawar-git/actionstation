@@ -123,7 +123,8 @@ type SettingKey =
     | 'isCanvasLocked' | 'canvasFreeFlow' | 'gridColumns' | 'autoAnalyzeDocuments' | 'data_export'
     | 'branch_export' | 'canvas_undo' | 'canvas_redo'
     | 'toolbarButtonOrder' | 'toolbarHiddenButtons' | 'toolbarReset'
-    | 'hoverMenuIcons' | 'rightClickMenuIcons' | 'iconPlacementReset';
+    | 'hoverMenuIcons' | 'rightClickMenuIcons' | 'iconPlacementReset'
+    | 'gdpr_data_export';
 
 export function trackSettingsChanged(setting: SettingKey, value: string | boolean | number | readonly string[]): void {
     track('settings_changed', { setting, value });

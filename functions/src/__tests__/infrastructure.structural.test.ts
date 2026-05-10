@@ -40,6 +40,7 @@ describe('index.ts — required function exports', () => {
         'fetchLinkMeta',
         'proxyImage',
         'onNodeDeleted',
+        'onUserDeleted',
         'firestoreBackup',
         'verifyTurnstile',
         'workspaceBundle',

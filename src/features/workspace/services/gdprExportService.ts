@@ -1,0 +1,135 @@
+/**
+ * gdprExportService — GDPR Article 20 full user data export
+ *
+ * Fetches all user data across all workspaces from Firestore and assembles
+ * a structured payload for download. Pure async service — no Zustand, no React.
+ *
+ * Covers: user profile, all workspaces, nodes, edges, and KB entries.
+ */
+import { loadUserWorkspaces, loadNodes, loadEdges } from './workspaceService';
+import { loadKBEntries } from '@/features/knowledgeBank/services/knowledgeBankService';
+import type { Workspace } from '../types/workspace';
+import type { CanvasNode } from '@/features/canvas/types/node';
+import type { CanvasEdge } from '@/features/canvas/types/edge';
+import type { KnowledgeBankEntry } from '@/features/knowledgeBank/types/knowledgeBank';
+
+// ── Export payload types (SSOT) ────────────────────────────────────────────
+
+export interface GdprUserProfile {
+    readonly id: string;
+    readonly email: string;
+    readonly name: string;
+}
+
+interface SerializedNode {
+    readonly id: string;
+    readonly type: string;
+    readonly position: { readonly x: number; readonly y: number };
+    readonly data: Record<string, unknown>;
+    readonly createdAt: string;
+}
+
+interface SerializedEdge {
+    readonly id: string;
+    readonly sourceNodeId: string;
+    readonly targetNodeId: string;
+    readonly relationshipType: string;
+}
+
+interface SerializedKBEntry {
+    readonly id: string;
+    readonly title: string;
+    readonly content: string;
+    readonly tags: readonly string[] | undefined;
+    readonly type: string;
+    readonly createdAt: string;
+}
+
+interface WorkspaceExport {
+    readonly id: string;
+    readonly name: string;
+    readonly type: string;
+    readonly createdAt: string;
+    readonly nodes: readonly SerializedNode[];
+    readonly edges: readonly SerializedEdge[];
+    readonly knowledgeBankEntries: readonly SerializedKBEntry[];
+}
+
+export interface GdprExportPayload {
+    readonly exportedAt: string;
+    readonly user: GdprUserProfile;
+    readonly workspaces: readonly WorkspaceExport[];
+    readonly summary: {
+        readonly totalWorkspaces: number;
+        readonly totalNodes: number;
+        readonly totalEdges: number;
+        readonly totalKBEntries: number;
+    };
+}
+
+// ── Serialization helpers ──────────────────────────────────────────────────
+
+function serializeNode(n: CanvasNode): SerializedNode {
+    return {
+        id: n.id, type: n.type, position: n.position,
+        data: n.data as Record<string, unknown>,
+        createdAt: (n.createdAt instanceof Date ? n.createdAt : new Date()).toISOString(),
+    };
+}
+
+function serializeEdge(e: CanvasEdge): SerializedEdge {
+    return { id: e.id, sourceNodeId: e.sourceNodeId, targetNodeId: e.targetNodeId, relationshipType: e.relationshipType };
+}
+
+function serializeKBEntry(e: KnowledgeBankEntry): SerializedKBEntry {
+    return {
+        id: e.id, title: e.title, content: e.content, tags: e.tags, type: e.type,
+        createdAt: (e.createdAt instanceof Date ? e.createdAt : new Date()).toISOString(),
+    };
+}
+
+// ── Workspace data fetcher ─────────────────────────────────────────────────
+
+async function buildWorkspaceExport(userId: string, workspace: Workspace): Promise<WorkspaceExport> {
+    const [nodes, edges, kbEntries] = await Promise.all([
+        loadNodes(userId, workspace.id),
+        loadEdges(userId, workspace.id),
+        loadKBEntries(userId, workspace.id),
+    ]);
+    return {
+        id: workspace.id,
+        name: workspace.name,
+        type: workspace.type ?? 'workspace',
+        createdAt: (workspace.createdAt instanceof Date ? workspace.createdAt : new Date()).toISOString(),
+        nodes: nodes.map(serializeNode),
+        edges: edges.map(serializeEdge),
+        knowledgeBankEntries: kbEntries.map(serializeKBEntry),
+    };
+}
+
+// ── Public API ─────────────────────────────────────────────────────────────
+
+/**
+ * Fetch all data for a user from Firestore and return a structured GDPR export payload.
+ * This satisfies GDPR Article 20 — right to data portability.
+ */
+export async function fetchAllUserData(
+    userId: string,
+    profile: GdprUserProfile,
+): Promise<GdprExportPayload> {
+    const workspaces = await loadUserWorkspaces(userId);
+    const workspaceExports = await Promise.all(
+        workspaces.map((ws) => buildWorkspaceExport(userId, ws)),
+    );
+    return {
+        exportedAt: new Date().toISOString(),
+        user: profile,
+        workspaces: workspaceExports,
+        summary: {
+            totalWorkspaces: workspaceExports.length,
+            totalNodes: workspaceExports.reduce((sum, w) => sum + w.nodes.length, 0),
+            totalEdges: workspaceExports.reduce((sum, w) => sum + w.edges.length, 0),
+            totalKBEntries: workspaceExports.reduce((sum, w) => sum + w.knowledgeBankEntries.length, 0),
+        },
+    };
+}

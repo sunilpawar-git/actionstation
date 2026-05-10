@@ -26,3 +26,4 @@ export { stripeWebhook } from './stripeWebhook.js';
 export { createBillingPortalSession } from './createBillingPortalSession.js';
 export { createRazorpayOrder } from './createRazorpayOrder.js';
 export { razorpayWebhook } from './razorpayWebhook.js';
+export { onUserDeleted } from './onUserDeleted.js';
