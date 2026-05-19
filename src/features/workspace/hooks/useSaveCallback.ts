@@ -19,6 +19,8 @@ import { useOfflineQueueStore } from '../stores/offlineQueueStore';
 import { useTabRoleStore } from '@/shared/stores/tabRoleStore';
 import { toast } from '@/shared/stores/toastStore';
 import { strings } from '@/shared/localization/strings';
+import { logger } from '@/shared/services/logger';
+import { appCheckReady } from '@/config/firebase';
 
 export function serializeWorkspacePoolFields(workspace: Workspace | null): string {
     if (!workspace) return '';
@@ -78,6 +80,10 @@ export function useSaveCallback(workspaceId: string) {
             return;
         }
 
+        // Wait for App Check token before first Firestore write.
+        // Prevents permission-denied on the initial save when reCAPTCHA is still loading.
+        await appCheckReady;
+
         const { setSaving, setSaved, setError } = useSaveStatusStore.getState();
         setSaving();
         try {
@@ -90,6 +96,7 @@ export function useSaveCallback(workspaceId: string) {
             setSaved();
         } catch (error) {
             const message = error instanceof Error ? error.message : strings.offline.saveError;
+            logger.error('[useSaveCallback] Save failed', error, { userId, workspaceId, message });
             setError(message);
             toast.error(strings.offline.saveFailed);
         }

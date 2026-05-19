@@ -56,6 +56,7 @@ const DOT_CLASSES: Record<DotVariant, string> = {
 /** Displays a coloured status dot and label reflecting current save/sync/network state. */
 export function SyncStatusIndicator() {
     const status = useSaveStatusStore((s) => s.status);
+    const lastError = useSaveStatusStore((s) => s.lastError);
     const isOnline = useNetworkStatusStore((s) => s.isOnline);
     const pendingCount = useOfflineQueueStore((s) => s.pendingCount);
     const { hasPendingSync } = useBackgroundSyncStatus();
@@ -64,10 +65,13 @@ export function SyncStatusIndicator() {
         status, isOnline, pendingCount, hasPendingSync
     );
 
+    const tooltip = status === 'error' && lastError ? lastError : undefined;
+
     return (
         <div
             className="flex items-center text-xs text-[var(--color-text-secondary)] select-none min-w-[145px]"
             style={{ gap: 'var(--sync-indicator-gap, 6px)', padding: '4px 8px' }}
+            title={tooltip}
         >
             <span
                 data-testid="sync-dot"

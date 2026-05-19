@@ -18,6 +18,7 @@ import { workspaceCache } from '../services/workspaceCache';
 import { mergeNodes, mergeEdges } from '../services/mergeNodes';
 import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
 import { useHistoryStore } from '@/features/canvas/stores/historyStore';
+import { useSaveStatusStore } from '@/shared/stores/saveStatusStore';
 import { strings } from '@/shared/localization/strings';
 import { logger } from '@/shared/services/logger';
 
@@ -204,6 +205,7 @@ export function useWorkspaceLoader(workspaceId: string): UseWorkspaceLoaderResul
 
     useEffect(() => {
         useHistoryStore.getState().dispatch({ type: 'CLEAR' });
+        useSaveStatusStore.getState().setIdle();
 
         if (!userId || !workspaceId) { setIsLoading(false); return; }
 
