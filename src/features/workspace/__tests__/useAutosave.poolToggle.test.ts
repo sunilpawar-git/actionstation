@@ -15,6 +15,14 @@ import { useTabRoleStore } from '@/shared/stores/tabRoleStore';
 const canvasState = { current: { nodes: [] as unknown[], edges: [] as unknown[] } };
 const workspaceState = { current: [] as Workspace[] };
 
+vi.mock('@/config/firebase', () => ({
+    appCheckReady: Promise.resolve(),
+    db: {},
+    auth: {},
+    storage: {},
+    functions: {},
+}));
+
 vi.mock('@/features/canvas/stores/canvasStore', () => ({
     useCanvasStore: Object.assign(
         vi.fn((sel?: (s: { nodes: unknown[]; edges: unknown[] }) => unknown) =>

@@ -16,6 +16,14 @@ import { useNetworkStatusStore } from '@/shared/stores/networkStatusStore';
 import { useTabRoleStore } from '@/shared/stores/tabRoleStore';
 import { toast } from '@/shared/stores/toastStore';
 
+vi.mock('@/config/firebase', () => ({
+    appCheckReady: Promise.resolve(),
+    db: {},
+    auth: {},
+    storage: {},
+    functions: {},
+}));
+
 vi.mock('@/features/canvas/stores/canvasStore', () => ({
     useCanvasStore: Object.assign(vi.fn(), {
         getState: () => ({ nodes: [], edges: [], clearClusterGroups: vi.fn(), setClusterGroups: vi.fn(), pruneDeletedNodes: vi.fn() }),
