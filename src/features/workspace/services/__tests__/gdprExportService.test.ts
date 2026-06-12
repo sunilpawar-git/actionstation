@@ -73,6 +73,31 @@ vi.mock('@/features/knowledgeBank/services/knowledgeBankService', () => ({
     loadKBEntries: vi.fn(),
 }));
 
+vi.mock('@/config/firebase', () => ({ db: {} }));
+
+vi.mock('firebase/firestore', () => ({
+    doc: vi.fn(() => ({ id: 'usage-aiDaily' })),
+    getDoc: vi.fn().mockResolvedValue({
+        exists: () => true,
+        data: () => ({ count: 12, date: '2026-06-12' }),
+    }),
+}));
+
+vi.mock('@/features/subscription/services/subscriptionService', () => ({
+    subscriptionService: {
+        getSubscription: vi.fn().mockResolvedValue({
+            tier: 'free',
+            isActive: true,
+            expiresAt: null,
+            provider: undefined,
+        }),
+    },
+}));
+
+vi.mock('@/features/subscription/services/storageUsageService', () => ({
+    getStorageUsageMb: vi.fn().mockResolvedValue(24),
+}));
+
 const mockLoadUserWorkspaces = vi.mocked(loadUserWorkspaces);
 const mockLoadNodes = vi.mocked(loadNodes);
 const mockLoadEdges = vi.mocked(loadEdges);
@@ -188,5 +213,20 @@ describe('fetchAllUserData', () => {
         const result = await fetchAllUserData('user-1', USER_PROFILE);
         expect(typeof result.workspaces[0]?.createdAt).toBe('string');
         expect(result.workspaces[0]?.createdAt).toBe('2024-01-01T00:00:00.000Z');
+    });
+
+    it('includes subscription and usage in export payload', async () => {
+        const result = await fetchAllUserData('user-1', USER_PROFILE);
+        expect(result.subscription).toEqual({
+            tier: 'free',
+            isActive: true,
+            expiresAt: null,
+            provider: null,
+        });
+        expect(result.usage).toEqual({
+            storageMb: 24,
+            aiDailyCount: 12,
+            aiDailyDate: '2026-06-12',
+        });
     });
 });

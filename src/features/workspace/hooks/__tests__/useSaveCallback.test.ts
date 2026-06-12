@@ -57,6 +57,18 @@ vi.mock('../../stores/offlineQueueStore', () => ({
     useOfflineQueueStore: { getState: () => ({ queueSave: vi.fn() }) },
 }));
 
+vi.mock('@/shared/stores/tabRoleStore', () => ({
+    useTabRoleStore: { getState: () => ({ isLeader: true }) },
+}));
+
+vi.mock('@/features/workspace/services/tiledNodeWriter', () => ({
+    saveTiledNodes: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/config/firebase', () => ({
+    appCheckReady: Promise.resolve(),
+}));
+
 describe('useSaveCallback', () => {
     beforeEach(() => {
         vi.useFakeTimers();

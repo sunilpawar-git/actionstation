@@ -6,8 +6,12 @@
  *
  * Covers: user profile, all workspaces, nodes, edges, and KB entries.
  */
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 import { loadUserWorkspaces, loadNodes, loadEdges } from './workspaceService';
 import { loadKBEntries } from '@/features/knowledgeBank/services/knowledgeBankService';
+import { subscriptionService } from '@/features/subscription/services/subscriptionService';
+import { getStorageUsageMb } from '@/features/subscription/services/storageUsageService';
 import type { Workspace } from '../types/workspace';
 import type { CanvasNode } from '@/features/canvas/types/node';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
@@ -55,9 +59,24 @@ interface WorkspaceExport {
     readonly knowledgeBankEntries: readonly SerializedKBEntry[];
 }
 
+interface GdprSubscriptionExport {
+    readonly tier: string;
+    readonly isActive: boolean;
+    readonly expiresAt: string | null;
+    readonly provider: string | null;
+}
+
+interface GdprUsageExport {
+    readonly storageMb: number;
+    readonly aiDailyCount: number | null;
+    readonly aiDailyDate: string | null;
+}
+
 export interface GdprExportPayload {
     readonly exportedAt: string;
     readonly user: GdprUserProfile;
+    readonly subscription: GdprSubscriptionExport;
+    readonly usage: GdprUsageExport;
     readonly workspaces: readonly WorkspaceExport[];
     readonly summary: {
         readonly totalWorkspaces: number;
@@ -113,17 +132,46 @@ async function buildWorkspaceExport(userId: string, workspace: Workspace): Promi
  * Fetch all data for a user from Firestore and return a structured GDPR export payload.
  * This satisfies GDPR Article 20 — right to data portability.
  */
+async function loadUsageExport(userId: string): Promise<GdprUsageExport> {
+    const [storageMb, aiSnap] = await Promise.all([
+        getStorageUsageMb(userId),
+        getDoc(doc(db, 'users', userId, 'usage', 'aiDaily')),
+    ]);
+    const aiData = aiSnap.exists() ? aiSnap.data() as { count?: number; date?: string } : null;
+    return {
+        storageMb,
+        aiDailyCount: aiData?.count ?? null,
+        aiDailyDate: aiData?.date ?? null,
+    };
+}
+
+async function loadSubscriptionExport(userId: string): Promise<GdprSubscriptionExport> {
+    const info = await subscriptionService.getSubscription(userId);
+    return {
+        tier: info.tier,
+        isActive: info.isActive,
+        expiresAt: info.expiresAt ? new Date(info.expiresAt).toISOString() : null,
+        provider: info.provider ?? null,
+    };
+}
+
 export async function fetchAllUserData(
     userId: string,
     profile: GdprUserProfile,
 ): Promise<GdprExportPayload> {
-    const workspaces = await loadUserWorkspaces(userId);
+    const [workspaces, subscription, usage] = await Promise.all([
+        loadUserWorkspaces(userId),
+        loadSubscriptionExport(userId),
+        loadUsageExport(userId),
+    ]);
     const workspaceExports = await Promise.all(
         workspaces.map((ws) => buildWorkspaceExport(userId, ws)),
     );
     return {
         exportedAt: new Date().toISOString(),
         user: profile,
+        subscription,
+        usage,
         workspaces: workspaceExports,
         summary: {
             totalWorkspaces: workspaceExports.length,

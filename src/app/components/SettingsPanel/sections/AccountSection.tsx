@@ -13,6 +13,7 @@ import { toast } from '@/shared/stores/toastStore';
 import { logger } from '@/shared/services/logger';
 import { SettingsGroup } from './SettingsGroup';
 import { SubscriptionBillingGroup } from './SubscriptionBillingGroup';
+import { AccountUsageGroup } from './AccountUsageGroup';
 import {
     SP_SECTION, SP_SECTION_STYLE,
     SP_SETTING_DESC, SP_SETTING_DESC_STYLE,
@@ -142,6 +143,8 @@ export const AccountSection = React.memo(function AccountSection() {
             </SettingsGroup>
 
             <SubscriptionBillingGroup />
+
+            <AccountUsageGroup />
 
             <DataExportGroup />
 

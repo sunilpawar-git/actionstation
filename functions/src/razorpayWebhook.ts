@@ -16,7 +16,7 @@ import crypto from 'crypto';
 import { razorpayWebhookSecret } from './utils/razorpayClient.js';
 import { logSecurityEvent, SecurityEventType } from './utils/securityLogger.js';
 import { recordThreatEvent } from './utils/threatMonitor.js';
-import { checkIdempotency, recordEvent } from './utils/webhookIdempotency.js';
+import { claimWebhookEvent, releaseWebhookEvent } from './utils/webhookIdempotency.js';
 import { writeSubscription, downgradeToFree } from './utils/subscriptionWriter.js';
 import { errorMessages } from './utils/securityConstants.js';
 
@@ -120,35 +120,32 @@ export const razorpayWebhook = onRequest(
         }
         const eventId = `${payload.event}_${entityId}`;
 
-        // Step 3: Idempotency check
-        const alreadyProcessed = await checkIdempotency(eventId);
-        if (alreadyProcessed) {
+        // Step 3: Atomic idempotency claim
+        const claimed = await claimWebhookEvent(eventId, payload.event, '_pending');
+        if (!claimed) {
             res.status(200).json({ received: true, note: 'already processed' });
             return;
         }
 
         // Step 4: Route to handler
-        let userId = '';
         let handlerError = false;
         try {
             switch (payload.event) {
                 case 'subscription.activated':
                 case 'subscription.charged':
-                    userId = await handleSubscriptionActivated(payload);
+                    await handleSubscriptionActivated(payload);
                     break;
                 case 'subscription.updated':
-                    userId = await handleSubscriptionUpdated(payload);
+                    await handleSubscriptionUpdated(payload);
                     break;
                 case 'subscription.cancelled':
                 case 'subscription.halted':
-                    userId = await handleSubscriptionCancelled(payload);
+                    await handleSubscriptionCancelled(payload);
                     break;
                 case 'payment.captured':
-                    userId = await handlePaymentCaptured(payload);
+                    await handlePaymentCaptured(payload);
                     break;
                 default:
-                    // Unhandled event — acknowledge and record to prevent infinite retries
-                    userId = '_system';
                     break;
             }
         } catch (err: unknown) {
@@ -160,13 +157,12 @@ export const razorpayWebhook = onRequest(
                 message: `Handler failed: ${message}`,
                 metadata: { eventId, eventType: payload.event },
             });
+            await releaseWebhookEvent(eventId);
             res.status(500).json({ error: errorMessages.webhookProcessingFailed });
+            return;
         }
 
-        // Step 5: Record processed event — even on error, to prevent retry loops
-        // on persistent failures (e.g. invalid payload structure).
         if (!handlerError) {
-            await recordEvent(eventId, payload.event, userId);
             res.status(200).json({ received: true });
         }
     },

@@ -11,6 +11,7 @@ export const settingsStrings = {
     aiDocumentsGroup: 'AI & Documents',
     profileGroup: 'Profile',
     dataGroup: 'Data',
+    usageGroup: 'Usage',
     themeLight: 'Light',
     themeDark: 'Dark',
     themeSystem: 'System',
