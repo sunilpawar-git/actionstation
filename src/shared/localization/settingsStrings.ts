@@ -3,6 +3,7 @@ export const settingsStrings = {
     appearance: 'Appearance',
     canvas: 'Canvas',
     account: 'Account',
+    privacy: 'Privacy',
     keyboard: 'Keyboard Shortcuts',
     theme: 'Theme',
     displayGroup: 'Display',

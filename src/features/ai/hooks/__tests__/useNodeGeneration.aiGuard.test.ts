@@ -72,6 +72,10 @@ vi.mock('@/features/subscription/hooks/useNodeCreationGuard', () => ({
     useNodeCreationGuard: () => ({ guardNodeCreation: vi.fn().mockReturnValue(true) }),
 }));
 
+vi.mock('@/features/subscription/hooks/useRazorpayCheckout', () => ({
+    useRazorpayCheckout: () => ({ startCheckout: vi.fn().mockResolvedValue(undefined), isLoading: false, error: null }),
+}));
+
 function wrapper({ children }: { children: ReactNode }) {
     return React.createElement(TierLimitsProvider, null, children);
 }

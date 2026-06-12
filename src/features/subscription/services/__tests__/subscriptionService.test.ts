@@ -46,6 +46,21 @@ describe('subscriptionService', () => {
         expect(result.tier).toBe('pro');
     });
 
+    it('returns provider when present on subscription doc', async () => {
+        mockGetDoc.mockResolvedValue({
+            exists: () => true,
+            data: () => ({
+                tier: 'pro',
+                expiresAt: null,
+                isActive: true,
+                provider: 'razorpay',
+            }),
+        });
+
+        const result = await subscriptionService.getSubscription('user-1');
+        expect(result.provider).toBe('razorpay');
+    });
+
     it('downgrades expired pro to free', async () => {
         mockGetDoc.mockResolvedValue({
             exists: () => true,

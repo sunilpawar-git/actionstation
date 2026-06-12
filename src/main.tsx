@@ -7,7 +7,6 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { initWebVitals } from '@/shared/services/performanceService';
 import { initSentry } from '@/shared/services/sentryService';
-import { initAnalytics } from '@/shared/services/analyticsService';
 import { validateProductionEnv } from '@/config/envValidation';
 
 // Initialize error tracking before rendering so first errors are captured
@@ -19,7 +18,6 @@ const scheduleIdle = typeof requestIdleCallback === 'function'
     ? requestIdleCallback
     : (cb: () => void) => setTimeout(cb, 1);
 scheduleIdle(() => { void initSentry(); });
-scheduleIdle(() => { initAnalytics(); });
 
 const rootElement = document.getElementById('root');
 

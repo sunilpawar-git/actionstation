@@ -15,14 +15,29 @@ vi.mock('firebase-admin/auth', () => ({
 }));
 
 // Mock firebase-admin/firestore for daily AI limit check
+const { subscriptionDocPaths } = vi.hoisted(() => ({
+    subscriptionDocPaths: [] as string[],
+}));
+
+const { mockCheckAndIncrementDailyAi } = vi.hoisted(() => ({
+    mockCheckAndIncrementDailyAi: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('../utils/dailyAiLimiter.js', () => ({
+    checkAndIncrementDailyAi: (...args: unknown[]) => mockCheckAndIncrementDailyAi(...args),
+}));
+
 vi.mock('firebase-admin/firestore', () => ({
     getFirestore: () => ({
-        doc: (_path: string) => ({
-            get: vi.fn().mockResolvedValue({
-                exists: true,
-                data: () => ({ tier: 'pro' }), // Default to pro so daily limit check passes
-            }),
-        }),
+        doc: (path: string) => {
+            subscriptionDocPaths.push(path);
+            return {
+                get: vi.fn().mockResolvedValue({
+                    exists: true,
+                    data: () => ({ tier: 'pro' }),
+                }),
+            };
+        },
     }),
 }));
 
@@ -40,16 +55,41 @@ const originalFetch = globalThis.fetch;
 describe('geminiProxy', () => {
     beforeEach(async () => {
         vi.useFakeTimers();
+        subscriptionDocPaths.length = 0;
+        mockCheckAndIncrementDailyAi.mockReset();
+        mockCheckAndIncrementDailyAi.mockResolvedValue(true);
         await clearRateLimitStore();
     });
 
     afterEach(() => {
         globalThis.fetch = originalFetch;
         vi.useRealTimers();
-        vi.restoreAllMocks();
     });
 
     describe('handleGeminiProxy', () => {
+        it('reads tier from users/{uid}/subscription/current (singular)', async () => {
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve(MOCK_GEMINI_RESPONSE),
+            }));
+
+            await handleGeminiProxy(VALID_BODY, 'user-42', 'test-key');
+
+            expect(subscriptionDocPaths).toContain('users/user-42/subscription/current');
+            expect(subscriptionDocPaths.some((p) => p.includes('subscriptions/'))).toBe(false);
+        });
+
+        it('applies AI_DAILY_PRO_LIMIT for pro tier users', async () => {
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve(MOCK_GEMINI_RESPONSE),
+            }));
+
+            await handleGeminiProxy(VALID_BODY, 'user-42', 'test-key');
+
+            expect(mockCheckAndIncrementDailyAi).toHaveBeenCalledWith('user-42', 500);
+        });
+
         it('returns 500 when API key is missing', async () => {
             const result = await handleGeminiProxy(VALID_BODY, 'user-1', '');
             expect(result.status).toBe(500);

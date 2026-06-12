@@ -12,6 +12,7 @@ interface SubscriptionDocument {
     tier?: string;
     expiresAt?: number | null;
     isActive?: boolean;
+    provider?: 'stripe' | 'razorpay';
 }
 
 const DEFAULT_SUBSCRIPTION: SubscriptionInfo = {
@@ -68,6 +69,9 @@ async function getSubscription(userId: string): Promise<SubscriptionInfo> {
                 : SUBSCRIPTION_TIERS.free,
             expiresAt: data.expiresAt ?? null,
             isActive: data.isActive !== false,
+            provider: data.provider === 'stripe' || data.provider === 'razorpay'
+                ? data.provider
+                : undefined,
         };
 
         // Check expiry

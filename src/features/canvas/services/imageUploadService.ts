@@ -9,6 +9,7 @@ import { compressImage } from '@/features/knowledgeBank/utils/imageCompressor';
 import { IMAGE_ACCEPTED_MIME_TYPES, IMAGE_MAX_FILE_SIZE } from '../types/image';
 import { strings } from '@/shared/localization/strings';
 import { addStorageUsage } from '@/features/subscription/services/storageUsageService';
+import { assertStorageWithinLimit } from '@/features/subscription/services/storageGuardService';
 import { logger } from '@/shared/services/logger';
 
 /** Check whether a MIME type is in the allowed list */
@@ -56,6 +57,7 @@ export async function uploadNodeImage(
 ): Promise<string> {
     validateImageFile(file);
     const compressed = await compressImage(file);
+    await assertStorageWithinLimit(userId, compressed.size);
     const path = buildNodeImagePath(userId, workspaceId, nodeId, file.name);
     const storageRef = ref(storage, path);
     await uploadBytes(storageRef, compressed);

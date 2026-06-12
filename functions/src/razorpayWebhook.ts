@@ -112,7 +112,13 @@ export const razorpayWebhook = onRequest(
 
         const subId = payload.payload.subscription?.entity.id;
         const payId = payload.payload.payment?.entity.id;
-        const eventId = `${payload.event}_${subId ?? payId ?? crypto.randomUUID()}`;
+        const orderId = payload.payload.payment?.entity.order_id;
+        const entityId = subId ?? payId ?? orderId;
+        if (!entityId) {
+            res.status(400).json({ error: 'Missing entity id for webhook idempotency' });
+            return;
+        }
+        const eventId = `${payload.event}_${entityId}`;
 
         // Step 3: Idempotency check
         const alreadyProcessed = await checkIdempotency(eventId);
