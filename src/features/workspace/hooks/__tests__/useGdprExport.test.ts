@@ -41,8 +41,10 @@ const MOCK_PAYLOAD: GdprExportPayload = {
     user: { id: 'user-1', email: 'test@example.com', name: 'Test User' },
     subscription: { tier: 'free', isActive: true, expiresAt: null, provider: null },
     usage: { storageMb: 0, aiDailyCount: null, aiDailyDate: null },
+    calendar: { connected: false, connectedAt: null, scope: null },
+    storageFiles: [],
     workspaces: [],
-    summary: { totalWorkspaces: 0, totalNodes: 0, totalEdges: 0, totalKBEntries: 0 },
+    summary: { totalWorkspaces: 0, totalNodes: 0, totalEdges: 0, totalKBEntries: 0, totalStorageFiles: 0 },
 };
 
 describe('useGdprExport', () => {

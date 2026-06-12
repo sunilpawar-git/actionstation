@@ -20,6 +20,9 @@ import { getStorage } from 'firebase-admin/storage';
 import { logger } from 'firebase-functions/v2';
 import { logSecurityEvent, SecurityEventType } from './utils/securityLogger.js';
 import { ALLOWED_ORIGINS } from './utils/corsConfig.js';
+import { cancelActiveSubscription } from './utils/cancelActiveSubscription.js';
+import { stripeSecretKey } from './utils/stripeClient.js';
+import { razorpayKeyId, razorpayKeySecret } from './utils/razorpayClient.js';
 
 // ── Storage cleanup ────────────────────────────────────────────────────────
 
@@ -45,12 +48,23 @@ async function deleteUserFirestore(uid: string): Promise<void> {
 // ── Handler ────────────────────────────────────────────────────────────────
 
 export const onUserDeleted = onCall(
-    { minInstances: 0, cors: ALLOWED_ORIGINS, enforceAppCheck: true },
+    {
+        minInstances: 0,
+        cors: ALLOWED_ORIGINS,
+        enforceAppCheck: true,
+        secrets: [stripeSecretKey, razorpayKeyId, razorpayKeySecret],
+    },
     async (request) => {
         const uid = request.auth?.uid;
         if (!uid) throw new HttpsError('unauthenticated', 'Must be authenticated to delete account data.');
 
         logger.info(`onUserDeleted: starting cleanup for uid=${uid}`);
+
+        try {
+            await cancelActiveSubscription(uid);
+        } catch (err: unknown) {
+            logger.warn('onUserDeleted: subscription cancel failed', { uid, err });
+        }
 
         try {
             await deleteUserFirestore(uid);

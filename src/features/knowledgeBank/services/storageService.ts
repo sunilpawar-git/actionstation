@@ -6,9 +6,7 @@ import { storage } from '@/config/firebase';
 import { KB_MAX_FILE_SIZE, KB_ACCEPTED_MIME_TYPES } from '../types/knowledgeBank';
 import { strings } from '@/shared/localization/strings';
 import { sanitizeFilename } from '@/shared/utils/sanitize';
-import { addStorageUsage } from '@/features/subscription/services/storageUsageService';
 import { assertStorageWithinLimit } from '@/features/subscription/services/storageGuardService';
-import { logger } from '@/shared/services/logger';
 
 export { sanitizeFilename };
 
@@ -46,9 +44,6 @@ export async function uploadKBFile(
     const storageRef = ref(storage, getStoragePath(userId, workspaceId, entryId, filename));
     await uploadBytes(storageRef, file);
     const url = await getDownloadURL(storageRef);
-
-    addStorageUsage(userId, file.size)
-        .catch((err: unknown) => logger.warn('[kbUpload] storage track failed', err));
 
     return url;
 }

@@ -98,6 +98,13 @@ vi.mock('@/features/subscription/services/storageUsageService', () => ({
     getStorageUsageMb: vi.fn().mockResolvedValue(24),
 }));
 
+vi.mock('../gdprServerExportClient', () => ({
+    fetchGdprServerExportData: vi.fn().mockResolvedValue({
+        calendar: { connected: true, connectedAt: '2026-01-01T00:00:00.000Z', scope: 'calendar.events' },
+        storageFiles: [{ path: 'users/user-1/a.png', sizeBytes: 1024, contentType: 'image/png', updatedAt: null }],
+    }),
+}));
+
 const mockLoadUserWorkspaces = vi.mocked(loadUserWorkspaces);
 const mockLoadNodes = vi.mocked(loadNodes);
 const mockLoadEdges = vi.mocked(loadEdges);
@@ -163,6 +170,7 @@ describe('fetchAllUserData', () => {
             totalNodes: 2,
             totalEdges: 1,
             totalKBEntries: 1,
+            totalStorageFiles: 1,
         });
     });
 
@@ -228,5 +236,12 @@ describe('fetchAllUserData', () => {
             aiDailyCount: 12,
             aiDailyDate: '2026-06-12',
         });
+    });
+
+    it('includes calendar metadata and storage file inventory', async () => {
+        const result = await fetchAllUserData('user-1', USER_PROFILE);
+        expect(result.calendar.connected).toBe(true);
+        expect(result.storageFiles).toHaveLength(1);
+        expect(result.summary.totalStorageFiles).toBe(1);
     });
 });

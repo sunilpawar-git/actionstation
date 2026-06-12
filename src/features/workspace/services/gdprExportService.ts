@@ -12,6 +12,11 @@ import { loadUserWorkspaces, loadNodes, loadEdges } from './workspaceService';
 import { loadKBEntries } from '@/features/knowledgeBank/services/knowledgeBankService';
 import { subscriptionService } from '@/features/subscription/services/subscriptionService';
 import { getStorageUsageMb } from '@/features/subscription/services/storageUsageService';
+import {
+    fetchGdprServerExportData,
+    type GdprCalendarExport,
+    type GdprStorageFileExport,
+} from './gdprServerExportClient';
 import type { Workspace } from '../types/workspace';
 import type { CanvasNode } from '@/features/canvas/types/node';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
@@ -77,12 +82,15 @@ export interface GdprExportPayload {
     readonly user: GdprUserProfile;
     readonly subscription: GdprSubscriptionExport;
     readonly usage: GdprUsageExport;
+    readonly calendar: GdprCalendarExport;
+    readonly storageFiles: readonly GdprStorageFileExport[];
     readonly workspaces: readonly WorkspaceExport[];
     readonly summary: {
         readonly totalWorkspaces: number;
         readonly totalNodes: number;
         readonly totalEdges: number;
         readonly totalKBEntries: number;
+        readonly totalStorageFiles: number;
     };
 }
 
@@ -159,10 +167,11 @@ export async function fetchAllUserData(
     userId: string,
     profile: GdprUserProfile,
 ): Promise<GdprExportPayload> {
-    const [workspaces, subscription, usage] = await Promise.all([
+    const [workspaces, subscription, usage, serverData] = await Promise.all([
         loadUserWorkspaces(userId),
         loadSubscriptionExport(userId),
         loadUsageExport(userId),
+        fetchGdprServerExportData(),
     ]);
     const workspaceExports = await Promise.all(
         workspaces.map((ws) => buildWorkspaceExport(userId, ws)),
@@ -172,12 +181,15 @@ export async function fetchAllUserData(
         user: profile,
         subscription,
         usage,
+        calendar: serverData.calendar,
+        storageFiles: serverData.storageFiles,
         workspaces: workspaceExports,
         summary: {
             totalWorkspaces: workspaceExports.length,
             totalNodes: workspaceExports.reduce((sum, w) => sum + w.nodes.length, 0),
             totalEdges: workspaceExports.reduce((sum, w) => sum + w.edges.length, 0),
             totalKBEntries: workspaceExports.reduce((sum, w) => sum + w.knowledgeBankEntries.length, 0),
+            totalStorageFiles: serverData.storageFiles.length,
         },
     };
 }

@@ -37,7 +37,7 @@ URL_MAP_NAME="eden-url-map"
 TARGET_HTTPS_PROXY="eden-https-proxy"
 FORWARDING_RULE="eden-https-forwarding-rule"
 SSL_CERT_NAME="eden-ssl-cert"        # managed cert — fill DOMAIN below
-DOMAIN="actionstation.so"             # ← change to your actual domain
+DOMAIN="www.actionstation.in"
 
 # Cloud Run service names as deployed by Firebase Functions v2.
 # Run: gcloud run services list --project=$PROJECT_ID --region=$REGION
@@ -47,6 +47,8 @@ SERVICES=(
   "proxyimage"
   "geminiproxy"
   "onnodedeleted"
+  "onstorageobjectfinalized"
+  "onstorageobjectdeleted"
   "onuserdeleted"
   "scheduledstoragecleanup"
   "workspacebundle"
@@ -64,6 +66,7 @@ SERVICES=(
   "createbillingportalsession"
   "createrazorpayorder"
   "razorpaywebhook"
+  "gdprserverexport"
 )
 
 echo "► Project: $PROJECT_ID  Region: $REGION"
@@ -245,6 +248,10 @@ pathMatchers:
         service: global/backendServices/backend-geminiproxy
       - paths: ["/onNodeDeleted", "/onNodeDeleted/*"]
         service: global/backendServices/backend-onnodedeleted
+      - paths: ["/onStorageObjectFinalized", "/onStorageObjectFinalized/*"]
+        service: global/backendServices/backend-onstorageobjectfinalized
+      - paths: ["/onStorageObjectDeleted", "/onStorageObjectDeleted/*"]
+        service: global/backendServices/backend-onstorageobjectdeleted
       - paths: ["/onUserDeleted", "/onUserDeleted/*"]
         service: global/backendServices/backend-onuserdeleted
       - paths: ["/scheduledStorageCleanup", "/scheduledStorageCleanup/*"]
@@ -279,6 +286,8 @@ pathMatchers:
         service: global/backendServices/backend-createrazorpayorder
       - paths: ["/razorpayWebhook", "/razorpayWebhook/*"]
         service: global/backendServices/backend-razorpaywebhook
+      - paths: ["/gdprServerExport", "/gdprServerExport/*"]
+        service: global/backendServices/backend-gdprserverexport
 URLMAP
 
 # Google-managed SSL certificate (auto-renews; domain must already point here)

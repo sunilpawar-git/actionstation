@@ -65,6 +65,22 @@ vi.mock('../utils/corsConfig.js', () => ({
     ALLOWED_ORIGINS: ['https://example.com'],
 }));
 
+const { mockCancelActiveSubscription } = vi.hoisted(() => ({
+    mockCancelActiveSubscription: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('../utils/cancelActiveSubscription.js', () => ({
+    cancelActiveSubscription: mockCancelActiveSubscription,
+}));
+
+vi.mock('../utils/stripeClient.js', () => ({
+    stripeSecretKey: { value: () => 'sk_test' },
+}));
+
+vi.mock('../utils/razorpayClient.js', () => ({
+    razorpayKeyId: { value: () => 'rzp_test' },
+    razorpayKeySecret: { value: () => 'secret' },
+}));
+
 import { onUserDeleted } from '../onUserDeleted.js';
 
 const mockLogSecurityEvent = vi.mocked(logSecurityEvent);
@@ -77,6 +93,11 @@ describe('onUserDeleted', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockGetFiles.mockResolvedValue([[]]);
+    });
+
+    it('cancels active subscription before Firestore cleanup', async () => {
+        await (onUserDeleted as Function)(makeRequest('user-123'));
+        expect(mockCancelActiveSubscription).toHaveBeenCalledWith('user-123');
     });
 
     it('calls recursiveDelete on the user Firestore document', async () => {
