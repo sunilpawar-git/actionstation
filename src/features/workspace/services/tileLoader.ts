@@ -11,6 +11,7 @@ import { normalizeContentMode } from '@/features/canvas/types/contentMode';
 import { migrateNode } from '@/migrations/migrationRunner';
 import { logger } from '@/shared/services/logger';
 import { FIRESTORE_QUERY_CAP, TILE_EVICTION_MS } from '@/config/firestoreQueryConfig';
+import { withRetry } from '@/shared/utils/firebaseUtils';
 
 interface TileCacheEntry {
     nodes: CanvasNode[];
@@ -18,6 +19,7 @@ interface TileCacheEntry {
 }
 
 const cache = new Map<string, TileCacheEntry>();
+const pendingFetches = new Map<string, Promise<CanvasNode[]>>();
 
 function getTileNodesRef(userId: string, workspaceId: string, tileId: string) {
     return collection(db, 'users', userId, 'workspaces', workspaceId, 'tiles', tileId, 'nodes');
@@ -54,14 +56,16 @@ async function fetchTile(
     workspaceId: string,
     tileId: string,
 ): Promise<CanvasNode[]> {
-    const ref = getTileNodesRef(userId, workspaceId, tileId);
-    const snapshot = await getDocs(query(ref, limit(FIRESTORE_QUERY_CAP)));
-    if (snapshot.size >= FIRESTORE_QUERY_CAP) {
-        logger.warn('[tileLoader] Tile query cap reached', { tileId, cap: FIRESTORE_QUERY_CAP });
-    }
-    return snapshot.docs.map((d) =>
-        parseNodeDoc(d as unknown as { data: () => Record<string, unknown> }, workspaceId),
-    );
+    return withRetry(async () => {
+        const ref = getTileNodesRef(userId, workspaceId, tileId);
+        const snapshot = await getDocs(query(ref, limit(FIRESTORE_QUERY_CAP)));
+        if (snapshot.size >= FIRESTORE_QUERY_CAP) {
+            logger.warn('[tileLoader] Tile query cap reached', { tileId, cap: FIRESTORE_QUERY_CAP });
+        }
+        return snapshot.docs.map((d) =>
+            parseNodeDoc(d as unknown as { data: () => Record<string, unknown> }, workspaceId),
+        );
+    });
 }
 
 async function loadTiles(
@@ -71,12 +75,16 @@ async function loadTiles(
 ): Promise<CanvasNode[]> {
     const uncached = tileIds.filter((id) => !cache.has(id));
     if (uncached.length > 0) {
-        const results = await Promise.all(
-            uncached.map((id) => fetchTile(userId, workspaceId, id).then((nodes) => ({ id, nodes }))),
-        );
-        for (const { id, nodes } of results) {
-            cache.set(id, { nodes, loadedAt: Date.now() });
-        }
+        const fetches = uncached.map((id) => {
+            const existing = pendingFetches.get(id);
+            if (existing) return existing.then((nodes) => ({ id, nodes }));
+            const p = fetchTile(userId, workspaceId, id)
+                .then((nodes) => { cache.set(id, { nodes, loadedAt: Date.now() }); return nodes; })
+                .finally(() => { pendingFetches.delete(id); });
+            pendingFetches.set(id, p);
+            return p.then((nodes) => ({ id, nodes }));
+        });
+        await Promise.all(fetches);
     }
     return tileIds.flatMap((id) => cache.get(id)?.nodes ?? []);
 }

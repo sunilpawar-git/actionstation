@@ -10,6 +10,22 @@
 @import './themes/grey.css';
 @import './themes/darkBlack.css';
 
+/* Smooth scroll for anchor navigation; disabled for reduced-motion users */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Offset anchor scroll to clear the sticky LandingNav (~64px) */
+#features, #how-it-works, #pricing, #faq {
+    scroll-margin-top: 80px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}
+
 *,
 *::before,
 *::after {
@@ -175,4 +191,22 @@ a {
 @keyframes kbPulse {
     0%, 100% { opacity: 1; }
     50%      { opacity: 0.5; }
+}
+
+/* ── Skip Link (accessibility) ─────────────────────────────────────────────── */
+.skip-link {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+    z-index: 10000;
+    padding: 8px 16px;
+    background: var(--color-primary);
+    color: var(--color-on-primary, #fff);
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0 0 4px 0;
+}
+.skip-link:focus {
+    top: 0;
+    left: 0;
 }

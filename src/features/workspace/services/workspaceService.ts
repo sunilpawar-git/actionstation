@@ -3,6 +3,7 @@ import { doc, setDoc, getDoc, getDocs, collection, writeBatch, serverTimestamp, 
 import { db } from '@/config/firebase';
 import { type Workspace, createWorkspace, createDivider } from '../types/workspace';
 import { strings } from '@/shared/localization/strings';
+import { generateUUID } from '@/shared/utils/uuid';
 import { type CanvasNode, normalizeNodeColorKey } from '@/features/canvas/types/node';
 import { normalizeContentMode } from '@/features/canvas/types/contentMode';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
@@ -21,7 +22,7 @@ const getSubcollectionDocRef = (userId: string, workspaceId: string, sub: string
 
 /** Create a new workspace and save to Firestore */
 export async function createNewWorkspace(userId: string, name?: string): Promise<Workspace> {
-    const workspaceId = `workspace-${crypto.randomUUID()}`;
+    const workspaceId = `workspace-${generateUUID()}`;
     const workspace = createWorkspace(workspaceId, userId, name ?? strings.workspace.untitled);
     workspace.nodeCount = 0;
     await saveWorkspace(userId, workspace);
@@ -31,7 +32,7 @@ export async function createNewWorkspace(userId: string, name?: string): Promise
 
 /** Create a new divider and save to Firestore */
 export async function createNewDividerWorkspace(userId: string): Promise<Workspace> {
-    const workspaceId = `divider-${crypto.randomUUID()}`;
+    const workspaceId = `divider-${generateUUID()}`;
     const workspace = createDivider(workspaceId, userId);
     await saveWorkspace(userId, workspace);
     invalidateBundleCache();

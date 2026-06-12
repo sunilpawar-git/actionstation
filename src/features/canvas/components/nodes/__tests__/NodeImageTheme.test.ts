@@ -55,9 +55,9 @@ describe('TipTapEditor.module.css overrides committed inline height in view mode
     });
 });
 
-describe('FocusOverlay.module.css applies focus-specific image sizing via CSS custom property', () => {
+describe('FocusOverlay.css applies focus-specific image sizing via CSS custom property', () => {
     const focusCss = fs.readFileSync(
-        path.resolve(__dirname, '../../FocusOverlay.module.css'),
+        path.resolve(__dirname, '../../FocusOverlay.css'),
         'utf-8',
     );
 

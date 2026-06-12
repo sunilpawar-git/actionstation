@@ -4,6 +4,7 @@
  * Single source of truth: any new transient field to reset goes here.
  */
 import { removeUndefined } from '@/shared/utils/firebaseUtils';
+import { generateUUID } from '@/shared/utils/uuid';
 import type { CanvasNode, IdeaNodeData, NodePosition } from '../types/node';
 
 interface CloneOverrides {
@@ -34,7 +35,7 @@ export function buildClonedNode(source: CanvasNode, overrides: CloneOverrides): 
     const now = new Date();
 
     const node: CanvasNode = {
-        id: `idea-${crypto.randomUUID()}`,
+        id: `idea-${generateUUID()}`,
         workspaceId: overrides.workspaceId ?? source.workspaceId,
         type: source.type,
         data: removeUndefined(data as Record<string, unknown>) as IdeaNodeData,

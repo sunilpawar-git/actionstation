@@ -2,13 +2,17 @@
  * ConfirmDialog - A global, async-compatible confirmation modal
  * Replaces window.confirm for a non-blocking, themed UX.
  */
+import { useRef } from 'react';
 import { useConfirmStore } from '@/shared/stores/confirmStore';
 import { strings } from '@/shared/localization/strings';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 
 /** Global async-compatible confirmation modal; themed replacement for window.confirm. */
 export function ConfirmDialog() {
     const isOpen = useConfirmStore((s) => s.isOpen);
     const options = useConfirmStore((s) => s.options);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useFocusTrap(dialogRef, isOpen);
 
     if (!isOpen || !options) return null;
 
@@ -37,6 +41,7 @@ export function ConfirmDialog() {
                 aria-labelledby="confirm-title"
                 aria-describedby="confirm-message"
                 onClick={(e) => e.stopPropagation()}
+                ref={dialogRef}
             >
                 <h2 id="confirm-title" className="font-semibold text-[var(--color-text-primary)]" style={{ fontSize: 'var(--font-size-lg)', marginBottom: 8 }}>{title}</h2>
                 <p id="confirm-message" className="text-[var(--color-text-secondary)] leading-normal" style={{ fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-xl)' }}>{message}</p>

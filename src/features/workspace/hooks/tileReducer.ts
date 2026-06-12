@@ -15,6 +15,7 @@ export type TileAction =
     | { type: 'TILES_REQUESTED'; tileIds: string[] }
     | { type: 'TILES_LOADED'; tileIds: string[] }
     | { type: 'TILES_FAILED'; tileIds: string[] }
+    | { type: 'RETRY_TILE'; tileIds: string[] }
     | { type: 'TILES_EVICTED'; tileIds: string[] }
     | { type: 'RESET' };
 
@@ -51,6 +52,12 @@ export function tileReducer(state: TileState, action: TileAction): TileState {
                 ...state,
                 loadingTileIds: state.loadingTileIds.filter((id) => !action.tileIds.includes(id)),
                 errorTileIds: unique([...state.errorTileIds, ...action.tileIds]),
+            };
+        case 'RETRY_TILE':
+            return {
+                ...state,
+                errorTileIds: state.errorTileIds.filter((id) => !action.tileIds.includes(id)),
+                loadingTileIds: unique([...state.loadingTileIds, ...action.tileIds]),
             };
         case 'TILES_EVICTED':
             return {

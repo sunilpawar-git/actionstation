@@ -7,6 +7,8 @@ import { calendarStrings } from './calendarStrings';
 import { nodePoolStrings } from './nodePoolStrings';
 import { securityStrings } from './securityStrings';
 import { settingsStrings } from './settingsStrings';
+import { multiTabStrings } from './multiTabStrings';
+import { a11yStrings } from './a11yStrings';
 import { documentAgentStrings } from '@/features/documentAgent/strings/documentAgentStrings';
 import { synthesisStrings } from '@/features/synthesis/strings/synthesisStrings';
 import { exportStrings } from '@/features/export/strings/exportStrings';
@@ -16,6 +18,9 @@ import { searchStrings } from '@/features/search/strings/searchStrings';
 import { onboardingStrings } from '@/features/onboarding/strings/onboardingStrings';
 import { subscriptionStrings } from '@/features/subscription/strings/subscriptionStrings';
 import { shortcutStrings } from './shortcutStrings';
+import { landingStrings } from '@/features/landing/strings/landingStrings';
+import { templateStrings } from '@/features/templates/strings/templateStrings';
+import { snapshotStrings } from '@/features/canvas/strings/snapshotStrings';
 
 export const strings = {
     app: {
@@ -80,6 +85,8 @@ export const strings = {
     settings: settingsStrings,
     shortcuts: shortcutStrings,
     search: searchStrings,
+    multiTab: multiTabStrings,
+    a11y: a11yStrings,
     tags: {
         addTag: 'Add tag',
         placeholder: 'Add tag...',
@@ -277,6 +284,9 @@ export const strings = {
     export: exportStrings,
     contextMenu: contextMenuStrings,
     onboarding: onboardingStrings,
+    landing: landingStrings,
+    templates: templateStrings,
+    snapshot: snapshotStrings,
 } as const;
 
 export type StringKeys = typeof strings;

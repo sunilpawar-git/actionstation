@@ -18,6 +18,8 @@ import type { CanvasNode } from '@/features/canvas/types/node';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
 
 const MAX_DRAIN_RETRIES = 3;
+/** Minimum ms between successive flush operations to prevent Firestore write spikes on reconnect. */
+const DRAIN_RATE_LIMIT_MS = 500;
 
 interface OfflineQueueState {
     pendingCount: number;
@@ -100,6 +102,8 @@ export const useOfflineQueueStore = create<OfflineQueueStore>()((set) => ({
                 setError(message);
                 toast.error(strings.offline.syncFailed);
             }
+            // Rate-limit flush to avoid Firestore write spikes on reconnect
+            await new Promise<void>((resolve) => setTimeout(resolve, DRAIN_RATE_LIMIT_MS));
         }
 
         set({ pendingCount: offlineQueueService.size(), isDraining: false, bgSyncRegistered: false });

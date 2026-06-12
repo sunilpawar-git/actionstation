@@ -1,6 +1,13 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Shared canvas snapshots — public read, authenticated write with 5 MB cap
+    match /shared-snapshots/{snapshotId} {
+      allow read: if true;
+      allow write: if request.auth != null
+                      && request.resource.size < 5 * 1024 * 1024;
+    }
+
     // Node images — 5 MB cap, any authenticated owner
     match /users/{userId}/workspaces/{workspaceId}/nodes/{nodeId}/images/{fileName} {
       allow read: if request.auth != null && request.auth.uid == userId;

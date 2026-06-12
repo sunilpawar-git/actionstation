@@ -262,8 +262,8 @@ gcloud alpha monitoring policies create \
   --quiet 2>/dev/null && echo "  ✓ Payment failure alert created" || echo "  (alert may already exist)"
 echo ""
 
-# ── 8. [Phase 2] Alert: Checkout 429 rate > 10/min ────────────────────────────
-echo "▶ Creating alert: checkout 429 rate > 10/min..."
+# ── 8. Auth failure + bot detection metrics and alerts ───────────────────────
+echo "▶ Step 8: Auth failure and bot detection monitoring..."
 
 cat > /tmp/checkout-429-alert.json << EOF
 {
@@ -305,7 +305,119 @@ gcloud alpha monitoring policies create \
   --quiet 2>/dev/null && echo "  ✓ Checkout 429 alert created" || echo "  (alert may already exist)"
 echo ""
 
-# ── 9. Summary ────────────────────────────────────────────────────────────────
+# ── 9. Auth failure + bot detection metrics and alerts ─────────────────────
+echo "▶ Step 9: Auth failure and bot detection monitoring..."
+
+# Metric: auth_failure events (credential stuffing detection)
+gcloud logging metrics create auth_failure_spike \
+  --description="Auth failures logged by Cloud Functions security layer" \
+  --log-filter='jsonPayload.labels.eden_security="true" AND jsonPayload.labels.event_type="auth_failure"' \
+  --project="$PROJECT_ID" 2>/dev/null \
+  && echo "  ✓ auth_failure_spike metric created" \
+  || echo "  (auth_failure_spike metric already exists, skipping)"
+
+# Metric: bot_detected events (scanner/probe activity)
+gcloud logging metrics create bot_detected_spike \
+  --description="Bot/scanner detections from Cloud Functions bot detector" \
+  --log-filter='jsonPayload.labels.eden_security="true" AND jsonPayload.labels.event_type="bot_detected"' \
+  --project="$PROJECT_ID" 2>/dev/null \
+  && echo "  ✓ bot_detected_spike metric created" \
+  || echo "  (bot_detected_spike metric already exists, skipping)"
+
+# Alert: auth_failure > 10/min (CRITICAL — credential stuffing)
+cat > /tmp/auth-failure-alert.json << 'EOF'
+{
+  "displayName": "CRITICAL: Auth Failure Spike > 10/min",
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "auth_failure_spike > 10/min",
+      "conditionThreshold": {
+        "filter": "metric.type=\"logging.googleapis.com/user/auth_failure_spike\" resource.type=\"global\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 10,
+        "duration": "60s",
+        "aggregations": [
+          {
+            "alignmentPeriod": "60s",
+            "perSeriesAligner": "ALIGN_RATE"
+          }
+        ]
+      }
+    }
+  ],
+  "alertStrategy": {
+    "notificationRateLimit": { "period": "300s" }
+  },
+  "severity": "CRITICAL",
+  "documentation": {
+    "content": "Auth failure spike detected. Possible credential stuffing attack. Check Cloud Logging for auth_failure events and review IP patterns. Block offending IPs via Cloud Armor if needed.",
+    "mimeType": "text/markdown"
+  }
+}
+EOF
+
+gcloud alpha monitoring policies create \
+  --policy-from-file=/tmp/auth-failure-alert.json \
+  --project="$PROJECT_ID" \
+  --quiet 2>/dev/null && echo "  ✓ Auth failure CRITICAL alert created" || echo "  (alert may already exist)"
+
+# Alert: bot_detected > 5/min (HIGH — active scanner)
+cat > /tmp/bot-detected-alert.json << 'EOF'
+{
+  "displayName": "HIGH: Bot Detection Spike > 5/min",
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "bot_detected_spike > 5/min",
+      "conditionThreshold": {
+        "filter": "metric.type=\"logging.googleapis.com/user/bot_detected_spike\" resource.type=\"global\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 5,
+        "duration": "60s",
+        "aggregations": [
+          {
+            "alignmentPeriod": "60s",
+            "perSeriesAligner": "ALIGN_RATE"
+          }
+        ]
+      }
+    }
+  ],
+  "alertStrategy": {
+    "notificationRateLimit": { "period": "600s" }
+  },
+  "severity": "WARNING",
+  "documentation": {
+    "content": "Bot/scanner activity spike detected. Review Cloud Logging for bot_detected events. Consider tightening Cloud Armor scanner-detection rule or adding IP block rules.",
+    "mimeType": "text/markdown"
+  }
+}
+EOF
+
+gcloud alpha monitoring policies create \
+  --policy-from-file=/tmp/bot-detected-alert.json \
+  --project="$PROJECT_ID" \
+  --quiet 2>/dev/null && echo "  ✓ Bot detection HIGH alert created" || echo "  (alert may already exist)"
+
+# Optional: Slack notification channel (requires SLACK_WEBHOOK_URL env var)
+if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
+  echo "  ▶ Creating Slack notification channel..."
+  SLACK_CHANNEL=$(gcloud beta monitoring channels create \
+    --display-name="Eden Slack Alerts" \
+    --type=slack \
+    --channel-labels="url=${SLACK_WEBHOOK_URL}" \
+    --project="$PROJECT_ID" \
+    --quiet --format=json 2>/dev/null \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['name'])")
+  echo "  ✓ Slack channel created: $SLACK_CHANNEL"
+  echo "  (Add this channel ID to CRITICAL alert notificationChannels to enable Slack)"
+else
+  echo "  (SLACK_WEBHOOK_URL not set — skipping Slack channel creation)"
+fi
+echo ""
+
+# ── 10. Summary ────────────────────────────────────────────────────────────────
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✓ Done. View alerts at:"
 echo "  https://console.cloud.google.com/monitoring/alerting?project=$PROJECT_ID"
@@ -316,6 +428,8 @@ echo "    2. geminiProxy 429 rate > 20/min"
 echo "    3. [Phase 2] Webhook sig failure spike > 5/min (CRITICAL)"
 echo "    4. [Phase 2] Payment failure spike > 10/hour"
 echo "    5. [Phase 2] Checkout 429 rate > 10/min"
+echo "    6. [Phase 6] Auth failure spike > 10/min (CRITICAL)"
+echo "    7. [Phase 6] Bot detection spike > 5/min (HIGH)"
 echo ""
 echo "  Check your inbox — GCP will send a verification email"
 echo "  for the notification channel. Click it to activate alerts."

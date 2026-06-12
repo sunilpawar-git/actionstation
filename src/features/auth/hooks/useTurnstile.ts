@@ -20,6 +20,7 @@ interface TurnstileApi {
     render: (container: string | HTMLElement, options: Record<string, unknown>) => string;
     execute: (widgetId: string) => void;
     reset: (widgetId: string) => void;
+    remove: (widgetId: string) => void;
     getResponse: (widgetId: string) => string | undefined;
     ready: (callback: () => void) => void;
 }
@@ -60,28 +61,56 @@ function loadTurnstileScript(): Promise<void> {
     return scriptPromise;
 }
 
+/** Create and mount an off-screen container for the invisible widget. */
+function createTurnstileContainer(): HTMLDivElement {
+    const div = document.createElement('div');
+    div.id = 'turnstile-container';
+    div.style.position = 'fixed';
+    div.style.bottom = '0';
+    div.style.right = '0';
+    div.style.opacity = '0';
+    div.style.pointerEvents = 'none';
+    div.style.width = '0';
+    div.style.height = '0';
+    div.style.overflow = 'hidden';
+    document.body.appendChild(div);
+    return div;
+}
+
+/**
+ * Verify the Turnstile token via the Cloud Function.
+ * Returns null on success, or an error message string on failure.
+ * Throws on network/timeout errors.
+ */
+async function verifyTokenWithServer(token: string): Promise<string | null> {
+    const response = await fetch(`${CLOUD_FUNCTIONS_URL}/verifyTurnstile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+        signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        return data.error ?? 'Challenge verification failed';
+    }
+    return null;
+}
+
 export function useTurnstile(): UseTurnstileReturn {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const widgetIdRef = useRef<string | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const cancelledRef = useRef(false);
 
-    // Ensure a hidden container exists for the Turnstile widget
+    // Mount a hidden container; clean it up on unmount to prevent DOM leaks.
     useEffect(() => {
-        if (!containerRef.current) {
-            const div = document.createElement('div');
-            div.id = 'turnstile-container';
-            div.style.position = 'fixed';
-            div.style.bottom = '0';
-            div.style.right = '0';
-            div.style.opacity = '0';
-            div.style.pointerEvents = 'none';
-            div.style.width = '0';
-            div.style.height = '0';
-            div.style.overflow = 'hidden';
-            document.body.appendChild(div);
-            containerRef.current = div;
-        }
+        containerRef.current = createTurnstileContainer();
+        return () => {
+            cancelledRef.current = true; // stop any in-flight poll
+            containerRef.current?.remove();
+            containerRef.current = null;
+        };
     }, []);
 
     const execute = useCallback(async (): Promise<boolean> => {
@@ -98,88 +127,67 @@ export function useTurnstile(): UseTurnstileReturn {
             await loadTurnstileScript();
 
             const turnstile = window.turnstile;
-            if (!turnstile) {
-                throw new Error('Turnstile API not available');
+            if (!turnstile) throw new Error('Turnstile API not available');
+
+            // Remove stale widget before re-rendering to prevent widget accumulation.
+            if (widgetIdRef.current !== null) {
+                turnstile.remove(widgetIdRef.current);
+                widgetIdRef.current = null;
             }
 
-            // Render a new widget each time (invisible mode)
             const widgetId = turnstile.render(
                 containerRef.current ?? '#turnstile-container',
-                {
-                    sitekey: siteKey,
-                    size: 'invisible',
-                    callback: async (_token: string) => {
-                        // Token received from Turnstile — will be retrieved below
-                    },
-                },
+                { sitekey: siteKey, size: 'invisible' },
             );
             widgetIdRef.current = widgetId;
-
-            // Execute the invisible challenge
             turnstile.execute(widgetId);
 
-            // Wait for token (poll getResponse until non-empty)
-            const token = await pollForToken(turnstile, widgetId);
+            const token = await pollForToken(turnstile, widgetId, cancelledRef);
+            if (cancelledRef.current) return false; // component unmounted
+            if (!token) throw new Error('Turnstile did not return a token');
 
-            if (!token) {
-                throw new Error('Turnstile did not return a token');
-            }
-
-            // Verify token with our Cloud Function
-            const response = await fetch(
-                `${CLOUD_FUNCTIONS_URL}/verifyTurnstile`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token }),
-                    signal: AbortSignal.timeout(15_000),
-                },
-            );
-
-            if (!response.ok) {
-                const data = (await response.json().catch(() => ({}))) as
-                    { error?: string };
-                const msg = data.error ?? 'Challenge verification failed';
-                setError(msg);
-                // Reset the widget for retry
+            const verifyError = await verifyTokenWithServer(token);
+            if (verifyError !== null) {
+                setError(verifyError);
                 turnstile.reset(widgetId);
                 return false;
             }
 
             return true;
         } catch (err: unknown) {
+            if (cancelledRef.current) return false; // component unmounted
             const msg = err instanceof Error ? err.message : 'CAPTCHA failed';
             setError(msg);
             logger.error('Turnstile verification failed', err instanceof Error ? err : new Error(msg));
             return false;
         } finally {
-            setIsLoading(false);
+            if (!cancelledRef.current) setIsLoading(false);
         }
     }, []);
 
     return { execute, isLoading, error };
 }
 
-/** Poll Turnstile widget for token (max 10 seconds) */
+/**
+ * Poll Turnstile widget for token (max 10 seconds).
+ * Stops immediately when cancelledRef.current is true (component unmounted),
+ * preventing setState calls on unmounted components.
+ */
 function pollForToken(
     turnstile: TurnstileApi,
     widgetId: string,
+    cancelledRef: { readonly current: boolean },
 ): Promise<string | undefined> {
     return new Promise((resolve) => {
         let attempts = 0;
-        const maxAttempts = 40; // 40 * 250ms = 10s
+        const maxAttempts = 40; // 40 × 250 ms = 10 s
 
         const check = () => {
+            if (cancelledRef.current) { resolve(undefined); return; }
             attempts++;
             const token = turnstile.getResponse(widgetId);
-            if (token) {
-                resolve(token);
-                return;
-            }
-            if (attempts >= maxAttempts) {
-                resolve(undefined);
-                return;
-            }
+            if (token) { resolve(token); return; }
+            if (attempts >= maxAttempts) { resolve(undefined); return; }
             setTimeout(check, 250);
         };
         check();

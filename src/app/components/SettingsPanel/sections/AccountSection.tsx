@@ -8,6 +8,7 @@ import { useAuthStore } from '@/features/auth/stores/authStore';
 import { signOut, deleteAccount } from '@/features/auth/services/authService';
 import { useConfirm } from '@/shared/stores/confirmStore';
 import { useDataExport } from '@/features/workspace/hooks/useDataExport';
+import { useGdprExport } from '@/features/workspace/hooks/useGdprExport';
 import { useSubscriptionStore } from '@/features/subscription/stores/subscriptionStore';
 import { useBillingPortal } from '@/features/subscription/hooks/useBillingPortal';
 import { useRazorpayCheckout } from '@/features/subscription/hooks/useRazorpayCheckout';
@@ -138,9 +139,49 @@ function SubscriptionStatus() {
     );
 }
 
+function DataExportGroup() {
+    const { exportData } = useDataExport();
+    const { exportAll, isExporting } = useGdprExport();
+    const s = strings.settings;
+
+    const handleExportWorkspace = useCallback(() => {
+        try {
+            exportData();
+            toast.success(s.exportSuccess);
+        } catch {
+            toast.error(strings.errors.generic);
+        }
+    }, [exportData, s.exportSuccess]);
+
+    const handleExportAll = useCallback(async () => {
+        try {
+            await exportAll();
+            toast.success(s.exportAllSuccess);
+        } catch (err) {
+            logger.error('GDPR export failed', err as Error);
+            toast.error(s.exportAllFailed);
+        }
+    }, [exportAll, s.exportAllSuccess, s.exportAllFailed]);
+
+    return (
+        <SettingsGroup title={s.dataGroup} description={s.exportDataDescription}>
+            <button className={SP_BTN_SECONDARY} style={SP_BTN_SECONDARY_STYLE} onClick={handleExportWorkspace}>
+                {s.exportData}
+            </button>
+            <button
+                className={SP_BTN_SECONDARY}
+                style={{ ...SP_BTN_SECONDARY_STYLE, marginTop: 8 }}
+                onClick={() => { handleExportAll().catch(() => undefined); }}
+                disabled={isExporting}
+            >
+                {isExporting ? s.exportAllLoading : s.exportAllData}
+            </button>
+        </SettingsGroup>
+    );
+}
+
 export const AccountSection = React.memo(function AccountSection() {
     const user = useAuthStore((s) => s.user);
-    const { exportData } = useDataExport();
 
     const handleSignOut = useCallback(async () => {
         try {
@@ -149,15 +190,6 @@ export const AccountSection = React.memo(function AccountSection() {
             // Error handled in service
         }
     }, []);
-
-    const handleExport = useCallback(() => {
-        try {
-            exportData();
-            toast.success(strings.settings.exportSuccess);
-        } catch {
-            toast.error(strings.errors.generic);
-        }
-    }, [exportData]);
 
     if (!user) return null;
 
@@ -177,21 +209,14 @@ export const AccountSection = React.memo(function AccountSection() {
                         <span className={ACCT_EMAIL} style={ACCT_EMAIL_STYLE}>{user.email}</span>
                     </div>
                 </div>
-                <button className={SP_BTN_SECONDARY} style={SP_BTN_SECONDARY_STYLE} onClick={handleSignOut}>
+                <button className={SP_BTN_SECONDARY} style={SP_BTN_SECONDARY_STYLE} onClick={() => { handleSignOut().catch(() => undefined); }}>
                     {strings.auth.signOut}
                 </button>
             </SettingsGroup>
 
             <SubscriptionStatus />
 
-            <SettingsGroup
-                title={strings.settings.dataGroup}
-                description={strings.settings.exportDataDescription}
-            >
-                <button className={SP_BTN_SECONDARY} style={SP_BTN_SECONDARY_STYLE} onClick={handleExport}>
-                    {strings.settings.exportData}
-                </button>
-            </SettingsGroup>
+            <DataExportGroup />
 
             <DangerZone />
         </div>

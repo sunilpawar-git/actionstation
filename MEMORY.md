@@ -249,13 +249,30 @@ Current list (8 vars): `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VI
 
 ---
 
-## Decision 19 — Cyrillic Homoglyph Patterns Require NFKD Normalization
+## Decision 19 — Cyrillic Homoglyph Patterns Require NFKD Normalization [RESOLVED: Phase 6.1]
 
 **Problem:** Character-class regex patterns like `/[\u0420P][\u0420R]/gi` (mixing Cyrillic + ASCII in same class) caused false positives — ASCII words like `prompt` were filtered by the PROMPT detection pattern.
 
-**Decision:** Removed all 3 Cyrillic character-class patterns from `INJECTION_PATTERNS`. Left comment in code explaining correct approach: `text.normalize('NFKD')` before pattern matching, then strip combining characters. Deferred to a dedicated security sprint.
+**Decision:** Removed all 3 Cyrillic character-class patterns from `INJECTION_PATTERNS`. Deferred to dedicated security sprint with correct approach.
 
-**File:** `src/features/documentAgent/services/documentAgentPrompts.ts`
+**Resolution (Phase 6.1):** Implemented a 3-step Unicode normalization pipeline in `functions/src/utils/textNormalizer.ts`:
+1. NFKD decomposition — decomposes ligatures (ﬁ→fi), fullwidth chars (Ａ→A)
+2. Combining char strip — removes diacritical marks via `\p{Mn}` regex
+3. Confusables map — maps Cyrillic/Greek homoglyphs to ASCII equivalents
+
+**Key invariant:** Length checks run on ORIGINAL text; patterns run on normalized text. This prevents confusable-padding bypass of length limits.
+
+**Files:** `functions/src/utils/textNormalizer.ts` (new), `functions/src/utils/promptFilter.ts` (modified), `functions/src/utils/__tests__/textNormalizer.test.ts` (49 tests)
+
+**Note:** NFKD alone is insufficient for Cyrillic/Greek (they are separate Unicode codepoints, not decomposable). The confusables map is required in addition.
+
+---
+
+## Decision 19b — Rate Limiter is Firestore-Backed in Production (Not Per-Instance)
+
+**Finding (Phase 6.5):** `ipRateLimiter.ts` and `rateLimiterFactory.ts` both use `isDeployedFunction()` = `!!process.env.K_SERVICE && FUNCTIONS_EMULATOR !== 'true'`. In Cloud Run (production), `K_SERVICE` is automatically set → Firestore-backed. In-memory path only in emulator/tests. No distributed rate limit vulnerability exists.
+
+**File:** `functions/src/utils/ipRateLimiter.ts` (production safety comment added)
 
 ---
 
@@ -463,3 +480,71 @@ These rules were codified as a result of the sprint:
 6. **`crypto.randomUUID()` for all IDs** — `Date.now()` is forbidden for entity IDs
 7. **`useDebouncedCallback` for all search/filter inputs** — 250 ms minimum delay
 8. **Heavy computation in Web Worker** — TF-IDF, clustering, similarity go through `knowledgeWorkerClient`
+
+---
+
+## Phase 6 Security Hardening TDD Sprint — Apr 20 2026
+
+### Context
+Implemented the Phase 6 plan (`plans/PHASE-6-SECURITY-HARDENING.md`) in five TDD sub-phases. All 16,015 frontend tests and 425 function tests pass. `npm run build` succeeds with 0 errors.
+
+---
+
+## Decision 31 — Unicode Normalisation Pipeline for Prompt Injection Defence
+
+**Problem:** Cyrillic/Greek homoglyphs (е=\u0435, о=\u043E, etc.) are separate Unicode codepoints — NFKD alone does not decompose them. An attacker can spell `ignore` as `іgnоrе` to bypass regex-based injection detection.
+
+**Decision:** `functions/src/utils/textNormalizer.ts` implements a 3-step pipeline applied in `promptFilter.ts` before all pattern matching:
+
+1. **NFKD decomposition** — decomposes ligatures (ﬁ→fi), fullwidth chars (Ａ→A), superscripts
+2. **Combining mark strip** — `text.replace(/\p{Mn}/gu, '')` removes diacriticals without triggering ESLint `no-misleading-character-class`
+3. **Confusables map** — `Array.from(text).map(ch => MAP[ch] ?? ch).join('')` maps 32 Cyrillic/Greek chars to ASCII equivalents (char-by-char iteration avoids dynamic regex construction)
+
+**Critical invariant:** Length checks run on ORIGINAL text; pattern tests run on NORMALIZED text. This prevents an attacker from padding with confusables to inflate their "clean" character count while the payload stays under limits.
+
+**ESLint lesson:** `\p{Mn}` (Unicode property escape) is the correct alternative to character class ranges for combining marks — avoids `no-misleading-character-class` while remaining Unicode-aware.
+
+**Files:** `functions/src/utils/textNormalizer.ts` (new, 49 tests), `functions/src/utils/promptFilter.ts` (modified — import + apply normalizer), `functions/src/utils/__tests__/promptFilter.test.ts` (+7 homoglyph bypass tests)
+
+---
+
+## Decision 32 — Structural Tests as CI Gatekeepers for Infrastructure Coverage
+
+**Problem:** New Cloud Functions could be added without corresponding WAF protection or monitoring alerts — the gap would only be discovered in production when an unprotected endpoint gets hit.
+
+**Decision:** Two structural tests in `src/__tests__/` enforce infrastructure coverage at CI time:
+
+- `cloudArmorCoverage.structural.test.ts` — parses `functions/src/index.ts` exports with regex, parses the `SERVICES=()` array from `scripts/setup-cloud-armor.sh`, asserts bidirectional coverage. Also asserts priority-850 webhook rate-limit rule exists in the script.
+- `monitoringCoverage.structural.test.ts` — asserts `auth_failure_spike` and `bot_detected_spike` log-based metrics plus their CRITICAL/HIGH alert policies are defined in `scripts/setup-monitoring-alerts.sh`.
+
+**Pattern:** These tests parse shell scripts and TypeScript with regex rather than executing them — fast, side-effect-free, and suitable for CI.
+
+**Lesson (during 6.2):** `calendarCreateEvent` lowercases to `calendarcreateevent` (two e's — "create" + "event" both end/start with e). The structural test caught a typo in the script where it had been spelled `calendarcreateevent` vs the correct double-e. Always trust the structural test over manual counting.
+
+**Files:** `src/__tests__/cloudArmorCoverage.structural.test.ts` (new), `src/__tests__/monitoringCoverage.structural.test.ts` (new), `scripts/setup-cloud-armor.sh` (fixed typo + 11 missing services + priority-850 rule), `scripts/setup-monitoring-alerts.sh` (auth_failure + bot_detected metrics/alerts/Slack)
+
+---
+
+## Decision 33 — Turnstile Hook + Login Integration (Code Complete, Deployment Pending)
+
+**Problem:** `useTurnstile.ts` and `LoginPage.tsx` were complete but had no regression test coverage. The `VITE_TURNSTILE_SITE_KEY` env var is absent by default in test environment — tests needed a pattern to test both no-key (no-op) and with-key (full challenge) modes without contaminating each other.
+
+**Decision:** 
+- `useTurnstile.test.ts` (no-key + success) and `useTurnstile.failure.test.ts` (403 + network error) — split at 193/161 lines to stay under 300-line limit
+- Pattern: `vi.resetModules()` + `vi.stubEnv('VITE_TURNSTILE_SITE_KEY', ...)` + `await import('../hooks/useTurnstile')` in `beforeEach` — required because the env var is captured at module initialization time (module-level constant)
+- `LoginPage.test.tsx` uses `vi.hoisted()` for mock functions that must be available to the `vi.mock()` factory before hoisting reorders execution
+- `window.turnstile` mocked via `vi.stubGlobal` with `getResponse` returning token immediately — avoids the `pollForToken` `setTimeout` loop in the hook
+
+**Deployment remaining:** Create Cloudflare Turnstile site → store `TURNSTILE_SECRET` in Secret Manager → add `VITE_TURNSTILE_SITE_KEY` to GitHub Secrets → deploy.
+
+**Files:** `src/features/auth/__tests__/useTurnstile.test.ts` (9 tests), `src/features/auth/__tests__/useTurnstile.failure.test.ts` (7 tests), `src/features/auth/__tests__/LoginPage.test.tsx` (+4 Turnstile interaction tests)
+
+---
+
+## Decision 34 — `ipRateLimiter.ts` is Firestore-Backed in Production (No Per-Instance Risk)
+
+**Finding:** A review question arose: does `ipRateLimiter.ts` have a distributed consistency problem if Cloud Run spawns multiple instances?
+
+**Answer:** No. `isDeployedFunction()` = `!!process.env.K_SERVICE && FUNCTIONS_EMULATOR !== 'true'`. Cloud Run sets `K_SERVICE` automatically → Firestore-backed path in production. The in-memory `Map` fallback only runs in the local emulator and test suite. A clarifying comment was added to the file header.
+
+**Files:** `functions/src/utils/ipRateLimiter.ts` (production safety comment added)

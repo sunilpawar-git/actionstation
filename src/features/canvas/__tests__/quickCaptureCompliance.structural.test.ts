@@ -13,8 +13,8 @@ const quickCaptureSrc = readFileSync(
 );
 
 describe('useQuickCapture — structural compliance', () => {
-    it('uses crypto.randomUUID() for node IDs (not Date.now())', () => {
-        expect(quickCaptureSrc).toContain('crypto.randomUUID()');
+    it('uses generateUUID() for node IDs (not Date.now())', () => {
+        expect(quickCaptureSrc).toContain('generateUUID()');
         expect(quickCaptureSrc).not.toMatch(/idea-\$\{Date\.now\(\)\}/);
     });
 

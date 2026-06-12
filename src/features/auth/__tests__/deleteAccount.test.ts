@@ -11,6 +11,7 @@ const mockReauthenticateWithPopup = vi.fn();
 let mockCurrentUser: { uid: string; email: string } | null = { uid: 'uid-1', email: 'test@example.com' };
 const mockClearUser = vi.fn();
 const mockReset = vi.fn();
+const mockCleanupFn = vi.fn().mockResolvedValue({ data: { success: true } });
 
 vi.mock('firebase/auth', () => ({
     deleteUser: (...args: unknown[]) => mockDeleteUser(...args),
@@ -20,9 +21,14 @@ vi.mock('firebase/auth', () => ({
     onAuthStateChanged: vi.fn(),
 }));
 
+vi.mock('firebase/functions', () => ({
+    httpsCallable: (_app: unknown, _name: unknown) => mockCleanupFn,
+}));
+
 vi.mock('@/config/firebase', () => ({
     auth: { get currentUser() { return mockCurrentUser; } },
     googleProvider: { providerId: 'google.com' },
+    functions: {},
 }));
 
 vi.mock('../stores/authStore', () => ({

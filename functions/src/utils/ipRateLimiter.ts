@@ -4,6 +4,13 @@
  * Complements the per-user limiter: a single IP driving requests through
  * 100 different user accounts would bypass user rate limits but hits this.
  *
+ * PRODUCTION SAFETY NOTE:
+ *   Cloud Functions v2 run as Cloud Run services — multiple instances may
+ *   handle concurrent requests. This limiter is Firestore-backed in production
+ *   (isDeployedFunction() = true when K_SERVICE env var is set by Cloud Run).
+ *   The in-memory fallback is ONLY used in the local emulator and test suite.
+ *   There is NO per-instance inconsistency risk in production.
+ *
  * Production: Firestore-backed (survives cold starts, consistent across
  *   function instances). Same pattern as firestoreRateLimiter.ts.
  * Emulator/tests: in-memory map.

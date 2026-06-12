@@ -83,6 +83,25 @@ vi.mock('@/shared/services/indexedDbService', () => ({
 vi.mock('@/features/subscription/hooks/useNodeCreationGuard', () => ({ useNodeCreationGuard: () => ({ guardNodeCreation: () => true }) }));
 vi.mock('@/features/subscription/hooks/useTierLimits', () => ({ useTierLimits: () => ({ check: () => ({ allowed: true, current: 0, max: Infinity, kind: 'workspace' }), state: { workspaceCount: 0, nodeCount: 0, aiDailyCount: 0, aiDailyDate: '', storageMb: 0, isLoaded: true }, dispatch: () => {}, tier: 'free' }) }));
 
+// Mock useTemplatePicker — controls picker open state in tests
+const mockOpenPicker = vi.fn();
+const mockClosePicker = vi.fn();
+let isTemplatePickerOpen = false;
+vi.mock('@/features/templates/hooks/useTemplatePicker', () => ({
+    useTemplatePicker: () => ({
+        isPickerOpen: isTemplatePickerOpen,
+        customTemplates: [],
+        isLoadingTemplates: false,
+        openPicker: mockOpenPicker,
+        closePicker: mockClosePicker,
+    }),
+}));
+// Mock TemplatePicker so we can control rendering without full Firestore setup
+vi.mock('@/features/templates/components/TemplatePicker', () => ({
+    TemplatePicker: ({ isOpen, onSelectBlank }: { isOpen: boolean; onSelectBlank: () => void }) =>
+        isOpen ? <button onClick={onSelectBlank}>Blank Canvas</button> : null,
+}));
+
 describe('Sidebar', () => {
     const mockClearCanvas = vi.fn();
     const mockSetCurrentWorkspaceId = vi.fn();
@@ -137,12 +156,25 @@ describe('Sidebar', () => {
     });
 
     describe('workspace creation', () => {
-        it('should create, add, and switch to new workspace', async () => {
-            const mockWorkspace = { id: 'ws-new', name: 'Untitled Workspace', userId: 'user-1', canvasSettings: {}, createdAt: new Date(), updatedAt: new Date() };
-            vi.mocked(createNewWorkspace).mockResolvedValue(mockWorkspace as ReturnType<typeof createNewWorkspace> extends Promise<infer T> ? T : never);
+        beforeEach(() => {
+            isTemplatePickerOpen = false;
+            mockOpenPicker.mockImplementation(() => { isTemplatePickerOpen = true; });
+            mockClosePicker.mockImplementation(() => { isTemplatePickerOpen = false; });
+        });
 
+        it('should open template picker when New Workspace is clicked', async () => {
             render(<Sidebar />);
             fireEvent.click(screen.getByText(strings.workspace.newWorkspace));
+            expect(mockOpenPicker).toHaveBeenCalledOnce();
+        });
+
+        it('should create, add, and switch to new workspace when Blank Canvas is selected', async () => {
+            const mockWorkspace = { id: 'ws-new', name: 'Untitled Workspace', userId: 'user-1', canvasSettings: {}, createdAt: new Date(), updatedAt: new Date() };
+            vi.mocked(createNewWorkspace).mockResolvedValue(mockWorkspace as ReturnType<typeof createNewWorkspace> extends Promise<infer T> ? T : never);
+            isTemplatePickerOpen = true;
+
+            render(<Sidebar />);
+            fireEvent.click(screen.getByText('Blank Canvas'));
 
             await waitFor(() => {
                 expect(createNewWorkspace).toHaveBeenCalledWith('user-1');
@@ -156,8 +188,9 @@ describe('Sidebar', () => {
         it('should show error toast when creation fails', async () => {
             const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
             vi.mocked(createNewWorkspace).mockRejectedValue(new Error('Network error'));
+            isTemplatePickerOpen = true;
             render(<Sidebar />);
-            fireEvent.click(screen.getByText(strings.workspace.newWorkspace));
+            fireEvent.click(screen.getByText('Blank Canvas'));
             await waitFor(() => expect(toast.error).toHaveBeenCalledWith(strings.errors.generic));
             consoleSpy.mockRestore();
         });

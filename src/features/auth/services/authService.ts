@@ -13,7 +13,8 @@ import {
     type User as FirebaseUser,
 } from 'firebase/auth';
 import type { FirebaseError } from 'firebase/app';
-import { auth, googleProvider } from '@/config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { auth, googleProvider, functions } from '@/config/firebase';
 import { useAuthStore } from '../stores/authStore';
 import { useSubscriptionStore } from '@/features/subscription/stores/subscriptionStore';
 import { createUserFromAuth } from '../types/user';
@@ -126,12 +127,16 @@ export function subscribeToAuthState(): () => void {
 /**
  * Delete the current user's account.
  * Re-authenticates via Google popup if the session is too old.
- * Firestore data cleanup is handled server-side via Firebase Auth onDelete trigger.
- * See: firebase/functions/src/onUserDeleted.ts (planned)
+ * Calls the onUserDeleted Cloud Function first to clean up Firestore + Storage data
+ * (GDPR Article 17 — right to erasure), then deletes the Firebase Auth user.
  */
 export async function deleteAccount(): Promise<void> {
     const user = auth.currentUser;
     if (!user) throw new Error(strings.settings.reAuthRequired);
+
+    // Clean up all user data in Firestore and Storage BEFORE deleting auth user
+    const cleanupFn = httpsCallable(functions, 'onUserDeleted');
+    await cleanupFn({});
 
     try {
         await deleteUser(user);

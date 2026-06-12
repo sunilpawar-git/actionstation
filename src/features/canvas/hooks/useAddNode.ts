@@ -8,6 +8,7 @@ import { useWorkspaceContext } from '@/app/contexts/WorkspaceContext';
 import { useSettingsStore } from '@/shared/stores/settingsStore';
 import { useFocusStore } from '../stores/focusStore';
 import { createIdeaNode, type NodePosition } from '../types/node';
+import { generateUUID } from '@/shared/utils/uuid';
 import { calculateNextNodePosition } from '../stores/canvasStoreHelpers';
 import { calculateSmartPlacement } from '../services/freeFlowPlacementService';
 import { resolveGridColumnsFromStore } from '../services/gridColumnsResolver';
@@ -70,7 +71,7 @@ export function useAddNode() {
                 ? calculateSmartPlacement(nodes, focusedNodeId ?? undefined)
                 : calculateNextNodePosition(nodes, cols));
 
-        const nodeId = `idea-${crypto.randomUUID()}`;
+        const nodeId = `idea-${generateUUID()}`;
         const newNode = createIdeaNode(nodeId, currentWorkspaceId, position);
 
         addNodeWithUndo(newNode);

@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 📍 Current Status
 
-- **Main branch**: Phases 1-9 complete (free tier limits, payments, legal compliance)
-- **Active work**: `feature/free-tier-limits` branch — ready to merge after final QA
+- **Main branch**: Phases 1-9 + Phase 6 security hardening complete (code-side)
+- **Deployment pending**: Cloud Armor WAF, Turnstile env vars, Monitoring alerts — all scripts ready, awaiting production GCP run
 - **Full roadmap**: See [`PRODUCTION-LAUNCH-PLAN.md`](./plans/PRODUCTION-LAUNCH-PLAN.md)
 
 ## 🛠️ Development Commands
@@ -35,7 +35,7 @@ cd functions && npm run check  # lint + test + build
 firebase emulators:start --only functions  # Local emulator on :5001
 ```
 
-**Aliases & Setup**: `@/` maps to `src/` (tsconfig.json, vite.config.ts). Tests use Vitest + jsdom + React Testing Library, setup in `src/test/setup.ts`. Structural tests (`src/__tests__/`) enforce build rules — never update them, fix the code.
+**Aliases & Setup**: `@/` maps to `src/` (tsconfig.json, vite.config.ts). First-time setup: `cp .env.example .env.local` then fill in all `VITE_*` variables. Tests use Vitest + jsdom + React Testing Library, setup in `src/test/setup.ts`. Structural tests (`src/__tests__/`) enforce build rules — never update them, fix the code.
 
 ## 🧠 Product Context — Building a Second Brain (BASB)
 
@@ -84,7 +84,8 @@ src/
 │   ├── documentAgent/        # Image analysis
 │   ├── export/               # Branch/markdown export
 │   ├── settings/             # User settings
-│   └── onboarding/           # First-run flows
+│   ├── onboarding/           # First-run flows
+│   └── landing/              # Public marketing page (unauthenticated)
 ├── shared/
 │   ├── components/           # Reusable UI (Button, Toast, ErrorBoundary)
 │   ├── contexts/             # React contexts
@@ -110,6 +111,47 @@ users/{userId}/
   usage/aiDaily              # Server writes only
   usage/storage              # Client read+write
 ```
+
+**Cloud Functions** (`functions/src/`):
+
+| Function | Trigger | Purpose |
+|----------|---------|---------|
+| `geminiProxy` | HTTPS callable | Proxies all Gemini requests — key never reaches client |
+| `workspaceBundle` | HTTPS callable | Firestore Bundles for fast workspace load |
+| `onNodeDeleted` | Firestore trigger | Cleans up Storage files when a node is deleted |
+| `scheduledStorageCleanup` | Scheduler (daily) | Purges orphan `tmp/` files older than 7 days |
+| `verifyTurnstile` | HTTPS | Validates Cloudflare Turnstile CAPTCHA tokens |
+| `stripeWebhook` / `razorpayWebhook` | HTTPS | Payment webhook handlers |
+| `calendarAuth` / `calendarEvents` | HTTPS callable | Google Calendar OAuth + event sync |
+
+Every new Cloud Function export must be added to: `functions/src/index.ts` (with `cors: ALLOWED_ORIGINS`), `scripts/setup-cloud-armor.sh` SERVICES array, and verified by the `cloudArmorCoverage` + `monitoringCoverage` structural tests.
+
+**Multi-Tab Write Protection**:
+
+A BroadcastChannel-based leader election (`src/shared/services/tabLeaderService.ts`) ensures only one tab writes to Firestore at a time:
+- `TabLeaderProvider` (in `App.tsx`) runs the election and updates both `TabLeaderCtx` and `tabRoleStore`
+- `useTabRoleStore` is a minimal Zustand store for **imperative reads** (e.g. in `useSaveCallback.save()` before Firestore writes)
+- `useTabLeaderRole()` is the React hook for **reactive reads** in components
+- Default role is `'pending'` → `isLeader: false`, so no writes occur during the election window
+- `MultiTabBanner` renders for follower tabs; followers still update the local cache
+
+**Structural Tests Catalog** (`src/__tests__/`):
+
+These tests act as compile-time guardrails — they fail the build if rules are violated. When adding a new feature, check which tests it might affect:
+
+| Test | What it enforces |
+|------|-----------------|
+| `zustandSelectors.structural.test.ts` | All store hooks must use selectors, no bare destructuring |
+| `firestoreQueryCap.structural.test.ts` | Every `getDocs` must use `.limit()` |
+| `noBase64InFirestore.structural.test.ts` | `stripBase64Images()` called in all node write paths |
+| `overflowClip.structural.test.ts` | `overflow-clip` not `overflow-hidden` on fixed containers |
+| `noConsoleLog.structural.test.ts` | No `console.*` in `src/` — use `logger.ts` |
+| `envValidation.structural.test.ts` | New env vars registered in `envValidation.ts` |
+| `cloudArmorCoverage.structural.test.ts` | New Cloud Functions in WAF `SERVICES` array |
+| `monitoringCoverage.structural.test.ts` | New Cloud Functions covered by monitoring alerts |
+| `cspCompleteness.structural.test.ts` | CSP in `firebase.json` only, never `<meta>` tags |
+| `guardrails.security.structural.test.ts` | Stripe key not in client bundle, base64 invariants |
+| `landingPage.structural.test.ts` | Landing routes accessible without auth |
 
 ## 🔴 HARDCODING RULES (Zero Tolerance)
 - **Strings**: Use `strings` from `@/shared/localization/*` — no inline text
@@ -150,6 +192,12 @@ users/{userId}/
 5. `npm audit` must stay at 0
 
 **Cloud Function Security Layer**: Bot detection → IP rate limit → Auth → User rate limit → Prompt filter → Output scan. See `functions/src/utils/` for `botDetector.ts`, `ipRateLimiter.ts`, `promptFilter.ts`, `threatMonitor.ts`, `securityLogger.ts`.
+
+**Prompt Injection Hardening**: `promptFilter.ts` applies `normalizeForPatternMatch()` before pattern matching — 3-step pipeline: NFKD decomposition → `\p{Mn}` combining-mark strip → confusables map (Cyrillic/Greek → ASCII). Length checks always run on ORIGINAL text; patterns run on normalized text (prevents confusable-padding bypass). See `functions/src/utils/textNormalizer.ts`.
+
+**WAF / CAPTCHA**: `scripts/setup-cloud-armor.sh` provisions Cloud Armor WAF + HTTPS LB for all Cloud Functions (run once per project). Turnstile CAPTCHA is code-complete — needs `VITE_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET` in Secret Manager to activate.
+
+**Monitoring**: `scripts/setup-monitoring-alerts.sh` creates `auth_failure_spike` and `bot_detected_spike` log-based metrics with CRITICAL/HIGH alert policies. Structural tests enforce that any new Cloud Function export is added to the WAF SERVICES array.
 
 ## 📦 STATE MANAGEMENT (Zustand + TanStack Query)
 
@@ -334,14 +382,21 @@ Fire-and-forget async calls must have `.catch()`. `useEffect` async functions ne
 
 **Cloud Functions**: `minInstances` OFF pre-launch. Re-add `minInstances: 1` to payment webhooks only when production traffic starts.
 
-## 🚀 PRODUCTION LAUNCH PHASES (1-9 Complete)
+## 🚀 PRODUCTION LAUNCH PHASES
 
 See [`PRODUCTION-LAUNCH-PLAN.md`](./plans/PRODUCTION-LAUNCH-PLAN.md) for full roadmap with acceptance criteria and test coverage.
 
 **Phase 1**: Infrastructure (domain, CORS, CSP, health endpoint, backups) — 21 tests ✅
 **Phase 2**: Payments (Stripe + Razorpay, checkout, webhooks, idempotency) — 59 tests ✅
 **Phase 3**: Free tier limits (workspace/node/AI/storage caps, tier hooks) — 121 tests ✅
-**Phase 4+**: Advanced features (legal compliance, calendar sync, etc.) — See PRODUCTION-LAUNCH-PLAN.md ✅
+**Phase 4+**: Advanced features (legal compliance, calendar sync, etc.) — ✅
+**Phase 6 (code)**: Security hardening — textNormalizer, Cloud Armor script, monitoring alerts, Turnstile client — ✅ 16,015 tests pass
+  - `functions/src/utils/textNormalizer.ts` — NFKD + combining strip + confusables map (49 tests)
+  - `scripts/setup-cloud-armor.sh` — fixed typo, added 11 missing services, priority-850 webhook rule
+  - `scripts/setup-monitoring-alerts.sh` — auth_failure + bot_detected metrics/alerts
+  - `src/features/auth/hooks/useTurnstile.ts` + `LoginPage.tsx` — Turnstile fully integrated
+  - Structural tests: `cloudArmorCoverage`, `monitoringCoverage` — enforce CI coverage
+  - **Deployment step remaining**: run scripts against production GCP project, set env vars in CI
 
 ## ✅ TECH DEBT PREVENTION CHECKLIST
 

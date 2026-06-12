@@ -33,9 +33,17 @@ import { strings } from '@/shared/localization/strings';
 import { OnboardingWalkthrough } from '@/features/onboarding';
 import { CalendarCallback } from '@/features/auth/components/CalendarCallback';
 import { TierLimitsProvider } from '@/features/subscription/contexts/TierLimitsContext';
+import { TabLeaderProvider } from '@/shared/contexts/TabLeaderContext';
+import { MultiTabBanner } from '@/shared/components/MultiTabBanner';
+import { SkipLink } from '@/shared/components/SkipLink';
+import { ChangelogModal } from '@/features/changelog/components/ChangelogModal';
+import { hasNewChangelog } from '@/features/changelog/services/changelogService';
 import '@/styles/global.css';
 
 // Lazy load non-critical components for better initial load performance
+const LandingPage = lazy(() =>
+    import('@/features/landing/components/LandingPage').then(m => ({ default: m.LandingPage }))
+);
 const LoginPage = lazy(() =>
     import('@/features/auth/components/LoginPage').then(m => ({ default: m.LoginPage }))
 );
@@ -51,6 +59,9 @@ const PrivacyPolicy = lazy(() =>
 const CookieConsentBanner = lazy(() =>
     import('@/features/legal/components/CookieConsentBanner').then(m => ({ default: m.CookieConsentBanner }))
 );
+const CanvasViewer = lazy(() =>
+    import('@/features/canvas/components/CanvasViewer').then(m => ({ default: m.CanvasViewer }))
+);
 
 function AuthenticatedApp() {
     const userId = useAuthStore((s) => s.user?.id);
@@ -63,6 +74,7 @@ function AuthenticatedApp() {
         hasOfflineData,
     } = useWorkspaceLoader(currentWorkspaceId ?? '');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isChangelogOpen, setIsChangelogOpen] = useState(() => hasNewChangelog());
 
     useThemeApplicator();
     useCompactMode();
@@ -78,6 +90,7 @@ function AuthenticatedApp() {
 
     const openSettings = useCallback(() => setIsSettingsOpen(true), []);
     const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
+    const closeChangelog = useCallback(() => setIsChangelogOpen(false), []);
     const wsCtx = useMemo(() => ({ currentWorkspaceId, isSwitching }), [currentWorkspaceId, isSwitching]);
 
     if (!isOnline && loadError && !hasOfflineData) {
@@ -89,34 +102,71 @@ function AuthenticatedApp() {
         );
     }
     return (
-        <TierLimitsProvider>
-            <WorkspaceContext.Provider value={wsCtx}>
-                <ReactFlowProvider>
-                    <SearchInputRefProvider>
-                        <KeyboardShortcutsProvider onOpenSettings={openSettings} />
-                        <Layout onSettingsClick={openSettings}>
-                        <CanvasView />
-                        {initialLoading && (
-                            <div className="canvas-loading-overlay">
-                                <div className="loading-spinner" />
-                                <p>{strings.common.loading}</p>
-                            </div>
-                        )}
-                        </Layout>
-                    </SearchInputRefProvider>
-                    <Suspense fallback={null}>
-                        <SettingsPanel isOpen={isSettingsOpen} onClose={closeSettings} />
-                    </Suspense>
-                    <OnboardingWalkthrough />
-                </ReactFlowProvider>
-            </WorkspaceContext.Provider>
-        </TierLimitsProvider>
+        <TabLeaderProvider>
+            <TierLimitsProvider>
+                <WorkspaceContext.Provider value={wsCtx}>
+                    <MultiTabBanner />
+                    <ReactFlowProvider>
+                        <SearchInputRefProvider>
+                            <KeyboardShortcutsProvider onOpenSettings={openSettings} />
+                            <Layout onSettingsClick={openSettings}>
+                                <CanvasView />
+                                {initialLoading && (
+                                    <div className="canvas-loading-overlay">
+                                        <div className="loading-spinner" />
+                                        <p>{strings.common.loading}</p>
+                                    </div>
+                                )}
+                            </Layout>
+                        </SearchInputRefProvider>
+                        <Suspense fallback={null}>
+                            <SettingsPanel isOpen={isSettingsOpen} onClose={closeSettings} />
+                        </Suspense>
+                        <OnboardingWalkthrough />
+                        <ChangelogModal isOpen={isChangelogOpen} onClose={closeChangelog} />
+                    </ReactFlowProvider>
+                </WorkspaceContext.Provider>
+            </TierLimitsProvider>
+        </TabLeaderProvider>
+    );
+}
+
+/**
+ * LoginRoute — handles /login with a safe useEffect redirect for authenticated users.
+ * Avoids triggering window.location.href during the render phase (Strict Mode safe).
+ */
+function LoginRoute() {
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            window.location.href = '/';
+        }
+    }, [isAuthenticated]);
+
+    if (isAuthenticated) return null;
+
+    return (
+        <Suspense fallback={<LoadingFallback fullScreen />}>
+            <LoginPage />
+        </Suspense>
     );
 }
 
 function AppContent() {
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const authLoading = useAuthStore((s) => s.isLoading);
+
+    // Shareable canvas view — public, no auth required
+    const viewMatch = /^\/view\/([\w-]+)$/.exec(window.location.pathname);
+    const viewSnapshotId = viewMatch?.[1];
+    if (viewSnapshotId) {
+        return (
+            <Suspense fallback={<LoadingFallback fullScreen />}>
+                <CanvasViewer snapshotId={viewSnapshotId} />
+            </Suspense>
+        );
+    }
 
     // Legal pages — public, require no auth, checked first
     if (window.location.pathname === '/terms') {
@@ -139,6 +189,23 @@ function AppContent() {
         return <CalendarCallback />;
     }
 
+    // Root: wait for auth to resolve before deciding — prevents landing page flash for returning users
+    if (window.location.pathname === '/') {
+        if (authLoading) {
+            return (
+                <div className="loading-screen">
+                    <div className="loading-spinner" />
+                </div>
+            );
+        }
+        if (isAuthenticated) return <AuthenticatedApp />;
+        return (
+            <Suspense fallback={<LoadingFallback fullScreen />}>
+                <LandingPage />
+            </Suspense>
+        );
+    }
+
     // Auth loading state
     if (authLoading) {
         return (
@@ -149,7 +216,12 @@ function AppContent() {
         );
     }
 
-    // Not authenticated - lazy load login page
+    // Login page — explicit route; authenticated users safely redirected via useEffect
+    if (window.location.pathname === '/login') {
+        return <LoginRoute />;
+    }
+
+    // Not authenticated — redirect to login
     if (!isAuthenticated) {
         return (
             <Suspense fallback={<LoadingFallback fullScreen />}>
@@ -173,6 +245,7 @@ export function App() {
     return (
         <QueryClientProvider client={queryClient}>
             <ErrorBoundary>
+                <SkipLink />
                 <AppContent />
                 <ToastContainer />
                 <ConfirmDialog />

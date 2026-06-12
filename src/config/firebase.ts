@@ -4,7 +4,7 @@
  * Sensitive operations go through Cloud Functions
  */
 import { initializeApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaV3Provider, getToken } from 'firebase/app-check';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentSingleTabManager } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -45,6 +45,17 @@ export const appCheck = initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
     isTokenAutoRefreshEnabled: true,
 });
+
+// Pre-warm the App Check token immediately on module init.
+// Resolves once the reCAPTCHA token is obtained, or resolves silently on failure
+// (enforcement may not be enabled yet). Awaited by useSaveCallback before the
+// first Firestore write to prevent a race where autosave fires before the token
+// is available, causing a permission-denied on the very first save.
+export const appCheckReady: Promise<void> = getToken(appCheck, /* forceRefresh */ false)
+    .then(() => undefined)
+    .catch((err: unknown) => {
+        logger.warn('[AppCheck] Initial token prefetch failed — saves may fail until token is available', err);
+    });
 
 export const auth = getAuth(app);
 

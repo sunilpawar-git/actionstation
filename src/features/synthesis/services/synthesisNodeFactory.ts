@@ -7,6 +7,7 @@ import { createEdge } from '@/features/canvas/types/edge';
 import type { CanvasNode, NodePosition } from '@/features/canvas/types/node';
 import type { CanvasEdge } from '@/features/canvas/types/edge';
 import type { SynthesisMode } from './synthesisPrompts';
+import { generateUUID } from '@/shared/utils/uuid';
 
 interface CreateSynthesisNodeParams {
     readonly workspaceId: string;
@@ -18,7 +19,7 @@ interface CreateSynthesisNodeParams {
 }
 
 export function createSynthesisNode(params: CreateSynthesisNodeParams): CanvasNode {
-    const id = `idea-${crypto.randomUUID()}`;
+    const id = `idea-${generateUUID()}`;
     const baseNode = createIdeaNode(id, params.workspaceId, params.position);
 
     return {
@@ -41,7 +42,7 @@ export function createSynthesisEdges(
 ): CanvasEdge[] {
     return rootNodeIds.map((sourceId) =>
         createEdge(
-            `edge-${crypto.randomUUID()}`,
+            `edge-${generateUUID()}`,
             workspaceId,
             sourceId,
             synthesisNodeId,

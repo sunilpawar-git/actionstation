@@ -1,9 +1,12 @@
 /**
- * AboutSection — App version, changelog, bug report links, and walkthrough replay.
+ * AboutSection — App version, changelog, bug report links, walkthrough replay,
+ * in-app feedback dialog, and What's New modal.
  */
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { strings } from '@/shared/localization/strings';
 import { useOnboardingSignalStore } from '@/features/onboarding/stores/onboardingSignalStore';
+import { FeedbackDialog } from '@/features/feedback/components/FeedbackDialog';
+import { ChangelogModal } from '@/features/changelog/components/ChangelogModal';
 import { SettingsGroup } from './SettingsGroup';
 import { SP_SECTION, SP_SECTION_STYLE } from '../settingsPanelStyles';
 import {
@@ -13,6 +16,12 @@ import {
 } from './accountSectionStyles';
 
 export const AboutSection = React.memo(function AboutSection() {
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+    const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+
+    const handleCloseFeedback = useCallback(() => { setIsFeedbackOpen(false); }, []);
+    const handleCloseChangelog = useCallback(() => { setIsChangelogOpen(false); }, []);
+
     function handleReplay() {
         useOnboardingSignalStore.getState().requestReplay();
     }
@@ -51,6 +60,24 @@ export const AboutSection = React.memo(function AboutSection() {
                     <button
                         className={ABOUT_LINK}
                         style={ABOUT_LINK_STYLE}
+                        onClick={() => { setIsFeedbackOpen(true); }}
+                        type="button"
+                        data-testid="send-feedback-btn"
+                    >
+                        {strings.settings.sendFeedback}
+                    </button>
+                    <button
+                        className={ABOUT_LINK}
+                        style={ABOUT_LINK_STYLE}
+                        onClick={() => { setIsChangelogOpen(true); }}
+                        type="button"
+                        data-testid="whats-new-btn"
+                    >
+                        {strings.settings.whatsNew}
+                    </button>
+                    <button
+                        className={ABOUT_LINK}
+                        style={ABOUT_LINK_STYLE}
                         onClick={handleReplay}
                         type="button"
                         data-testid="replay-walkthrough-btn"
@@ -59,6 +86,9 @@ export const AboutSection = React.memo(function AboutSection() {
                     </button>
                 </div>
             </SettingsGroup>
+
+            <FeedbackDialog isOpen={isFeedbackOpen} onClose={handleCloseFeedback} />
+            <ChangelogModal isOpen={isChangelogOpen} onClose={handleCloseChangelog} />
         </div>
     );
 });

@@ -26,7 +26,7 @@ function LoginLogo() {
         <div style={{ marginBottom: 32 }}>
             <div
                 className="flex items-center justify-center"
-                style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--color-primary)', boxShadow: '0 4px 16px hsla(220, 65%, 50%, 0.35)' }}
+                style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--color-primary)', boxShadow: 'var(--shadow-primary-glow)' }}
             >
                 <svg width="28" height="28" viewBox="0 0 48 48" fill="none" aria-hidden="true">
                     <path d="M16 24L22 30L32 18" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -41,7 +41,7 @@ function LoginError({ message }: { message: string }) {
     return (
         <div
             className="w-full text-center"
-            style={{ padding: '12px 16px', background: 'hsl(0, 72%, 96%)', border: '1px solid var(--color-error)', borderRadius: 'var(--radius-md)', color: 'var(--color-error)', fontSize: 'var(--font-size-sm)', marginBottom: 24 }}
+            style={{ padding: '12px 16px', background: 'var(--color-error-bg-light)', border: '1px solid var(--color-error)', borderRadius: 'var(--radius-md)', color: 'var(--color-error)', fontSize: 'var(--font-size-sm)', marginBottom: 24 }}
             role="alert"
         >
             {message}
@@ -54,7 +54,7 @@ function LoginButton({ isLoading, onClick }: { isLoading: boolean; onClick: () =
     return (
         <button
             className="flex items-center justify-center w-full text-[var(--color-text-primary)] transition-all duration-150 ease-in-out cursor-pointer disabled:cursor-not-allowed"
-            style={{ gap: 10, padding: '14px 24px', background: 'var(--color-surface-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', boxShadow: '0 1px 3px hsla(220, 13%, 13%, 0.08)', opacity: isLoading ? 0.7 : 1 }}
+            style={{ gap: 10, padding: '14px 24px', background: 'var(--color-surface-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', boxShadow: 'var(--shadow-subtle)', opacity: isLoading ? 0.7 : 1 }}
             onClick={onClick}
             disabled={isLoading}
             aria-busy={isLoading}
@@ -92,12 +92,12 @@ export function LoginPage() {
     return (
         <main
             className="flex items-center justify-center"
-            style={{ minHeight: '100vh', width: '100%', background: 'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-background) 50%, hsl(260, 80%, 96%) 100%)' }}
+            style={{ minHeight: '100vh', width: '100%', background: 'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-background) 50%, var(--color-background-accent) 100%)' }}
         >
             <div style={{ width: '100%', maxWidth: 440, padding: '0 24px' }}>
                 <div
                     className="flex flex-col items-center"
-                    style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', border: 'var(--glass-border)', borderRadius: 'var(--radius-xl)', padding: '56px 48px 48px', boxShadow: '0 8px 40px hsla(220, 40%, 20%, 0.12)' }}
+                    style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', border: 'var(--glass-border)', borderRadius: 'var(--radius-xl)', padding: '56px 48px 48px', boxShadow: 'var(--shadow-card)' }}
                 >
                     <LoginLogo />
                     <h1 className="font-bold text-[var(--color-text-primary)] text-center" style={{ fontSize: 'var(--font-size-2xl)', marginBottom: 8, letterSpacing: '-0.02em' }}>

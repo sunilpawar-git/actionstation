@@ -34,6 +34,7 @@
   --tag-fuchsia: #d946ef;
 
   --color-background: hsl(0, 0%, 100%);
+  --color-background-accent: hsl(260, 80%, 96%);
   --color-surface: hsl(220, 14%, 98%);
   --color-surface-elevated: hsl(0, 0%, 100%);
   --color-surface-hover: hsl(220, 14%, 96%);
@@ -77,6 +78,7 @@
   --color-success-bg: hsl(145, 65%, 42%);
   --color-success-text: hsl(0, 0%, 100%);
   --color-error-bg: hsl(0, 72%, 51%);
+  --color-error-bg-light: hsl(0, 72%, 96%);
   --color-error-text: hsl(0, 0%, 100%);
   --color-warning-bg: hsl(38, 92%, 50%);
   --color-warning-text: hsl(38, 92%, 10%);
@@ -85,6 +87,8 @@
 
   /* Dropdown/menu shadows */
   --shadow-dropdown: 0 4px 12px hsla(220, 13%, 13%, 0.15);
+  /* Primary colour glow (e.g. logo icon) */
+  --shadow-primary-glow: 0 4px 16px hsla(220, 65%, 50%, 0.35);
 
   /* Hover state for menus */
   --color-hover: hsla(220, 13%, 13%, 0.05);
@@ -159,6 +163,9 @@
   --shadow-md: 0 4px 6px hsla(220, 13%, 13%, 0.07);
   --shadow-lg: 0 10px 15px hsla(220, 13%, 13%, 0.1);
   --shadow-xl: 0 20px 25px hsla(220, 13%, 13%, 0.15);
+  /* Component-specific shadows */
+  --shadow-subtle: 0 1px 3px hsla(220, 13%, 13%, 0.08);
+  --shadow-card: 0 8px 40px hsla(220, 40%, 20%, 0.12);
 
   /* Glassmorphism */
   --glass-bg: hsla(0, 0%, 100%, 0.7);

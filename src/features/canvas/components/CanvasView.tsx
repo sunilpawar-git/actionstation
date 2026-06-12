@@ -103,7 +103,7 @@ function CanvasViewInner() {
 
     return (
         <PanToNodeContext.Provider value={panCtx}>
-        <div className={getContainerClassName(isSwitching)} data-canvas-container onDoubleClick={paneHandlers.onDoubleClick} onTouchEnd={paneHandlers.onTouchEnd}>
+        <div id="main-canvas" tabIndex={-1} className={getContainerClassName(isSwitching)} data-canvas-container onDoubleClick={paneHandlers.onDoubleClick} onTouchEnd={paneHandlers.onTouchEnd}>
             <ReactFlow
                 nodes={rfNodes}
                 edges={rfEdges}

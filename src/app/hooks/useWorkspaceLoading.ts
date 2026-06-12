@@ -20,8 +20,11 @@ export function useWorkspaceLoading() {
 
         async function load() {
             try {
-                await workspaceCache.hydrateFromIdb();
-                const loaded = await loadUserWorkspaces(uid);
+                // Hydrate cache and fetch workspace list in parallel — both are independent.
+                const [, loaded] = await Promise.all([
+                    workspaceCache.hydrateFromIdb(),
+                    loadUserWorkspaces(uid),
+                ]);
                 useWorkspaceStore.getState().setWorkspaces(loaded);
 
                 const metadata = loaded.map(ws => ({
@@ -49,9 +52,23 @@ export function useWorkspaceLoading() {
                 }
 
                 if (loaded.length > 0) {
-                    workspaceCache.preload(uid, loaded.map(ws => ws.id)).catch((err: unknown) => {
-                        logger.warn('[useWorkspaceLoading] Cache preload failed:', err);
-                    });
+                    // Only preload the active workspace on boot — other workspaces are loaded
+                    // on-demand when the user switches to them. Preloading all workspaces
+                    // fires N×2 Firestore reads that compete with the current workspace load.
+                    const activeId = useWorkspaceStore.getState().currentWorkspaceId;
+                    let toPreload: string[];
+                    if (activeId) {
+                        toPreload = [activeId];
+                    } else if (firstReal) {
+                        toPreload = [firstReal.id];
+                    } else {
+                        toPreload = [];
+                    }
+                    if (toPreload.length > 0) {
+                        workspaceCache.preload(uid, toPreload).catch((err: unknown) => {
+                            logger.warn('[useWorkspaceLoading] Cache preload failed:', err);
+                        });
+                    }
                 }
             } catch (error) {
                 logger.error('[useWorkspaceLoading] Failed to load workspaces:', error);

@@ -11,13 +11,14 @@ import { initAnalytics } from '@/shared/services/analyticsService';
 import { validateProductionEnv } from '@/config/envValidation';
 
 // Initialize error tracking before rendering so first errors are captured
-initSentry();
 validateProductionEnv();
 
-// Schedule analytics after first paint (PostHog is lazy-loaded, non-critical)
+// Defer Sentry and analytics until after first paint — both are non-critical
+// for the initial render and their bundles are large.
 const scheduleIdle = typeof requestIdleCallback === 'function'
     ? requestIdleCallback
     : (cb: () => void) => setTimeout(cb, 1);
+scheduleIdle(() => { void initSentry(); });
 scheduleIdle(() => { initAnalytics(); });
 
 const rootElement = document.getElementById('root');

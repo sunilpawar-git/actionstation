@@ -11,6 +11,9 @@ import { UpgradeWall } from '@/features/subscription/components/UpgradeWall';
 import { useRazorpayCheckout } from '@/features/subscription/hooks/useRazorpayCheckout';
 import { PRO_MONTHLY_PLAN_ID } from '@/features/subscription/types/subscription';
 import { logger } from '@/shared/services/logger';
+import { TemplatePicker } from '@/features/templates/components/TemplatePicker';
+import { useTemplatePicker } from '@/features/templates/hooks/useTemplatePicker';
+import type { WorkspaceTemplate } from '@/features/templates/types/template';
 import './Sidebar.css';
 import {
     SB_SIDEBAR, SB_WORKSPACES, SB_WORKSPACES_STYLE,
@@ -30,7 +33,7 @@ interface SidebarProps {
 interface WorkspaceCreateButtonProps {
     isCreating: boolean;
     isCreatingDivider: boolean;
-    onNewWorkspace: () => Promise<void>;
+    onNewWorkspace: () => void;
     onNewDivider: () => Promise<void>;
 }
 
@@ -81,6 +84,8 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
         upgradeWall, dismissWall,
     } = useSidebarWorkspaces();
 
+    const { isPickerOpen, customTemplates, isLoadingTemplates, openPicker, closePicker } = useTemplatePicker();
+
     const { startCheckout } = useRazorpayCheckout();
     const isPinned = useSidebarStore((s) => s.isPinned);
     const isHoverOpen = useSidebarStore((s) => s.isHoverOpen);
@@ -92,6 +97,16 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
         );
     }, [dismissWall, startCheckout]);
 
+    const handleTemplateSelect = useCallback((template: WorkspaceTemplate) => {
+        closePicker();
+        void handleNewWorkspace(template);
+    }, [closePicker, handleNewWorkspace]);
+
+    const handleBlankCanvas = useCallback(() => {
+        closePicker();
+        void handleNewWorkspace(null);
+    }, [closePicker, handleNewWorkspace]);
+
     return (
         <aside className={SB_SIDEBAR} data-pinned={String(isPinned)} data-open={String(isHoverOpen)}
             aria-label={strings.sidebar.ariaLabel}
@@ -101,7 +116,7 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
                 <WorkspaceCreateButton
                     isCreating={isCreating}
                     isCreatingDivider={isCreatingDivider}
-                    onNewWorkspace={handleNewWorkspace}
+                    onNewWorkspace={openPicker}
                     onNewDivider={handleNewDivider}
                 />
                 <WorkspaceList workspaces={workspaces} currentWorkspaceId={currentWorkspaceId}
@@ -115,6 +130,14 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
                     max={upgradeWall.max} onDismiss={dismissWall} onUpgrade={handleUpgrade}
                 />
             )}
+            <TemplatePicker
+                isOpen={isPickerOpen}
+                customTemplates={customTemplates}
+                isLoadingCustom={isLoadingTemplates}
+                onSelect={handleTemplateSelect}
+                onSelectBlank={handleBlankCanvas}
+                onClose={closePicker}
+            />
         </aside>
     );
 }

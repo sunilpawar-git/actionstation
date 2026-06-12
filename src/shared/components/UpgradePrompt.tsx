@@ -2,7 +2,9 @@
  * UpgradePrompt - Shown when free users try to access pro features
  * All text from strings.subscription.* -- no hardcoded strings.
  */
+import { useRef } from 'react';
 import { strings } from '@/shared/localization/strings';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 
 interface UpgradePromptProps {
     featureName: string;
@@ -12,10 +14,12 @@ interface UpgradePromptProps {
 
 /** Modal prompt shown to free users when they attempt to access a subscription-gated feature. */
 export function UpgradePrompt({ featureName, onDismiss, onUpgrade }: UpgradePromptProps) {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useFocusTrap(dialogRef, true);
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-[hsla(0,0%,0%,0.4)] z-[var(--z-modal)]" role="dialog" aria-modal="true">
-            <div className="bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[var(--radius-xl)] max-w-[400px] w-[90%] shadow-[var(--shadow-xl)] text-center" style={{ padding: 'var(--space-xl)' }}>
-                <h3 className="font-semibold text-[var(--color-text-primary)]" style={{ fontSize: 'var(--font-size-lg)', marginBottom: 8 }}>{strings.subscription.upgradeTitle}</h3>
+        <div className="fixed inset-0 flex items-center justify-center bg-[hsla(0,0%,0%,0.4)] z-[var(--z-modal)]" role="dialog" aria-modal="true" aria-labelledby="upgrade-prompt-title">
+            <div ref={dialogRef} className="bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[var(--radius-xl)] max-w-[400px] w-[90%] shadow-[var(--shadow-xl)] text-center" style={{ padding: 'var(--space-xl)' }}>
+                <h3 id="upgrade-prompt-title" className="font-semibold text-[var(--color-text-primary)]" style={{ fontSize: 'var(--font-size-lg)', marginBottom: 8 }}>{strings.subscription.upgradeTitle}</h3>
                 <p className="text-[var(--color-text-secondary)] leading-[var(--line-height-relaxed)]" style={{ fontSize: 'var(--font-size-sm)', marginBottom: 24 }}>
                     {strings.subscription.upgradeMessage} {featureName}
                 </p>
